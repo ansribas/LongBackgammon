@@ -178,15 +178,23 @@ public class Application : Adw.Application {
 
     private void on_about_action () {
         var win = current_window ();
-        string[] developers = { "Алексей" };
+        var lang_code = SettingsStore.shared ().language.to_raw ();
+        GLib.Environment.set_variable ("LANGUAGE", lang_code, true);
+        GLib.Intl.setlocale (GLib.LocaleCategory.MESSAGES, "");
+
+        string[] developers = { "Aleksey Svetlov" };
+        var credits = _("translator-credits");
         var about = new Adw.AboutDialog () {
             application_name = Localization.window_title (),
             application_icon = "org.gnome.longbackgammon",
-            developer_name = "Алексей",
-            translator_credits = _("translator-credits"),
-            version = "0.1.0",
+            developer_name = "Aleksey Svetlov",
+            translator_credits = (credits != "translator-credits") ? credits : null,
+            version = "1.0",
             developers = developers,
-            copyright = "© 2026 Алексей",
+            copyright = "© 2026 Aleksey Svetlov",
+            license_type = Gtk.License.GPL_3_0,
+            website = "https://github.com/ansribas/LongBackgammon",
+            issue_url = "https://github.com/ansribas/LongBackgammon/issues",
         };
         about.present (win);
     }

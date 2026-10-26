@@ -1065,8 +1065,8 @@ public class GameSession : Object {
 
     /** Завершение партии: фиксация победы, запись статистики и отложенный показ итогового окна. */
     public void handle_delayed_victory () {
-        // Немедленно фиксируем завершение партии и блокируем доску
-        is_game_over = true;
+        // Немедленно блокируем доску и управление, но сохраняем сессию незавершённой
+        // до окончания полёта сгоревших/использованных кубиков в лог
         is_animating = true;
         selected_point = null;
         remaining_dice = new int[0];
@@ -1935,6 +1935,9 @@ public class GameSession : Object {
             }
 
             apply (move);
+            if (board.is_winner (current_player)) {
+                return;
+            }
             notify_changed ();
             var duration = SettingsStore.shared ().animation_speed.checker_move_duration;
             var between = SettingsStore.shared ().computer_delay.between_moves_delay;
@@ -2355,6 +2358,9 @@ public class GameSession : Object {
 
         if (steps.length < 2 || steps.length != dice_values.length) {
             apply (move);
+            if (board.is_winner (current_player)) {
+                return;
+            }
             check_and_auto_end_turn ();
             is_animating = false;
             notify_changed ();
@@ -2445,8 +2451,7 @@ public class GameSession : Object {
         }
 
         apply (move, is_dragged);
-        if (is_game_over) {
-            notify_changed ();
+        if (board.is_winner (current_player)) {
             return;
         }
         check_and_auto_end_turn ();
@@ -2869,6 +2874,83 @@ public class GameSession : Object {
             copy[i] = src[i];
         }
         return copy;
+    }
+
+    /** Настройка тестовой расстановки перед победным ходом дублем 2-2. */
+    public void setup_test_last_move () {
+        board = new GameBoard ();
+        // У белых осталась 1 фишка на лунке 1 (P1)
+        board.stacks[1] = new PointStack.with_ids (CheckerColor.WHITE, new uint8[] { 0 });
+        var w_off = new uint8[14];
+        for (var i = 0; i < 14; i++) {
+            w_off[i] = (uint8) (i + 1);
+        }
+        board.white_borne_off_ids = w_off;
+
+        // У чёрных 15 фишек: 2:B1 3:B1 4:B1 5:B1 6:B2 13:B6 14:B2 24:B1
+        board.stacks[2] = new PointStack.with_ids (CheckerColor.BLACK, new uint8[] { 15 });
+        board.stacks[3] = new PointStack.with_ids (CheckerColor.BLACK, new uint8[] { 16 });
+        board.stacks[4] = new PointStack.with_ids (CheckerColor.BLACK, new uint8[] { 17 });
+        board.stacks[5] = new PointStack.with_ids (CheckerColor.BLACK, new uint8[] { 18 });
+        board.stacks[6] = new PointStack.with_ids (CheckerColor.BLACK, new uint8[] { 19, 20 });
+        board.stacks[13] = new PointStack.with_ids (CheckerColor.BLACK, new uint8[] { 21, 22, 23, 24, 25, 26 });
+        board.stacks[14] = new PointStack.with_ids (CheckerColor.BLACK, new uint8[] { 27, 28 });
+        board.stacks[24] = new PointStack.with_ids (CheckerColor.BLACK, new uint8[] { 29 });
+        board.black_borne_off_ids = new uint8[0];
+
+        is_game_started = true;
+        is_game_over = false;
+        showing_game_over_result = false;
+        current_player = CheckerColor.WHITE;
+        SettingsStore.shared ().set_opponent (Opponent.COMPUTER);
+        is_auto_playing_black = false;
+        white_player_name = "Алексей";
+        black_player_name = "Computer";
+        is_first_move_rolloff_in_progress = false;
+        is_rolling = false;
+        is_animating = false;
+        selected_point = null;
+        move_history = new MoveSnapshot[0];
+        checkers_moved_from_head_this_turn = 0;
+
+        white_moves_count = 41;
+        black_moves_count = 41;
+        white_doubles_count = 5;
+        black_doubles_count = 6;
+        white_total_dice_sum = 300;
+        black_total_dice_sum = 240;
+        white_burned_dice_sum = 0;
+        black_burned_dice_sum = 38;
+
+        dice_roll = new DiceRoll (2, 2);
+        remaining_dice = new int[] { 2, 2, 2, 2 };
+        current_turn_dice = new TurnDie[] {
+            new TurnDie (0, 2, false, false),
+            new TurnDie (1, 2, false, false),
+            new TurnDie (2, 2, false, false),
+            new TurnDie (3, 2, false, false)
+        };
+        current_turn_record = new TurnRecord.with_dice (42, new DiceRoll (2, 2));
+        current_turn_record.dice = TurnDie.clone_array (current_turn_dice);
+        double_division_progress = 1.0;
+        status_message = Localization.status_select_checker ();
+
+        // Предыдущие ходы в логах для полноты картины
+        var prev_w = new TurnRecord.with_dice (41, new DiceRoll (6, 1));
+        prev_w.move_strings = new string[] { "1-^", "1-^" };
+        prev_w.dice = new TurnDie[] { new TurnDie (0, 6, true, false), new TurnDie (1, 1, true, false) };
+        white_turn_log = new TurnRecord[] { prev_w };
+
+        var prev_b = new TurnRecord.with_dice (41, new DiceRoll (1, 1));
+        prev_b.move_strings = new string[] { "6-5-4-3-2" };
+        prev_b.dice = new TurnDie[] {
+            new TurnDie (0, 1, true, false), new TurnDie (1, 1, true, false),
+            new TurnDie (2, 1, true, false), new TurnDie (3, 1, true, false)
+        };
+        black_turn_log = new TurnRecord[] { prev_b };
+
+        update_available_moves_cache ();
+        notify_changed ();
     }
 }
 

@@ -1,6 +1,6 @@
 /* main.vala
  *
- * Copyright 2026 Алексей
+ * Copyright 2026 Aleksey Svetlov
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,12 +19,21 @@
  */
 
 int main (string[] args) {
+    GLib.Intl.setlocale (GLib.LocaleCategory.ALL, "");
+
     GLib.Environment.set_prgname ("org.gnome.longbackgammon");
     GLib.Environment.set_application_name ("LongBackgammon");
 
-    Intl.bindtextdomain (Config.GETTEXT_PACKAGE, Config.LOCALEDIR);
-    Intl.bind_textdomain_codeset (Config.GETTEXT_PACKAGE, "UTF-8");
-    Intl.textdomain (Config.GETTEXT_PACKAGE);
+    var localedir = Config.LOCALEDIR;
+    var uninstalled_locale = GLib.Path.build_filename (Config.SOURCE_DATA_DIR, "..", "build", "po");
+    if (!GLib.FileUtils.test (localedir + "/ru/LC_MESSAGES/" + Config.GETTEXT_PACKAGE + ".mo", GLib.FileTest.EXISTS) &&
+        GLib.FileUtils.test (uninstalled_locale, GLib.FileTest.IS_DIR)) {
+        localedir = uninstalled_locale;
+    }
+
+    GLib.Intl.bindtextdomain (Config.GETTEXT_PACKAGE, localedir);
+    GLib.Intl.bind_textdomain_codeset (Config.GETTEXT_PACKAGE, "UTF-8");
+    GLib.Intl.textdomain (Config.GETTEXT_PACKAGE);
 
     var app = new Longbackgammon.Application ();
     return app.run (args);

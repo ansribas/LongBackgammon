@@ -183,6 +183,63 @@ int main (string[] args) {
         return 1;
     }
 
+    // Тест победы дублем 2-2 при 1 оставшейся фишке: проверка анимации и сгорания кубиков
+    var win_test = new GameSession ();
+    win_test.setup_test_last_move ();
+    if (!win_test.can_bear_off_selected) {
+        win_test.select ((BoardPoint) 1);
+    }
+    if (!win_test.can_bear_off_selected) {
+        stdout.printf ("FAIL: cannot bear off checker on P1\n");
+        return 1;
+    }
+    win_test.bear_off_selected ();
+
+    // Сразу после выноса: партия еще НЕ должна быть объявлена game_over мгновенно
+    // (кубики должны пройти фазу перечёркивания и перелёта в лог)
+    if (win_test.is_game_over) {
+        stdout.printf ("FAIL: is_game_over set prematurely before dice fly animation\n");
+        return 1;
+    }
+    if (!win_test.is_animating) {
+        stdout.printf ("FAIL: is_animating should be true during victory transition\n");
+        return 1;
+    }
+
+    // Ждем окончания полета кубиков и показа экрана победы
+    if (!wait_until (() => win_test.showing_game_over_result, 10.0)) {
+        stdout.printf ("FAIL: victory animation did not complete\n");
+        return 1;
+    }
+
+    if (!win_test.is_game_over) {
+        stdout.printf ("FAIL: is_game_over should be true after victory animation\n");
+        return 1;
+    }
+    if (win_test.white_burned_dice_sum != 6) {
+        stdout.printf ("FAIL: white_burned_dice_sum expected 6, got %d\n", win_test.white_burned_dice_sum);
+        return 1;
+    }
+    if (win_test.white_turn_log.length < 2) {
+        stdout.printf ("FAIL: winning turn record not added to white log\n");
+        return 1;
+    }
+    var last_rec = win_test.white_turn_log[0];
+    if (last_rec.turn_number != 42) {
+        stdout.printf ("FAIL: expected winning turn 42, got %d\n", last_rec.turn_number);
+        return 1;
+    }
+    var skipped_cnt = 0;
+    var used_cnt = 0;
+    foreach (var d in last_rec.dice) {
+        if (d.is_skipped) skipped_cnt++;
+        if (d.is_used) used_cnt++;
+    }
+    if (skipped_cnt != 3 || used_cnt != 1) {
+        stdout.printf ("FAIL: winning record dice state incorrect (skipped=%d used=%d)\n", skipped_cnt, used_cnt);
+        return 1;
+    }
+
     stdout.printf ("OK: logs matched (%d white, %d black), ids unique\n", s.white_turn_log.length, s.black_turn_log.length);
     return 0;
 }

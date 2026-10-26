@@ -16,7 +16,7 @@
   </description>
 
   <developer id="io.github.ansribas">
-    <name>Aleksey</name>
+    <name>Aleksey Svetlov</name>
   </developer>
 
   <url type="homepage">https://github.com/ansribas/LongBackgammon</url>
@@ -41,7 +41,7 @@
   <content_rating type="oars-1.1" />
 
   <releases>
-    <release version="1.0.0" date="2026-10-25">
+    <release version="1.0" date="2026-10-25">
       <description>
         <p>Initial release of Long Backgammon for Linux.</p>
       </description>

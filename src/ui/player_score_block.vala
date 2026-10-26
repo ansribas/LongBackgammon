@@ -117,6 +117,10 @@ public class PlayerScoreBlock : Gtk.Widget {
     }
 
     public override void dispose () {
+        if (tick_id != 0) {
+            remove_tick_callback (tick_id);
+            tick_id = 0;
+        }
         if (card != null) {
             card.unparent ();
             card = null;
@@ -125,8 +129,12 @@ public class PlayerScoreBlock : Gtk.Widget {
     }
 
     private void set_hover (bool on) {
+        var target = on ? 1.0 : 0.0;
+        if (hover_to == target && hover == target) {
+            return;
+        }
         hover_from = hover;
-        hover_to = on ? 1.0 : 0.0;
+        hover_to = target;
         hover_start = GLib.get_monotonic_time ();
         if (on) {
             card.add_css_class ("lb-card-hover");
@@ -136,24 +144,42 @@ public class PlayerScoreBlock : Gtk.Widget {
         ensure_tick ();
     }
 
+    private const double FLIP_DURATION = 0.45;
+    private const double HOVER_DURATION = 0.20;
+
     private void ensure_tick () {
         if (tick_id != 0) {
             return;
         }
         tick_id = add_tick_callback ((w, clock) => {
             var now = GLib.get_monotonic_time ();
-            var ta = (now - angle_start) / 1000000.0;
-            var th = (now - hover_start) / 1000000.0;
-            var pa = PanelStyle.spring (ta, 0.6, 0.7);
-            var ph = PanelStyle.spring (th, 0.3, 0.7);
-            angle = angle_from + (angle_to - angle_from) * pa;
-            hover = hover_from + (hover_to - hover_from) * ph;
+
+            if (angle != angle_to) {
+                var ta = (now - angle_start) / 1000000.0;
+                var progress = double.min (1.0, ta / FLIP_DURATION);
+                var pa = PanelStyle.ease_in_out (progress);
+                angle = angle_from + (angle_to - angle_from) * pa;
+
+                if (progress >= 1.0) {
+                    angle = angle_to;
+                }
+            }
+
+            if (hover != hover_to) {
+                var th = (now - hover_start) / 1000000.0;
+                var progress = double.min (1.0, th / HOVER_DURATION);
+                var ph = PanelStyle.ease_in_out (progress);
+                hover = hover_from + (hover_to - hover_from) * ph;
+
+                if (progress >= 1.0) {
+                    hover = hover_to;
+                }
+            }
+
             update_face ();
             queue_draw ();
-            if (ta > 1.5 && th > 1.0) {
-                angle = angle_to;
-                hover = hover_to;
-                update_face ();
+
+            if (angle == angle_to && hover == hover_to) {
                 tick_id = 0;
                 return GLib.Source.REMOVE;
             }
@@ -201,14 +227,26 @@ public class PlayerScoreBlock : Gtk.Widget {
         var scale = (float) (1.0 + 0.03 * hover);
         // При повороте больше 90 градусов задняя грань отображается инвертированной
         var a = (float) (angle > 90 ? angle - 180 : angle);
-        snapshot.save ();
-        snapshot.translate ({ w / 2, h / 2 });
-        snapshot.perspective (w * 4);
-        snapshot.rotate_3d (a, Graphene.Vec3.y_axis ());
-        snapshot.scale (scale, scale);
-        snapshot.translate ({ -w / 2, -h / 2 });
-        snapshot_child (card, snapshot);
-        snapshot.restore ();
+
+        bool has_rotation = Math.fabs (a) > 0.05f;
+        bool has_scale = Math.fabs (scale - 1.0f) > 0.001f;
+
+        if (has_rotation || has_scale) {
+            snapshot.save ();
+            snapshot.translate ({ w / 2, h / 2 });
+            if (has_rotation) {
+                snapshot.perspective (w * 4);
+                snapshot.rotate_3d (a, Graphene.Vec3.y_axis ());
+            }
+            if (has_scale) {
+                snapshot.scale (scale, scale);
+            }
+            snapshot.translate ({ -w / 2, -h / 2 });
+            snapshot_child (card, snapshot);
+            snapshot.restore ();
+        } else {
+            snapshot_child (card, snapshot);
+        }
     }
 }
 

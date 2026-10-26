@@ -69,7 +69,13 @@ public class SettingsStore : Object {
 
     // MARK: - Setters (с автосохранением)
     public void set_language (Language value) {
-        if (language != value) { language = value; save (); changed (); }
+        if (language != value) {
+            language = value;
+            GLib.Environment.set_variable ("LANGUAGE", language.to_raw (), true);
+            GLib.Intl.setlocale (GLib.LocaleCategory.MESSAGES, "");
+            save ();
+            changed ();
+        }
     }
     public void set_opponent (Opponent value) {
         if (opponent != value) { opponent = value; save (); changed (); }
@@ -199,6 +205,9 @@ public class SettingsStore : Object {
         } catch (Error e) {
             warning ("Settings load error: %s", e.message);
         }
+
+        GLib.Environment.set_variable ("LANGUAGE", language.to_raw (), true);
+        GLib.Intl.setlocale (GLib.LocaleCategory.MESSAGES, "");
     }
 
     private SettingsStore () {
