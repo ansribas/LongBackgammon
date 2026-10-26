@@ -79,10 +79,8 @@ public class Application : Adw.Application {
                 var exe = FileUtils.read_link ("/proc/self/exe");
                 var bin_target = GLib.Path.build_filename (bin_dir, "longbackgammon");
                 if (exe != "") {
-                    if (FileUtils.test (bin_target, FileTest.EXISTS)) {
-                        FileUtils.unlink (bin_target);
-                    }
-                    File.new_for_path (exe).make_symbolic_link (bin_target);
+                    FileUtils.unlink (bin_target);
+                    File.new_for_path (bin_target).make_symbolic_link (exe);
                 }
             } catch (Error e) {
             }
