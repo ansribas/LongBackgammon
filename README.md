@@ -7,6 +7,18 @@
 
 Classic Long Backgammon (Russian Nardi / Длинные нарды) for GNOME/Linux (GTK4 + Libadwaita) featuring authentic rules, fluid animations, and advanced AI.
 
+<p align="center">
+  <img src="data/screenshots/01.png" alt="Long Backgammon Gameplay" width="750" />
+</p>
+
+---
+
+## Screenshots
+
+| Wooden Theme Gameplay | Board and Checkers | Active Match Session |
+| :---: | :---: | :---: |
+| [![Wooden Theme](data/screenshots/01.png)](data/screenshots/01.png) | [![Board and Checkers](data/screenshots/02.png)](data/screenshots/02.png) | [![Active Match](data/screenshots/03.png)](data/screenshots/03.png) |
+
 ---
 
 ## Features
