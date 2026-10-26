@@ -1,0 +1,11 @@
+[Desktop Entry]
+Name=LongBackgammon
+Comment=Classic Long Backgammon Board Game
+Exec=longbackgammon
+Icon=org.gnome.longbackgammon
+Terminal=false
+Type=Application
+Categories=Game;BoardGame;
+Keywords=GTK;Backgammon;Game;
+StartupNotify=true
+StartupWMClass=org.gnome.longbackgammon

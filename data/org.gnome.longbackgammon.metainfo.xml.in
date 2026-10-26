@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>org.gnome.longbackgammon</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-3.0-or-later</project_license>
+
+  <name>LongBackgammon</name>
+  <summary>Classic Long Backgammon Board Game</summary>
+
+  <description>
+    <p>
+      Long Backgammon is a popular variant of backgammon played with fifteen checkers
+      on a standard board. Players compete to move all their checkers into the home board
+      and bear them off first, following strict strategic rules and smart positioning.
+    </p>
+  </description>
+
+  <developer id="io.github.ansribas">
+    <name>Aleksey</name>
+  </developer>
+
+  <url type="homepage">https://github.com/ansribas/LongBackgammon</url>
+  <url type="bugtracker">https://github.com/ansribas/LongBackgammon/issues</url>
+  <url type="vcs-browser">https://github.com/ansribas/LongBackgammon</url>
+
+  <categories>
+    <category>Game</category>
+    <category>BoardGame</category>
+  </categories>
+
+  <provides>
+    <id>org.gnome.longbackgammon.desktop</id>
+  </provides>
+  <launchable type="desktop-id">org.gnome.longbackgammon.desktop</launchable>
+
+  <branding>
+    <color type="primary" scheme_preference="light">#e66100</color>
+    <color type="primary" scheme_preference="dark">#e66100</color>
+  </branding>
+
+  <content_rating type="oars-1.1" />
+
+  <releases>
+    <release version="1.0.0" date="2026-10-25">
+      <description>
+        <p>Initial release of Long Backgammon for Linux.</p>
+      </description>
+    </release>
+  </releases>
+</component>

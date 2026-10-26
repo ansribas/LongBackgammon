@@ -1,0 +1,37 @@
+# Meson / Ninja build
+/build/
+/_build/
+builddir/
+meson-private/
+meson-logs/
+meson-info/
+compile_commands.json
+.ninja_deps
+.ninja_log
+
+# Flatpak & GNOME Builder
+/.flatpak-builder/
+/.flatpak/
+.gnome-builder/
+
+# IDE & Editors
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.directory
+
+# Compiled artifacts
+*.o
+*.a
+*.so
+*.so.*
+*.vala.c
+*.vapi~
+*.stamp
+
+# OS artifacts
+.DS_Store
+Thumbs.db
+

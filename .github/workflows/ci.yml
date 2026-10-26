@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          meson \
+          ninja-build \
+          valac \
+          libgtk-4-dev \
+          libadwaita-1-dev \
+          desktop-file-utils \
+          appstream \
+          xvfb \
+          gettext
+
+    - name: Configure Meson
+      run: meson setup build
+
+    - name: Build
+      run: ninja -C build
+
+    - name: Run tests
+      run: |
+        Xvfb :99 -screen 0 1280x1024x24 &
+        for i in $(seq 1 20); do test -e /tmp/.X11-unix/X99 && break; sleep 0.2; done
+        export DISPLAY=:99
+        meson test -C build -v --timeout-multiplier 4

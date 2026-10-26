@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gresources>
+  <gresource prefix="/org/gnome/longbackgammon">
+    <file preprocess="xml-stripblanks">window.ui</file>
+    <file preprocess="xml-stripblanks">shortcuts-dialog.ui</file>
+    <file>images/board.png</file>
+    <file>images/white.png</file>
+    <file>images/black.png</file>
+    <file>images/dicecursor.png</file>
+    <file>images/marble_board.png</file>
+    <file>images/marble_white.png</file>
+    <file>images/marble_black.png</file>
+    <file>images/marble_dicecursor.png</file>
+    <file>images/wood_board.png</file>
+    <file>images/wood_white.png</file>
+    <file>images/wood_black.png</file>
+    <file>images/wood_dicecursor.png</file>
+    <file>translations/az.json</file>
+    <file>translations/de.json</file>
+    <file>translations/en.json</file>
+    <file>translations/es.json</file>
+    <file>translations/fr.json</file>
+    <file>translations/hy.json</file>
+    <file>translations/it.json</file>
+    <file>translations/ka.json</file>
+    <file>translations/kk.json</file>
+    <file>translations/ru.json</file>
+    <file>translations/tg.json</file>
+    <file>translations/tk.json</file>
+    <file>translations/tr.json</file>
+    <file>translations/uz.json</file>
+  </gresource>
+</gresources>

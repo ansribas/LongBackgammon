@@ -1,0 +1,89 @@
+using Longbackgammon;
+using Gtk;
+
+static bool wait_until (owned GLib.SourceFunc condition, double timeout_sec = 20.0) {
+    var context = GLib.MainContext.default ();
+    var started = GLib.get_monotonic_time ();
+    while (!condition ()) {
+        if ((GLib.get_monotonic_time () - started) / 1000000.0 > timeout_sec) {
+            return false;
+        }
+        if (!context.iteration (false)) {
+            GLib.Thread.usleep (2000);
+        }
+    }
+    return true;
+}
+
+int main (string[] args) {
+    Gtk.init ();
+    var s = new GameSession ();
+    s.board = GameBoard.initial_long ();
+    s.is_game_started = true;
+    s.current_player = CheckerColor.WHITE;
+    s.dice_roll = new DiceRoll (3, 5);
+    s.remaining_dice = new int[] { 3, 5 };
+    s.is_animating = false;
+    s.is_rolling = false;
+    s.update_available_moves_cache ();
+
+    if (s.cached_legal_options.length == 0) {
+        stderr.printf ("FAIL: no moves after roll\n");
+        return 1;
+    }
+
+    var view = new BoardView (s);
+    var side = 600.0;
+
+    // Клик по фишке P24: должна выбрать её
+    double ax, ay;
+    BoardLayout.position (BoardPoint.P24, side, out ax, out ay);
+    view.handle_board_click_at (ax, ay, 600, 600);
+    stderr.printf ("selected=%s\n", s.selected_point == null ? "NULL" : s.selected_point.raw_value ().to_string ());
+    if (s.selected_point != BoardPoint.P24) {
+        stderr.printf ("FAIL: expected P24 selected\n");
+        return 1;
+    }
+
+    // Клик по доступной точке P21: должен сходить
+    double bx, by;
+    BoardLayout.position (BoardPoint.P21, side, out bx, out by);
+    view.handle_board_click_at (bx, by, 600, 600);
+    var st = s.board.stack_at (BoardPoint.P21);
+    stderr.printf ("stack21=%s\n", st == null ? "NULL" : st.checker_ids.length.to_string ());
+    if (st == null || st.color != CheckerColor.WHITE || st.checker_ids.length != 1) {
+        stderr.printf ("FAIL: move to P21 not applied\n");
+        return 1;
+    }
+    if (!wait_until (() => !s.is_animating)) {
+        stderr.printf ("FAIL: move animation did not finish\n");
+        return 1;
+    }
+
+    // Клик по оставшимся фишкам на голове снова выбирает пункт
+    double cx, cy;
+    BoardLayout.position (BoardPoint.P24, side, out cx, out cy);
+    view.handle_board_click_at (cx, cy, 600, 600);
+    stderr.printf ("selected2=%s\n", s.selected_point == null ? "NULL" : s.selected_point.raw_value ().to_string ());
+    if (s.selected_point != BoardPoint.P24) {
+        stderr.printf ("FAIL: expected remaining checker on P24 to be selected\n");
+        return 1;
+    }
+
+    // Тест расстановки с подключенным BoardView
+    var s_place = new GameSession ();
+    var v_place = new BoardView (s_place);
+    assert (v_place != null);
+    bool done = false;
+    s_place.board = GameBoard.in_tray ();
+    s_place.animate_placement (GameBoard.initial_long (), false, false, () => {
+        done = true;
+    });
+    if (!wait_until (() => done, 30.0)) {
+        stderr.printf ("FAIL: placement timed out\n");
+        return 1;
+    }
+
+    stderr.printf ("ui_test OK\n");
+    return 0;
+}

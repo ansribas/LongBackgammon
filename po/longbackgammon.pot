@@ -1,0 +1,91 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the longbackgammon package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: longbackgammon\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-10-25 22:23+0200\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: data/org.gnome.longbackgammon.desktop.in:2
+#: data/org.gnome.longbackgammon.metainfo.xml.in:7
+msgid "LongBackgammon"
+msgstr ""
+
+#: data/org.gnome.longbackgammon.desktop.in:4
+#: data/org.gnome.longbackgammon.metainfo.xml.in:9
+msgid "Classic Long Backgammon Board Game"
+msgstr ""
+
+#: data/org.gnome.longbackgammon.desktop.in:11
+msgid "GTK;Backgammon;Нарды;"
+msgstr ""
+
+#: data/org.gnome.longbackgammon.metainfo.xml.in:8
+msgid "Длинные нарды"
+msgstr ""
+
+#: data/org.gnome.longbackgammon.metainfo.xml.in:10
+msgid "Классическая настольная игра Длинные нарды"
+msgstr ""
+
+#: data/org.gnome.longbackgammon.metainfo.xml.in:12
+msgid ""
+"Long Backgammon is a popular variant of backgammon played with fifteen "
+"checkers on a standard board. Players compete to move all their checkers "
+"into the home board and bear them off first, following strict strategic "
+"rules and smart positioning."
+msgstr ""
+
+#: data/org.gnome.longbackgammon.metainfo.xml.in:17
+msgid ""
+"Длинные нарды — классическая настольная игра для двух игроков с пятнадцатью "
+"шашками. Цель состоит в том, чтобы пройти всеми шашками полный круг по "
+"доске, завести их в дом и выбросить раньше противника."
+msgstr ""
+
+#: data/org.gnome.longbackgammon.metainfo.xml.in:25
+msgid "LongBackgammon Team"
+msgstr ""
+
+#: data/org.gnome.longbackgammon.metainfo.xml.in:53
+msgid "Initial release of Long Backgammon for Linux."
+msgstr ""
+
+#: data/org.gnome.longbackgammon.metainfo.xml.in:54
+msgid "Первый выпуск игры Длинные нарды для Linux."
+msgstr ""
+
+#: src/window.ui:6
+msgid "Long Backgammon"
+msgstr ""
+
+#: src/window.ui:17
+msgid "Main Menu"
+msgstr ""
+
+#: src/window.ui:25
+msgid "Long Backgammon!"
+msgstr ""
+
+#: src/window.ui:37
+msgid "_Preferences"
+msgstr ""
+
+#: src/window.ui:41
+msgid "_Keyboard Shortcuts"
+msgstr ""
+
+#: src/window.ui:45
+msgid "_About LongBackgammon"
+msgstr ""

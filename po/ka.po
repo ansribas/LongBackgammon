@@ -1,0 +1,62 @@
+# Georgian translation for Long Backgammon.
+# Copyright (C) 2026 Aleksey
+# This file is distributed under the same license as the longbackgammon package.
+# Aleksey <ansribas>, 2026.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: longbackgammon\n"
+"Report-Msgid-Bugs-To: https://github.com/ansribas/LongBackgammon/issues\n"
+"POT-Creation-Date: 2026-10-26 09:00+0200\n"
+"PO-Revision-Date: 2026-10-26 09:00+0200\n"
+"Last-Translator: Aleksey <ansribas>\n"
+"Language-Team: Georgian <ka@li.org>\n"
+"Language: ka\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#: data/org.gnome.longbackgammon.desktop.in:2
+#: data/org.gnome.longbackgammon.metainfo.xml.in:7
+#: src/window.ui:6
+msgid "Long Backgammon"
+msgstr "გრძელი ნარდი"
+
+#: data/org.gnome.longbackgammon.desktop.in:2
+#: data/org.gnome.longbackgammon.metainfo.xml.in:7
+msgid "LongBackgammon"
+msgstr "გრძელი ნარდი"
+
+#: data/org.gnome.longbackgammon.desktop.in:16
+#: data/org.gnome.longbackgammon.metainfo.xml.in:22
+msgid "Classic Long Backgammon Board Game"
+msgstr "გრძელი ნარდის კლასიკური სამაგიდო თამაში"
+
+#: data/org.gnome.longbackgammon.desktop.in:32
+msgid "GTK;Backgammon;Нарды;Tavla;Nərd;"
+msgstr "GTK;Backgammon;ნარდი;თამაში;"
+
+#: src/window.ui:17
+msgid "Main Menu"
+msgstr "მთავარი მენიუ"
+
+#: src/window.ui:25
+msgid "Long Backgammon!"
+msgstr "გრძელი ნარდი!"
+
+#: src/window.ui:37
+msgid "_Preferences"
+msgstr "_პარამეტრები"
+
+#: src/window.ui:41
+msgid "_Keyboard Shortcuts"
+msgstr "_კლავიატურის მალსახმობები"
+
+#: src/window.ui:45
+msgid "_About LongBackgammon"
+msgstr "გრძელი ნარდის _შესახებ"
+
+#: src/application.vala:186
+msgid "translator-credits"
+msgstr "Aleksey <https://github.com/ansribas/LongBackgammon>"
