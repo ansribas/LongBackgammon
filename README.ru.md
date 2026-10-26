@@ -15,9 +15,11 @@
 
 ## Скриншоты
 
-| Тема «Дерево» и геймплей | Доска и расстановка фишек | Игровая партия в процессе |
-| :---: | :---: | :---: |
-| [![Тема Дерево](data/screenshots/01.png)](data/screenshots/01.png) | [![Доска и фишки](data/screenshots/02.png)](data/screenshots/02.png) | [![Партия в процессе](data/screenshots/03.png)](data/screenshots/03.png) |
+<p align="center">
+  <a href="data/screenshots/01.png"><img src="data/screenshots/01.png" width="32%" /></a>
+  <a href="data/screenshots/02.png"><img src="data/screenshots/02.png" width="32%" /></a>
+  <a href="data/screenshots/03.png"><img src="data/screenshots/03.png" width="32%" /></a>
+</p>
 
 ---
 

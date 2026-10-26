@@ -15,9 +15,11 @@ Classic Long Backgammon (Russian Nardi / Длинные нарды) for GNOME/Li
 
 ## Screenshots
 
-| Wooden Theme Gameplay | Board and Checkers | Active Match Session |
-| :---: | :---: | :---: |
-| [![Wooden Theme](data/screenshots/01.png)](data/screenshots/01.png) | [![Board and Checkers](data/screenshots/02.png)](data/screenshots/02.png) | [![Active Match](data/screenshots/03.png)](data/screenshots/03.png) |
+<p align="center">
+  <a href="data/screenshots/01.png"><img src="data/screenshots/01.png" width="32%" /></a>
+  <a href="data/screenshots/02.png"><img src="data/screenshots/02.png" width="32%" /></a>
+  <a href="data/screenshots/03.png"><img src="data/screenshots/03.png" width="32%" /></a>
+</p>
 
 ---
 
