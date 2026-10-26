@@ -1,8 +1,8 @@
 # List of source files containing translatable strings.
 # Please keep this file sorted alphabetically.
-data/org.gnome.longbackgammon.desktop.in
-data/org.gnome.longbackgammon.metainfo.xml.in
-data/org.gnome.longbackgammon.gschema.xml
+data/io.github.ansribas.LongBackgammon.desktop.in
+data/io.github.ansribas.LongBackgammon.metainfo.xml.in
+data/io.github.ansribas.LongBackgammon.gschema.xml
 src/main.vala
 src/window.vala
 src/window.ui

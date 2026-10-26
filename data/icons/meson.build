@@ -1,4 +1,4 @@
-application_id = 'org.gnome.longbackgammon'
+application_id = 'io.github.ansribas.LongBackgammon'
 
 scalable_dir = 'hicolor' / 'scalable' / 'apps'
 install_data(

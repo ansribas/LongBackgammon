@@ -8,38 +8,30 @@ msgid ""
 msgstr ""
 "Project-Id-Version: longbackgammon\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-25 22:23+0200\n"
+"POT-Creation-Date: 2026-10-26 13:00+0200\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "Language: \n"
 "MIME-Version: 1.0\n"
-"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Type: text/plain; charset=CHARSET\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: data/org.gnome.longbackgammon.desktop.in:2
-#: data/org.gnome.longbackgammon.metainfo.xml.in:7
+#: data/io.github.ansribas.LongBackgammon.desktop.in:2
+#: data/io.github.ansribas.LongBackgammon.metainfo.xml.in:7
 msgid "LongBackgammon"
 msgstr ""
 
-#: data/org.gnome.longbackgammon.desktop.in:4
-#: data/org.gnome.longbackgammon.metainfo.xml.in:9
+#: data/io.github.ansribas.LongBackgammon.desktop.in:3
+#: data/io.github.ansribas.LongBackgammon.metainfo.xml.in:8
 msgid "Classic Long Backgammon Board Game"
 msgstr ""
 
-#: data/org.gnome.longbackgammon.desktop.in:11
-msgid "GTK;Backgammon;Нарды;"
+#: data/io.github.ansribas.LongBackgammon.desktop.in:9
+msgid "GTK;Backgammon;Game;"
 msgstr ""
 
-#: data/org.gnome.longbackgammon.metainfo.xml.in:8
-msgid "Длинные нарды"
-msgstr ""
-
-#: data/org.gnome.longbackgammon.metainfo.xml.in:10
-msgid "Классическая настольная игра Длинные нарды"
-msgstr ""
-
-#: data/org.gnome.longbackgammon.metainfo.xml.in:12
+#: data/io.github.ansribas.LongBackgammon.metainfo.xml.in:11
 msgid ""
 "Long Backgammon is a popular variant of backgammon played with fifteen "
 "checkers on a standard board. Players compete to move all their checkers "
@@ -47,23 +39,24 @@ msgid ""
 "rules and smart positioning."
 msgstr ""
 
-#: data/org.gnome.longbackgammon.metainfo.xml.in:17
-msgid ""
-"Длинные нарды — классическая настольная игра для двух игроков с пятнадцатью "
-"шашками. Цель состоит в том, чтобы пройти всеми шашками полный круг по "
-"доске, завести их в дом и выбросить раньше противника."
+#: data/io.github.ansribas.LongBackgammon.metainfo.xml.in:19
+msgid "Aleksey Svetlov"
 msgstr ""
 
-#: data/org.gnome.longbackgammon.metainfo.xml.in:25
-msgid "LongBackgammon Team"
+#: data/io.github.ansribas.LongBackgammon.metainfo.xml.in:29
+msgid "Long Backgammon gameplay"
 msgstr ""
 
-#: data/org.gnome.longbackgammon.metainfo.xml.in:53
+#: data/io.github.ansribas.LongBackgammon.metainfo.xml.in:33
+msgid "Classic board game and checkers"
+msgstr ""
+
+#: data/io.github.ansribas.LongBackgammon.metainfo.xml.in:37
+msgid "Match session in progress"
+msgstr ""
+
+#: data/io.github.ansribas.LongBackgammon.metainfo.xml.in:61
 msgid "Initial release of Long Backgammon for Linux."
-msgstr ""
-
-#: data/org.gnome.longbackgammon.metainfo.xml.in:54
-msgid "Первый выпуск игры Длинные нарды для Linux."
 msgstr ""
 
 #: src/window.ui:6

@@ -21,7 +21,7 @@
 int main (string[] args) {
     GLib.Intl.setlocale (GLib.LocaleCategory.ALL, "");
 
-    GLib.Environment.set_prgname ("org.gnome.longbackgammon");
+    GLib.Environment.set_prgname ("io.github.ansribas.LongBackgammon");
     GLib.Environment.set_application_name ("LongBackgammon");
 
     var localedir = Config.LOCALEDIR;

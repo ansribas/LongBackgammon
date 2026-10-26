@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <component type="desktop-application">
-  <id>org.gnome.longbackgammon</id>
+  <id>io.github.ansribas.LongBackgammon</id>
   <metadata_license>CC0-1.0</metadata_license>
   <project_license>GPL-3.0-or-later</project_license>
 
@@ -23,15 +23,30 @@
   <url type="bugtracker">https://github.com/ansribas/LongBackgammon/issues</url>
   <url type="vcs-browser">https://github.com/ansribas/LongBackgammon</url>
 
+  <screenshots>
+    <screenshot type="default">
+      <image>https://raw.githubusercontent.com/ansribas/LongBackgammon/main/data/screenshots/01.png</image>
+      <caption>Long Backgammon gameplay</caption>
+    </screenshot>
+    <screenshot>
+      <image>https://raw.githubusercontent.com/ansribas/LongBackgammon/main/data/screenshots/02.png</image>
+      <caption>Classic board game and checkers</caption>
+    </screenshot>
+    <screenshot>
+      <image>https://raw.githubusercontent.com/ansribas/LongBackgammon/main/data/screenshots/03.png</image>
+      <caption>Match session in progress</caption>
+    </screenshot>
+  </screenshots>
+
   <categories>
     <category>Game</category>
     <category>BoardGame</category>
   </categories>
 
   <provides>
-    <id>org.gnome.longbackgammon.desktop</id>
+    <id>io.github.ansribas.LongBackgammon.desktop</id>
   </provides>
-  <launchable type="desktop-id">org.gnome.longbackgammon.desktop</launchable>
+  <launchable type="desktop-id">io.github.ansribas.LongBackgammon.desktop</launchable>
 
   <branding>
     <color type="primary" scheme_preference="light">#e66100</color>

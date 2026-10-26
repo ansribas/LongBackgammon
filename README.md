@@ -43,7 +43,7 @@ Classic Long Backgammon (Russian Nardi / Длинные нарды) for GNOME/Li
 │   ├── images/        # High-res board textures, checkers, and cursors
 │   ├── sounds/        # Audio effects (WAV)
 │   ├── translations/  # In-game localization files (JSON, 14 languages)
-│   └── org.gnome.longbackgammon.* # Desktop entry, AppStream metainfo, GSettings schema
+│   └── io.github.ansribas.LongBackgammon.* # Desktop entry, AppStream metainfo, GSettings schema
 ├── po/                # Gettext translations for system UI and metadata
 ├── src/               # Application source code (Vala)
 │   ├── logic/         # Game engine (pure models & business logic)
@@ -80,7 +80,7 @@ Classic Long Backgammon (Russian Nardi / Длинные нарды) for GNOME/Li
 │   ├── logic_test.vala   # Core rule validation & AI decision tests
 │   ├── session_test.vala # Asynchronous game session & turn progression tests
 │   └── ui_test.vala      # Interactive board UI component test
-├── org.gnome.longbackgammon.json # Flatpak manifest for GNOME Builder
+├── io.github.ansribas.LongBackgammon.json # Flatpak manifest for GNOME Builder
 └── meson.build        # Meson build system configuration
 ```
 

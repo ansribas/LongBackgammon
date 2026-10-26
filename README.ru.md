@@ -41,7 +41,7 @@
 │   ├── images/        # Текстуры доски, фишек и курсоров (PNG)
 │   ├── sounds/        # Звуковые эффекты (WAV)
 │   ├── translations/  # Файлы локализации интерфейса (JSON, 14 языков)
-│   └── org.gnome.longbackgammon.* # Desktop-файл, AppStream AppData, GSettings
+│   └── io.github.ansribas.LongBackgammon.* # Desktop-файл, AppStream AppData, GSettings
 ├── po/                # Gettext-переводы системных метаданных
 ├── src/               # Исходный код приложения (Vala)
 │   ├── logic/         # Ядро игры (модели данных и бизнес-логика)
@@ -78,7 +78,7 @@
 │   ├── logic_test.vala   # Тесты правил нард, валидатора и логики ИИ
 │   ├── session_test.vala # Тесты пошаговой сессии, ходов ИИ и генерации лога
 │   └── ui_test.vala      # Интерактивный UI-тест доски (BoardView)
-├── org.gnome.longbackgammon.json # Flatpak-манифест для сборки и GNOME Builder
+├── io.github.ansribas.LongBackgammon.json # Flatpak-манифест для сборки и GNOME Builder
 └── meson.build        # Конфигурация системы сборки Meson
 ```
 

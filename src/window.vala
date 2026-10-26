@@ -168,7 +168,7 @@ public class Window : Adw.ApplicationWindow {
         UiKit.ensure_css ();
         PanelStyle.ensure_css ();
         title = Localization.window_title ();
-        icon_name = "org.gnome.longbackgammon";
+        icon_name = "io.github.ansribas.LongBackgammon";
         set_size_request (GameConfig.MIN_WINDOW_WIDTH, GameConfig.MIN_WINDOW_HEIGHT);
         apply_default_size ();
 

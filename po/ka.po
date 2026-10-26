@@ -6,8 +6,8 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: longbackgammon\n"
-"Report-Msgid-Bugs-To: https://github.com/ansribas/LongBackgammon/issues\n"
-"POT-Creation-Date: 2026-10-26 09:00+0200\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-10-26 13:00+0200\n"
 "PO-Revision-Date: 2026-10-26 09:00+0200\n"
 "Last-Translator: Aleksey Svetlov <ansribas>\n"
 "Language-Team: Georgian <ka@li.org>\n"
@@ -17,25 +17,52 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-#: data/org.gnome.longbackgammon.desktop.in:2
-#: data/org.gnome.longbackgammon.metainfo.xml.in:7
-#: src/window.ui:6
-msgid "Long Backgammon"
-msgstr "გრძელი ნარდი"
-
-#: data/org.gnome.longbackgammon.desktop.in:2
-#: data/org.gnome.longbackgammon.metainfo.xml.in:7
+#: data/io.github.ansribas.LongBackgammon.desktop.in:2
+#: data/io.github.ansribas.LongBackgammon.metainfo.xml.in:7
 msgid "LongBackgammon"
 msgstr "გრძელი ნარდი"
 
-#: data/org.gnome.longbackgammon.desktop.in:16
-#: data/org.gnome.longbackgammon.metainfo.xml.in:22
+#: data/io.github.ansribas.LongBackgammon.desktop.in:3
+#: data/io.github.ansribas.LongBackgammon.metainfo.xml.in:8
 msgid "Classic Long Backgammon Board Game"
 msgstr "გრძელი ნარდის კლასიკური სამაგიდო თამაში"
 
-#: data/org.gnome.longbackgammon.desktop.in:32
-msgid "GTK;Backgammon;Нарды;Tavla;Nərd;"
-msgstr "GTK;Backgammon;ნარდი;თამაში;"
+#: data/io.github.ansribas.LongBackgammon.desktop.in:9
+msgid "GTK;Backgammon;Game;"
+msgstr ""
+
+#: data/io.github.ansribas.LongBackgammon.metainfo.xml.in:11
+msgid ""
+"Long Backgammon is a popular variant of backgammon played with fifteen "
+"checkers on a standard board. Players compete to move all their checkers "
+"into the home board and bear them off first, following strict strategic "
+"rules and smart positioning."
+msgstr ""
+
+#: data/io.github.ansribas.LongBackgammon.metainfo.xml.in:19
+msgid "Aleksey Svetlov"
+msgstr ""
+
+#: data/io.github.ansribas.LongBackgammon.metainfo.xml.in:29
+#, fuzzy
+msgid "Long Backgammon gameplay"
+msgstr "გრძელი ნარდი"
+
+#: data/io.github.ansribas.LongBackgammon.metainfo.xml.in:33
+msgid "Classic board game and checkers"
+msgstr ""
+
+#: data/io.github.ansribas.LongBackgammon.metainfo.xml.in:37
+msgid "Match session in progress"
+msgstr ""
+
+#: data/io.github.ansribas.LongBackgammon.metainfo.xml.in:61
+msgid "Initial release of Long Backgammon for Linux."
+msgstr ""
+
+#: src/window.ui:6
+msgid "Long Backgammon"
+msgstr "გრძელი ნარდი"
 
 #: src/window.ui:17
 msgid "Main Menu"
@@ -57,6 +84,8 @@ msgstr "_კლავიატურის მალსახმობები"
 msgid "_About LongBackgammon"
 msgstr "გრძელი ნარდის _შესახებ"
 
-#: src/application.vala:186
-msgid "translator-credits"
-msgstr "Aleksey Svetlov"
+#~ msgid "GTK;Backgammon;Нарды;Tavla;Nərd;"
+#~ msgstr "GTK;Backgammon;ნარდი;თამაში;"
+
+#~ msgid "translator-credits"
+#~ msgstr "Aleksey Svetlov"

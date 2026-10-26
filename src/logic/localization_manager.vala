@@ -142,7 +142,7 @@ public class LocalizationManager {
         }
 
         // 1. Попробуем встроенный GResource
-        var res_path = "/org/gnome/longbackgammon/translations/" + lang_code + ".json";
+        var res_path = "/io/github/ansribas/LongBackgammon/translations/" + lang_code + ".json";
         try {
             var bytes = GLib.resources_lookup_data (res_path, GLib.ResourceLookupFlags.NONE);
             unowned uint8[] data = bytes.get_data ();

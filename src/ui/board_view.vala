@@ -200,7 +200,7 @@ public class BoardView : Gtk.DrawingArea {
 
         pointer_cursor = new Gdk.Cursor.from_name ("pointer", null);
         var cursor_name = theme.dice_cursor_asset_name ();
-        var res_cursor_path = "/org/gnome/longbackgammon/images/" + cursor_name;
+        var res_cursor_path = "/io/github/ansribas/LongBackgammon/images/" + cursor_name;
         bool cursor_loaded = false;
         try {
             // Сначала пробуем встроенный ресурс (всегда доступен в Flatpak / GNOME Builder)
@@ -233,7 +233,7 @@ public class BoardView : Gtk.DrawingArea {
     private extern static Gdk.Texture texture_for_pixbuf (Gdk.Pixbuf pixbuf);
 
     private Cairo.ImageSurface? load_asset (string name) {
-        var res_path = "/org/gnome/longbackgammon/images/" + name;
+        var res_path = "/io/github/ansribas/LongBackgammon/images/" + name;
         try {
             var bytes = GLib.resources_lookup_data (res_path, GLib.ResourceLookupFlags.NONE);
             size_t offset = 0;

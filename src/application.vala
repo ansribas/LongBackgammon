@@ -15,9 +15,9 @@ public class Application : Adw.Application {
 
     public Application () {
         Object (
-            application_id: "org.gnome.longbackgammon",
+            application_id: "io.github.ansribas.LongBackgammon",
             flags: ApplicationFlags.DEFAULT_FLAGS,
-            resource_base_path: "/org/gnome/longbackgammon"
+            resource_base_path: "/io/github/ansribas/LongBackgammon"
         );
     }
 
@@ -60,7 +60,7 @@ public class Application : Adw.Application {
             icon_theme.add_search_path (GLib.Path.build_filename (Environment.get_current_dir (), "data", "icons"));
         }
 
-        Gtk.Window.set_default_icon_name ("org.gnome.longbackgammon");
+        Gtk.Window.set_default_icon_name ("io.github.ansribas.LongBackgammon");
 
         ensure_user_desktop_integration ();
     }
@@ -68,59 +68,91 @@ public class Application : Adw.Application {
     private void ensure_user_desktop_integration () {
         try {
             var home = Environment.get_home_dir ();
-            var icon_dir = GLib.Path.build_filename (home, ".local", "share", "icons", "hicolor", "scalable", "apps");
             var apps_dir = GLib.Path.build_filename (home, ".local", "share", "applications");
             var bin_dir = GLib.Path.build_filename (home, ".local", "bin");
-            DirUtils.create_with_parents (icon_dir, 0755);
+            var hicolor_dir = GLib.Path.build_filename (home, ".local", "share", "icons", "hicolor");
+
             DirUtils.create_with_parents (apps_dir, 0755);
             DirUtils.create_with_parents (bin_dir, 0755);
 
             try {
                 var exe = FileUtils.read_link ("/proc/self/exe");
                 var bin_target = GLib.Path.build_filename (bin_dir, "longbackgammon");
-                if (exe != "" && !FileUtils.test (bin_target, FileTest.EXISTS)) {
+                if (exe != "") {
+                    if (FileUtils.test (bin_target, FileTest.EXISTS)) {
+                        FileUtils.unlink (bin_target);
+                    }
                     File.new_for_path (exe).make_symbolic_link (bin_target);
                 }
             } catch (Error e) {
             }
 
-            var hicolor_dir = GLib.Path.build_filename (home, ".local", "share", "icons", "hicolor");
             var index_theme = GLib.Path.build_filename (hicolor_dir, "index.theme");
             if (!FileUtils.test (index_theme, FileTest.EXISTS)) {
                 var sys_index = "/usr/share/icons/hicolor/index.theme";
                 if (FileUtils.test (sys_index, FileTest.EXISTS)) {
+                    DirUtils.create_with_parents (hicolor_dir, 0755);
                     File.new_for_path (sys_index).copy (File.new_for_path (index_theme), FileCopyFlags.NONE);
                 }
             }
 
-            var target_icon = GLib.Path.build_filename (icon_dir, "org.gnome.longbackgammon.svg");
-            var target_desktop = GLib.Path.build_filename (apps_dir, "org.gnome.longbackgammon.desktop");
+            // Список иконок для установки: scalable, symbolic и растровые PNG всех размеров
+            string[] icon_subpaths = {
+                "scalable/apps/io.github.ansribas.LongBackgammon.svg",
+                "symbolic/apps/io.github.ansribas.LongBackgammon-symbolic.svg",
+                "16x16/apps/io.github.ansribas.LongBackgammon.png",
+                "24x24/apps/io.github.ansribas.LongBackgammon.png",
+                "32x32/apps/io.github.ansribas.LongBackgammon.png",
+                "48x48/apps/io.github.ansribas.LongBackgammon.png",
+                "64x64/apps/io.github.ansribas.LongBackgammon.png",
+                "128x128/apps/io.github.ansribas.LongBackgammon.png",
+                "256x256/apps/io.github.ansribas.LongBackgammon.png",
+                "512x512/apps/io.github.ansribas.LongBackgammon.png"
+            };
 
-            var src_icon = StoragePaths.find_asset_path ("icons", "hicolor/scalable/apps/org.gnome.longbackgammon.svg");
-            if (src_icon == "") {
-                src_icon = GLib.Path.build_filename (Environment.get_current_dir (), "data", "icons", "hicolor", "scalable", "apps", "org.gnome.longbackgammon.svg");
-            }
-            if (FileUtils.test (src_icon, FileTest.EXISTS) && !FileUtils.test (target_icon, FileTest.EXISTS)) {
-                var src_file = File.new_for_path (src_icon);
-                var dst_file = File.new_for_path (target_icon);
-                src_file.copy (dst_file, FileCopyFlags.OVERWRITE);
+            foreach (var icon_rel in icon_subpaths) {
+                var target_path = GLib.Path.build_filename (hicolor_dir, icon_rel);
+                var target_parent = GLib.Path.get_dirname (target_path);
+                DirUtils.create_with_parents (target_parent, 0755);
+
+                var src_icon = StoragePaths.find_asset_path ("icons", "hicolor/" + icon_rel);
+                if (src_icon == "") {
+                    src_icon = GLib.Path.build_filename (Environment.get_current_dir (), "data", "icons", "hicolor", icon_rel);
+                }
+                if (FileUtils.test (src_icon, FileTest.EXISTS)) {
+                    if (!FileUtils.test (target_path, FileTest.EXISTS)) {
+                        File.new_for_path (src_icon).copy (File.new_for_path (target_path), FileCopyFlags.OVERWRITE);
+                    }
+                }
             }
 
-            if (!FileUtils.test (target_desktop, FileTest.EXISTS)) {
-                var desktop_content = "[Desktop Entry]\n" +
-                                      "Name=LongBackgammon\n" +
-                                      "Name[ru]=Длинные нарды\n" +
-                                      "Comment=Classic Long Backgammon Board Game\n" +
-                                      "Comment[ru]=Классическая настольная игра Длинные нарды\n" +
-                                      "Exec=longbackgammon\n" +
-                                      "Icon=org.gnome.longbackgammon\n" +
-                                      "Terminal=false\n" +
-                                      "Type=Application\n" +
-                                      "Categories=Game;BoardGame;\n" +
-                                      "StartupNotify=true\n" +
-                                      "StartupWMClass=org.gnome.longbackgammon\n";
-                FileUtils.set_contents (target_desktop, desktop_content);
+            var target_desktop = GLib.Path.build_filename (apps_dir, "io.github.ansribas.LongBackgammon.desktop");
+            var desktop_content = "[Desktop Entry]\n" +
+                                  "Name=LongBackgammon\n" +
+                                  "Name[ru]=Длинные нарды\n" +
+                                  "Comment=Classic Long Backgammon Board Game\n" +
+                                  "Comment[ru]=Классическая настольная игра Длинные нарды\n" +
+                                  "Exec=longbackgammon\n" +
+                                  "Icon=io.github.ansribas.LongBackgammon\n" +
+                                  "Terminal=false\n" +
+                                  "Type=Application\n" +
+                                  "Categories=Game;BoardGame;\n" +
+                                  "Keywords=GTK;Backgammon;Game;\n" +
+                                  "StartupNotify=true\n" +
+                                  "StartupWMClass=io.github.ansribas.LongBackgammon\n";
+            FileUtils.set_contents (target_desktop, desktop_content);
+
+            // Обновляем кэш иконок и базу .desktop файлов
+            try {
+                Process.spawn_command_line_async ("gtk4-update-icon-cache -q -t -f " + hicolor_dir);
+            } catch (Error e) {
+                try {
+                    Process.spawn_command_line_async ("gtk-update-icon-cache -q -t -f " + hicolor_dir);
+                } catch (Error e2) {}
             }
+            try {
+                Process.spawn_command_line_async ("update-desktop-database -q " + apps_dir);
+            } catch (Error e) {}
         } catch (Error e) {
             // Игнорируем ошибки при фоновом создании
         }
@@ -186,7 +218,7 @@ public class Application : Adw.Application {
         var credits = _("translator-credits");
         var about = new Adw.AboutDialog () {
             application_name = Localization.window_title (),
-            application_icon = "org.gnome.longbackgammon",
+            application_icon = "io.github.ansribas.LongBackgammon",
             developer_name = "Aleksey Svetlov",
             translator_credits = (credits != "translator-credits") ? credits : null,
             version = "1.0",
