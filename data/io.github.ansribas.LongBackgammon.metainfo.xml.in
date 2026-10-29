@@ -26,15 +26,18 @@
   <screenshots>
     <screenshot type="default">
       <image>https://raw.githubusercontent.com/ansribas/LongBackgammon/main/data/screenshots/01.png</image>
-      <caption>Long Backgammon gameplay</caption>
+      <caption>Classic match and gameplay</caption>
+      <caption xml:lang="ru">Игровой процесс и партия на доске</caption>
     </screenshot>
     <screenshot>
       <image>https://raw.githubusercontent.com/ansribas/LongBackgammon/main/data/screenshots/02.png</image>
-      <caption>Classic board game and checkers</caption>
+      <caption>Game settings, visual themes, and audio preferences</caption>
+      <caption xml:lang="ru">Настройки игры, тем оформления и параметров партии</caption>
     </screenshot>
     <screenshot>
       <image>https://raw.githubusercontent.com/ansribas/LongBackgammon/main/data/screenshots/03.png</image>
-      <caption>Match session in progress</caption>
+      <caption>Interactive rules guide and match scoring</caption>
+      <caption xml:lang="ru">Интерактивный справочник правил и условий победы</caption>
     </screenshot>
   </screenshots>
 
