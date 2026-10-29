@@ -79,18 +79,27 @@ public class Application : Adw.Application {
                 var exe = FileUtils.read_link ("/proc/self/exe");
                 var bin_target = GLib.Path.build_filename (bin_dir, "longbackgammon");
                 if (exe != "") {
-                    FileUtils.unlink (bin_target);
-                    File.new_for_path (bin_target).make_symbolic_link (exe);
+                    string? current_link = null;
+                    try {
+                        current_link = FileUtils.read_link (bin_target);
+                    } catch (Error e) {
+                    }
+                    if (current_link != exe) {
+                        FileUtils.unlink (bin_target);
+                        File.new_for_path (bin_target).make_symbolic_link (exe);
+                    }
                 }
             } catch (Error e) {
             }
 
+            bool icons_changed = false;
             var index_theme = GLib.Path.build_filename (hicolor_dir, "index.theme");
             if (!FileUtils.test (index_theme, FileTest.EXISTS)) {
                 var sys_index = "/usr/share/icons/hicolor/index.theme";
                 if (FileUtils.test (sys_index, FileTest.EXISTS)) {
                     DirUtils.create_with_parents (hicolor_dir, 0755);
                     File.new_for_path (sys_index).copy (File.new_for_path (index_theme), FileCopyFlags.NONE);
+                    icons_changed = true;
                 }
             }
 
@@ -110,6 +119,9 @@ public class Application : Adw.Application {
 
             foreach (var icon_rel in icon_subpaths) {
                 var target_path = GLib.Path.build_filename (hicolor_dir, icon_rel);
+                if (FileUtils.test (target_path, FileTest.EXISTS)) {
+                    continue;
+                }
                 var target_parent = GLib.Path.get_dirname (target_path);
                 DirUtils.create_with_parents (target_parent, 0755);
 
@@ -118,12 +130,12 @@ public class Application : Adw.Application {
                     src_icon = GLib.Path.build_filename (Environment.get_current_dir (), "data", "icons", "hicolor", icon_rel);
                 }
                 if (FileUtils.test (src_icon, FileTest.EXISTS)) {
-                    if (!FileUtils.test (target_path, FileTest.EXISTS)) {
-                        File.new_for_path (src_icon).copy (File.new_for_path (target_path), FileCopyFlags.OVERWRITE);
-                    }
+                    File.new_for_path (src_icon).copy (File.new_for_path (target_path), FileCopyFlags.OVERWRITE);
+                    icons_changed = true;
                 }
             }
 
+            bool desktop_changed = false;
             var target_desktop = GLib.Path.build_filename (apps_dir, "io.github.ansribas.LongBackgammon.desktop");
             var desktop_content = "[Desktop Entry]\n" +
                                   "Name=LongBackgammon\n" +
@@ -138,19 +150,33 @@ public class Application : Adw.Application {
                                   "Keywords=GTK;Backgammon;Game;\n" +
                                   "StartupNotify=true\n" +
                                   "StartupWMClass=io.github.ansribas.LongBackgammon\n";
-            FileUtils.set_contents (target_desktop, desktop_content);
-
-            // Обновляем кэш иконок и базу .desktop файлов
-            try {
-                Process.spawn_command_line_async ("gtk4-update-icon-cache -q -t -f " + hicolor_dir);
-            } catch (Error e) {
+            string? existing_desktop = null;
+            if (FileUtils.test (target_desktop, FileTest.EXISTS)) {
                 try {
-                    Process.spawn_command_line_async ("gtk-update-icon-cache -q -t -f " + hicolor_dir);
-                } catch (Error e2) {}
+                    FileUtils.get_contents (target_desktop, out existing_desktop);
+                } catch (Error e) {
+                }
             }
-            try {
-                Process.spawn_command_line_async ("update-desktop-database -q " + apps_dir);
-            } catch (Error e) {}
+            if (existing_desktop != desktop_content) {
+                FileUtils.set_contents (target_desktop, desktop_content);
+                desktop_changed = true;
+            }
+
+            // Обновляем кэш иконок и базу .desktop файлов только при реальных изменениях
+            if (icons_changed) {
+                try {
+                    Process.spawn_command_line_async ("gtk4-update-icon-cache -q -t -f " + hicolor_dir);
+                } catch (Error e) {
+                    try {
+                        Process.spawn_command_line_async ("gtk-update-icon-cache -q -t -f " + hicolor_dir);
+                    } catch (Error e2) {}
+                }
+            }
+            if (desktop_changed) {
+                try {
+                    Process.spawn_command_line_async ("update-desktop-database -q " + apps_dir);
+                } catch (Error e) {}
+            }
         } catch (Error e) {
             // Игнорируем ошибки при фоновом создании
         }

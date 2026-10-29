@@ -607,8 +607,11 @@ public class PlayerPanel : Gtk.Box {
         }
 
         rebuild_log_if_needed ();
-        foreach (var c in all_cells ()) {
-            c.queue_draw ();
+        if (active_cell != null) {
+            active_cell.queue_draw ();
+        }
+        if (record_cells.length > 0) {
+            record_cells[0].queue_draw ();
         }
         update_footer ();
 
@@ -622,7 +625,9 @@ public class PlayerPanel : Gtk.Box {
                 }
             }
         }
-        flying_layer.queue_draw ();
+        if (flying.length > 0) {
+            flying_layer.queue_draw ();
+        }
     }
 
     private string compute_signature () {
@@ -868,6 +873,17 @@ public class PlayerPanel : Gtk.Box {
         }
     }
 
+    private int64 frame_now_us () {
+        var fc = get_frame_clock ();
+        if (fc != null) {
+            var ft = fc.get_frame_time ();
+            if (ft > 0) {
+                return ft;
+            }
+        }
+        return GLib.get_monotonic_time ();
+    }
+
     private void start_flying (int id, int value, bool to_log, bool is_skipped) {
         var r = new FlyingDie[0];
         foreach (var f in flying) {
@@ -880,7 +896,7 @@ public class PlayerPanel : Gtk.Box {
         fd.value = value;
         fd.to_log = to_log;
         fd.is_skipped = is_skipped;
-        fd.start_us = GLib.get_monotonic_time ();
+        fd.start_us = frame_now_us ();
         var dur = SettingsStore.shared ().animation_speed.checker_move_duration;
         fd.duration = dur > 0.05 ? dur : 0.35;
 
@@ -901,8 +917,11 @@ public class PlayerPanel : Gtk.Box {
         r += fd;
         flying = r;
         dice_zone.queue_draw ();
-        foreach (var c in all_cells ()) {
-            c.queue_draw ();
+        if (active_cell != null) {
+            active_cell.queue_draw ();
+        }
+        if (record_cells.length > 0) {
+            record_cells[0].queue_draw ();
         }
         if (fly_tick == 0) {
             fly_tick = add_tick_callback (on_fly_tick);
@@ -914,7 +933,7 @@ public class PlayerPanel : Gtk.Box {
         if (id < 0 || id >= skipped_cross_started_us.length || skipped_cross_started_us[id] == 0) {
             return 1.0;
         }
-        var t = (GLib.get_monotonic_time () - skipped_cross_started_us[id]) / 250000.0;
+        var t = (frame_now_us () - skipped_cross_started_us[id]) / 250000.0;
         t = double.max (0.0, double.min (1.0, t));
         return UiKit.ease_out (t);
     }
@@ -923,7 +942,7 @@ public class PlayerPanel : Gtk.Box {
         if (id < 0 || id >= skipped_cross_started_us.length) {
             return;
         }
-        skipped_cross_started_us[id] = GLib.get_monotonic_time ();
+        skipped_cross_started_us[id] = frame_now_us ();
         if (skipped_cross_tick == 0) {
             skipped_cross_tick = dice_zone.add_tick_callback (on_skipped_cross_tick);
         }
@@ -931,7 +950,8 @@ public class PlayerPanel : Gtk.Box {
 
     private bool on_skipped_cross_tick (Gtk.Widget widget, Gdk.FrameClock clock) {
         dice_zone.queue_draw ();
-        var now = GLib.get_monotonic_time ();
+        var ft = clock.get_frame_time ();
+        var now = ft > 0 ? ft : GLib.get_monotonic_time ();
         foreach (var started in skipped_cross_started_us) {
             if (started != 0 && now - started < 250000) {
                 return GLib.Source.CONTINUE;
@@ -969,7 +989,8 @@ public class PlayerPanel : Gtk.Box {
     }
 
     private bool on_fly_tick (Gtk.Widget w, Gdk.FrameClock clock) {
-        var now = GLib.get_monotonic_time ();
+        var ft = clock.get_frame_time ();
+        var now = ft > 0 ? ft : GLib.get_monotonic_time ();
         var r = new FlyingDie[0];
         var removed = false;
         foreach (var f in flying) {
@@ -984,8 +1005,11 @@ public class PlayerPanel : Gtk.Box {
         flying_layer.queue_draw ();
         if (removed) {
             dice_zone.queue_draw ();
-            foreach (var c in all_cells ()) {
-                c.queue_draw ();
+            if (active_cell != null) {
+                active_cell.queue_draw ();
+            }
+            if (record_cells.length > 0) {
+                record_cells[0].queue_draw ();
             }
         }
         if (flying.length == 0) {
@@ -1037,9 +1061,52 @@ public class PlayerPanel : Gtk.Box {
         return true;
     }
 
+    /** Отрисовка траектории полёта кубика через Gtk.Snapshot только при наличии активных кубиков. */
+    public void snapshot_flying (Gtk.Snapshot snapshot, Gtk.Widget layer) {
+        if (flying.length == 0) {
+            return;
+        }
+        var w = (float) layer.get_width ();
+        var h = (float) layer.get_height ();
+        if (w <= 0 || h <= 0) {
+            return;
+        }
+        var now = frame_now_us ();
+        float min_x = w, min_y = h, max_x = 0, max_y = 0;
+        foreach (var f in flying) {
+            var elapsed = (now - f.start_us) / 1000000.0;
+            var progress = double.min (1.0, double.max (0.0, elapsed / f.duration));
+            var p = PanelStyle.ease_in_out (progress);
+
+            var fx = f.from_rect.get_x () + f.from_rect.get_width () / 2.0;
+            var fy = f.from_rect.get_y () + f.from_rect.get_height () / 2.0;
+            var tx = f.to_rect.get_x () + f.to_rect.get_width () / 2.0;
+            var ty = f.to_rect.get_y () + f.to_rect.get_height () / 2.0;
+
+            var cx = (float) (fx + (tx - fx) * p);
+            var cy = (float) (fy + (ty - fy) * p);
+            var size = (float) (f.from_rect.get_width () + (f.to_rect.get_width () - f.from_rect.get_width ()) * p);
+            var pad = size * 0.85f + 16.0f;
+
+            if (cx - pad < min_x) min_x = cx - pad;
+            if (cy - pad < min_y) min_y = cy - pad;
+            if (cx + pad > max_x) max_x = cx + pad;
+            if (cy + pad > max_y) max_y = cy + pad;
+        }
+        min_x = float.max (0.0f, (float) Math.floor (min_x));
+        min_y = float.max (0.0f, (float) Math.floor (min_y));
+        max_x = float.min (w, (float) Math.ceil (max_x));
+        max_y = float.min (h, (float) Math.ceil (max_y));
+        if (max_x <= min_x || max_y <= min_y) {
+            return;
+        }
+        var bounds = Graphene.Rect ().init (min_x, min_y, max_x - min_x, max_y - min_y);
+        var cr = snapshot.append_cairo (bounds);
+        draw_flying (cr, now);
+    }
+
     /** Отрисовка траектории полёта кубика: масштаб, динамическая тень и наклон по синусоиде. */
-    public void draw_flying (Cairo.Context cr, Gtk.Widget layer) {
-        var now = GLib.get_monotonic_time ();
+    public void draw_flying (Cairo.Context cr, int64 now) {
         foreach (var f in flying) {
             var elapsed = (now - f.start_us) / 1000000.0;
             var progress = double.min (1.0, double.max (0.0, elapsed / f.duration));

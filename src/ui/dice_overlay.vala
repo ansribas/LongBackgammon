@@ -26,10 +26,12 @@ private class ProjectedDieFace {
     public double q3_x; public double q3_y;
 }
 
-public class BoardDiceOverlayLayer : Gtk.DrawingArea {
+public class BoardDiceOverlayLayer : Gtk.Widget {
     private weak GameSession session;
     private weak PlayerPanel black_panel;
     private weak PlayerPanel white_panel;
+    private uint tick_id = 0;
+    private bool was_active = false;
 
     public BoardDiceOverlayLayer (GameSession session, PlayerPanel black_panel, PlayerPanel white_panel) {
         this.session = session;
@@ -37,33 +39,74 @@ public class BoardDiceOverlayLayer : Gtk.DrawingArea {
         this.white_panel = white_panel;
 
         can_target = false;
-        set_draw_func (draw_cb);
 
-        add_tick_callback (on_tick);
-        session.changed.connect (() => { queue_draw (); });
+        session.changed.connect (() => {
+            var active = (session.board_dice_state != null);
+            if (active) {
+                was_active = true;
+                ensure_tick ();
+                queue_draw ();
+            } else if (was_active) {
+                was_active = false;
+                queue_draw ();
+            }
+        });
+        if (session.board_dice_state != null) {
+            was_active = true;
+            ensure_tick ();
+        }
+    }
+
+    public override void dispose () {
+        if (tick_id != 0) {
+            remove_tick_callback (tick_id);
+            tick_id = 0;
+        }
+        base.dispose ();
+    }
+
+    private void ensure_tick () {
+        if (tick_id == 0) {
+            tick_id = add_tick_callback (on_tick);
+        }
     }
 
     private bool on_tick (Gtk.Widget widget, Gdk.FrameClock frame) {
-        if (session.board_dice_state != null) {
-            var bds = session.board_dice_state;
-            var now = GLib.get_monotonic_time ();
-            var elapsed = (now - bds.start_time_us) / 1000000.0;
-            var raw_t = elapsed / bds.duration;
-            if (raw_t >= 0.35 && !bds.sound_played && !bds.is_transferring) {
-                bds.sound_played = true;
-                SoundManager.shared ().play_dice_roll ();
+        if (session.board_dice_state == null) {
+            tick_id = 0;
+            if (was_active) {
+                was_active = false;
+                queue_draw ();
             }
-            queue_draw ();
+            return GLib.Source.REMOVE;
         }
+        var bds = session.board_dice_state;
+        var now = frame.get_frame_time ();
+        if (now <= 0) {
+            now = GLib.get_monotonic_time ();
+        }
+        var elapsed = (now - bds.start_time_us) / 1000000.0;
+        var raw_t = elapsed / bds.duration;
+        if (raw_t >= 0.35 && !bds.sound_played && !bds.is_transferring) {
+            bds.sound_played = true;
+            SoundManager.shared ().play_dice_roll ();
+        }
+        queue_draw ();
         return GLib.Source.CONTINUE;
     }
 
-    private void draw_cb (Gtk.DrawingArea area, Cairo.Context cr, int width, int height) {
+    public override void snapshot (Gtk.Snapshot snapshot) {
         if (session.board_dice_state == null) {
             return;
         }
+        var width = get_width ();
+        var height = get_height ();
+        if (width <= 0 || height <= 0) {
+            return;
+        }
         var state = session.board_dice_state;
-        var now = GLib.get_monotonic_time ();
+        var fc = get_frame_clock ();
+        var now = (fc != null && fc.get_frame_time () > 0) ? fc.get_frame_time () : GLib.get_monotonic_time ();
         var elapsed = (now - state.start_time_us) / 1000000.0;
         var raw_t = double.min (1.0, double.max (0.0, elapsed / state.duration));
         var is_white = (state.color == CheckerColor.WHITE);
@@ -164,6 +207,19 @@ public class BoardDiceOverlayLayer : Gtk.DrawingArea {
             shadow_y2 = 2.5 + alt2 * 0.30;
             shadow_op2 = (eff_t2 >= 0.82 ? 0.30 : (0.12 + 0.18 * (1.0 - double.min (1.0, alt2 / 75.0))));
         }
+
+        // Ограничивающий прямоугольник двух кубиков и их теней, чтобы не перерисовывать всё окно:
+        var r1 = 48.0 * scale1 * 0.85 + shadow_rad1 + 8.0;
+        var r2 = 48.0 * scale2 * 0.85 + shadow_rad2 + 8.0;
+        var min_x = double.max (0.0, Math.floor (double.min (x1 - r1, x2 - r2)));
+        var min_y = double.max (0.0, Math.floor (double.min (y1 - r1, y2 - r2)));
+        var max_x = double.min ((double) width, Math.ceil (double.max (x1 + r1, x2 + r2)));
+        var max_y = double.min ((double) height, Math.ceil (double.max (y1 + alt1 + shadow_y1 + r1, y2 + alt2 + shadow_y2 + r2)));
+        if (max_x <= min_x || max_y <= min_y) {
+            return;
+        }
+        var bounds = Graphene.Rect ().init ((float) min_x, (float) min_y, (float) (max_x - min_x), (float) (max_y - min_y));
+        var cr = snapshot.append_cairo (bounds);
 
         // 1. Отрисовка теней под обоими кубиками
         draw_die_shadow (cr, x1, y1 + alt1 + shadow_y1, 48.0 * scale1, shadow_rad1, shadow_op1);

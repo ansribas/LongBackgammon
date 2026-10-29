@@ -191,17 +191,16 @@ public class PlayerDiceZone : Gtk.DrawingArea {
 /**
  * Прозрачный оверлей для отрисовки кубиков в полёте между верхней зоной и логом.
  */
-public class FlyingLayer : Gtk.DrawingArea {
+public class FlyingLayer : Gtk.Widget {
     private weak PlayerPanel panel;
 
     public FlyingLayer (PlayerPanel panel) {
         this.panel = panel;
         can_target = false;
-        set_draw_func (draw_cb);
     }
 
-    private void draw_cb (Gtk.DrawingArea area, Cairo.Context cr, int width, int height) {
-        panel.draw_flying (cr, this);
+    public override void snapshot (Gtk.Snapshot snapshot) {
+        panel.snapshot_flying (snapshot, this);
     }
 }
 

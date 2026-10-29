@@ -74,6 +74,28 @@ public class BoardView : Gtk.DrawingArea {
     private Cairo.ImageSurface? white_img = null;
     private Cairo.ImageSurface? black_img = null;
 
+    // Предмасштабированные под текущий размер доски и HiDPI-масштаб поверхности
+    private Cairo.ImageSurface? cached_board_surface = null;
+    private Cairo.ImageSurface? cached_white_static_sprite = null;
+    private Cairo.ImageSurface? cached_black_static_sprite = null;
+    private Cairo.ImageSurface? cached_white_fly_piece = null;
+    private Cairo.ImageSurface? cached_black_fly_piece = null;
+    private int cached_board_px = 0;
+    private int cached_scale_factor = 0;
+    private double cached_sprite_pad = 0.0;
+
+    // Кэш статичного слоя (доска + подсветки + неподвижные фишки) на время полёта/перетаскивания
+    private Cairo.ImageSurface? static_board_surface = null;
+    private bool static_board_dirty = true;
+
+    // Отслеживание состояния сессии для отсечения холостых перерисовок доски
+    private BoardPoint? last_selected_point = null;
+    private BoardPoint? last_hovered_target = null;
+    private bool last_hovering_bear_off = false;
+    private CheckerColor last_current_player = CheckerColor.WHITE;
+    private bool last_can_bear_off = false;
+    private int last_remaining_dice_len = -1;
+
     // Курсор-кубик (BoardCursorArea.diceCursor)
     private Gdk.Cursor? dice_cursor = null;
     private Gdk.Cursor? pointer_cursor = null;
@@ -87,6 +109,7 @@ public class BoardView : Gtk.DrawingArea {
     private HashTable<uint8, CMove> active_moves;
     private GameBoard? prev_board = null;
     private bool anim_inited = false;
+    private uint anim_tick_id = 0;
 
     // Перетаскивание фишки мышью
     private bool drag_candidate = false;   // нажатие пришлось на фишку, которую можно тащить
@@ -109,6 +132,7 @@ public class BoardView : Gtk.DrawingArea {
     private int log_shown_id = -1;
     private double log_anim_t0 = 0;
     private bool log_fading_out = false;
+    private bool log_fade_in_done = false;
 
     public BoardView (GameSession session) {
         Object (session: session);
@@ -117,13 +141,32 @@ public class BoardView : Gtk.DrawingArea {
     construct {
         set_draw_func (draw_cb);
         session.changed.connect (() => {
-            on_board_changed ();
-            on_log_highlight_changed ();
+            var board_changed = on_board_changed ();
+            var log_changed = on_log_highlight_changed ();
+            var rem_len = session.remaining_dice.length;
+            var sel_changed = (session.selected_point != last_selected_point)
+                           || (session.hovered_target_point != last_hovered_target)
+                           || (session.is_hovering_bear_off_target != last_hovering_bear_off)
+                           || (session.current_player != last_current_player)
+                           || (session.can_bear_off_selected != last_can_bear_off)
+                           || (rem_len != last_remaining_dice_len);
+            if (sel_changed) {
+                last_selected_point = session.selected_point;
+                last_hovered_target = session.hovered_target_point;
+                last_hovering_bear_off = session.is_hovering_bear_off_target;
+                last_current_player = session.current_player;
+                last_can_bear_off = session.can_bear_off_selected;
+                last_remaining_dice_len = rem_len;
+                static_board_dirty = true;
+            }
             update_cursor ();
-            queue_draw ();
+            if (board_changed || sel_changed || log_changed) {
+                queue_draw ();
+            }
         });
         SettingsStore.shared ().changed.connect (() => {
             load_images ();
+            static_board_dirty = true;
             update_cursor ();
             queue_draw ();
         });
@@ -182,14 +225,28 @@ public class BoardView : Gtk.DrawingArea {
         });
         motion.leave.connect (() => {
             mouse_inside = false;
-            session.hovered_target_point = null;
-            session.is_hovering_bear_off_target = false;
+            if (session.hovered_target_point != null || session.is_hovering_bear_off_target) {
+                session.hovered_target_point = null;
+                session.is_hovering_bear_off_target = false;
+                last_hovered_target = null;
+                last_hovering_bear_off = false;
+                static_board_dirty = true;
+                queue_draw ();
+            }
             set_cursor (null);
-            queue_draw ();
         });
         add_controller (motion);
+    }
 
-        add_tick_callback (on_anim_tick);
+    private void invalidate_scaled_cache () {
+        cached_board_surface = null;
+        cached_white_static_sprite = null;
+        cached_black_static_sprite = null;
+        cached_white_fly_piece = null;
+        cached_black_fly_piece = null;
+        cached_board_px = 0;
+        cached_scale_factor = 0;
+        static_board_dirty = true;
     }
 
     private void load_images () {
@@ -197,6 +254,7 @@ public class BoardView : Gtk.DrawingArea {
         board_img = load_asset (theme.board_asset_name ());
         white_img = load_asset (theme.checker_asset_name (CheckerColor.WHITE));
         black_img = load_asset (theme.checker_asset_name (CheckerColor.BLACK));
+        invalidate_scaled_cache ();
 
         pointer_cursor = new Gdk.Cursor.from_name ("pointer", null);
         var cursor_name = theme.dice_cursor_asset_name ();
@@ -340,7 +398,32 @@ public class BoardView : Gtk.DrawingArea {
         return map;
     }
 
-    private void on_board_changed () {
+    private double frame_now_sec () {
+        var fc = get_frame_clock ();
+        if (fc != null) {
+            var ft = fc.get_frame_time ();
+            if (ft > 0) {
+                return ft / 1000000.0;
+            }
+        }
+        return GLib.get_monotonic_time () / 1000000.0;
+    }
+
+    private void ensure_anim_tick () {
+        var need = (active_moves != null && active_moves.size () > 0)
+                   || log_fading_out
+                   || (log_shown_id >= 0 && !log_fade_in_done);
+        if (need && anim_tick_id == 0) {
+            anim_tick_id = add_tick_callback (on_anim_tick);
+        }
+    }
+
+    private bool on_board_changed () {
+        if (anim_inited && prev_board != null && !session.board.is_in_tray ()
+            && prev_board.equals_exact (session.board)) {
+            return false;
+        }
+
         var targets = build_positions ();
 
         if (!anim_inited) {
@@ -349,7 +432,8 @@ public class BoardView : Gtk.DrawingArea {
             active_moves = new HashTable<uint8, CMove> (null, null);
             prev_board = session.board.clone ();
             anim_inited = true;
-            return;
+            static_board_dirty = true;
+            return true;
         }
 
         if (session.board.is_in_tray ()) {
@@ -357,15 +441,16 @@ public class BoardView : Gtk.DrawingArea {
             prev_pos = copy_positions (targets);
             active_moves.remove_all ();
             prev_board = session.board.clone ();
+            static_board_dirty = true;
             queue_draw ();
-            return;
+            return true;
         }
 
         if (prev_board == null) {
             prev_board = session.board.clone ();
         }
 
-        var now = GLib.get_monotonic_time () / 1000000.0;
+        var now = frame_now_sec ();
         var duration = SettingsStore.shared ().animation_speed.checker_move_duration;
         targets.foreach ((key, tgt) => {
             var old = prev_pos.lookup (key);
@@ -430,6 +515,9 @@ public class BoardView : Gtk.DrawingArea {
         });
         prev_pos = copy_positions (targets);
         prev_board = session.board.clone ();
+        static_board_dirty = true;
+        ensure_anim_tick ();
+        return true;
     }
 
     private HashTable<uint8, CPoint> copy_positions (HashTable<uint8, CPoint> src) {
@@ -473,11 +561,10 @@ public class BoardView : Gtk.DrawingArea {
     }
 
     /** Обновляет текущие позиции по активным перемещениям. */
-    private bool update_moves_now () {
+    private bool update_moves_now (double now) {
         if (active_moves == null || cur_pos == null || active_moves.size () == 0) {
             return false;
         }
-        var now = GLib.get_monotonic_time () / 1000000.0;
         uint8[] to_remove = new uint8[0];
 
         active_moves.foreach ((key, m) => {
@@ -551,42 +638,63 @@ public class BoardView : Gtk.DrawingArea {
             }
         });
 
-        foreach (var k in to_remove) {
-            active_moves.remove (k);
+        if (to_remove.length > 0) {
+            foreach (var k in to_remove) {
+                active_moves.remove (k);
+            }
+            static_board_dirty = true;
         }
         return true;
     }
 
     private bool on_anim_tick (Gtk.Widget widget, Gdk.FrameClock frame) {
-        var redraw = update_moves_now ();
+        var ft = frame.get_frame_time ();
+        var now = (ft > 0 ? ft : GLib.get_monotonic_time ()) / 1000000.0;
+        var redraw = update_moves_now (now);
         if (log_shown_id >= 0 || log_fading_out) {
-            var t = (GLib.get_monotonic_time () / 1000000.0) - log_anim_t0;
+            var t = now - log_anim_t0;
             if (t <= 0.25) {
                 redraw = true;
             } else if (log_fading_out) {
                 log_fading_out = false;
                 log_shown_id = -1;
                 redraw = true;
+            } else if (!log_fade_in_done) {
+                log_fade_in_done = true;
+                redraw = true;
             }
         }
         if (redraw) {
             queue_draw ();
         }
+        var keep_running = (active_moves != null && active_moves.size () > 0)
+                           || log_fading_out
+                           || (log_shown_id >= 0 && !log_fade_in_done);
+        if (!keep_running) {
+            anim_tick_id = 0;
+            return GLib.Source.REMOVE;
+        }
         return GLib.Source.CONTINUE;
     }
 
-    private void on_log_highlight_changed () {
+    private bool on_log_highlight_changed () {
         var id = session.highlighted_log_id;
         if (id >= 0) {
             if (id != log_shown_id || log_fading_out) {
                 log_shown_id = id;
                 log_fading_out = false;
-                log_anim_t0 = GLib.get_monotonic_time () / 1000000.0;
+                log_fade_in_done = false;
+                log_anim_t0 = frame_now_sec ();
+                ensure_anim_tick ();
+                return true;
             }
         } else if (log_shown_id >= 0 && !log_fading_out) {
             log_fading_out = true;
-            log_anim_t0 = GLib.get_monotonic_time () / 1000000.0;
+            log_anim_t0 = frame_now_sec ();
+            ensure_anim_tick ();
+            return true;
         }
+        return false;
     }
 
     // MARK: - Курсор
@@ -827,6 +935,7 @@ public class BoardView : Gtk.DrawingArea {
             }
             dragging = true;
             drag_occurred = true;  // блокируем клик (released) для этого press-цикла
+            static_board_dirty = true;
             gesture.set_state (Gtk.EventSequenceState.CLAIMED);
             if (session.selected_point != drag_point) {
                 session.select (drag_point);
@@ -843,8 +952,13 @@ public class BoardView : Gtk.DrawingArea {
     private void on_drag_end (Gtk.GestureDrag gesture, double off_x, double off_y) {
         var was_dragging = dragging;
         drag_candidate = false;
-        session.hovered_target_point = null;
-        session.is_hovering_bear_off_target = false;
+        if (session.hovered_target_point != null || session.is_hovering_bear_off_target) {
+            session.hovered_target_point = null;
+            session.is_hovering_bear_off_target = false;
+            last_hovered_target = null;
+            last_hovering_bear_off = false;
+            static_board_dirty = true;
+        }
         if (!was_dragging) {
             return;
         }
@@ -867,6 +981,7 @@ public class BoardView : Gtk.DrawingArea {
         }
 
         dragging = false;
+        static_board_dirty = true;
         if (best_target != null) {
             // Доводка фишки в точку назначения от текущего положения курсора без резких скачков
             plant_drag_position (side);
@@ -900,10 +1015,12 @@ public class BoardView : Gtk.DrawingArea {
 
     /** Фишка отпущена в недопустимом месте: пружинный возврат и снятие выделения. */
     private void spring_back (double side) {
-        var now = GLib.get_monotonic_time () / 1000000.0;
+        var now = frame_now_sec ();
         var return_duration = (SettingsStore.shared ().game_speed == GameSpeed.SLOW) ? 0.65 : 0.50;
         active_moves.insert (drag_id, new CMove (drag_x / side, drag_y / side,
             drag_base_x / side, drag_base_y / side, now, return_duration, true, 0.0, false, drag_color, true));
+        static_board_dirty = true;
+        ensure_anim_tick ();
         session.select_point_none ();
     }
 
@@ -913,6 +1030,9 @@ public class BoardView : Gtk.DrawingArea {
             if (session.hovered_target_point != null || session.is_hovering_bear_off_target) {
                 session.hovered_target_point = null;
                 session.is_hovering_bear_off_target = false;
+                last_hovered_target = null;
+                last_hovering_bear_off = false;
+                static_board_dirty = true;
                 queue_draw ();
             }
             return;
@@ -953,8 +1073,143 @@ public class BoardView : Gtk.DrawingArea {
         if (session.hovered_target_point != found_target || session.is_hovering_bear_off_target != hovering_bear_off) {
             session.hovered_target_point = found_target;
             session.is_hovering_bear_off_target = hovering_bear_off;
+            last_hovered_target = found_target;
+            last_hovering_bear_off = hovering_bear_off;
+            static_board_dirty = true;
             queue_draw ();
         }
+    }
+
+    // MARK: - Кэширование предмасштабированных поверхностей и статичного слоя
+
+    private Cairo.ImageSurface build_static_checker_sprite (Cairo.ImageSurface? img, CheckerColor color,
+                                                            double diameter, double pad, int scale_factor) {
+        var sprite_logical = (int) Math.ceil (pad * 2.0);
+        var sprite_px = int.max (1, sprite_logical * scale_factor);
+        var surf = new Cairo.ImageSurface (Cairo.Format.ARGB32, sprite_px, sprite_px);
+        surf.set_device_scale (scale_factor, scale_factor);
+        var cr = new Cairo.Context (surf);
+
+        var r = diameter / 2.0;
+        var base_shadow_a = (color == CheckerColor.WHITE) ? 0.22 : 0.35;
+        var shadow_y = 2.0 * (diameter / 36.0);
+        var shadow_r = 1.0 * (diameter / 36.0);
+
+        cr.set_source_rgba (0, 0, 0, base_shadow_a * 0.4);
+        cr.arc (pad + 1, pad + shadow_y, r + shadow_r, 0, 2 * Math.PI);
+        cr.fill ();
+        cr.set_source_rgba (0, 0, 0, base_shadow_a * 0.6);
+        cr.arc (pad + 1, pad + shadow_y, r + shadow_r * 0.5, 0, 2 * Math.PI);
+        cr.fill ();
+
+        if (img != null) {
+            cr.save ();
+            cr.arc (pad, pad, r, 0, 2 * Math.PI);
+            cr.clip ();
+            paint_image (cr, img, pad - r, pad - r, diameter, diameter);
+            cr.restore ();
+        } else {
+            if (color == CheckerColor.WHITE) {
+                cr.set_source_rgb (0.97, 0.97, 0.98);
+            } else {
+                cr.set_source_rgb (0.12, 0.12, 0.14);
+            }
+            cr.arc (pad, pad, r, 0, 2 * Math.PI);
+            cr.fill ();
+        }
+        return surf;
+    }
+
+    private Cairo.ImageSurface build_fly_checker_piece (Cairo.ImageSurface? img, CheckerColor color,
+                                                        double diameter, int scale_factor) {
+        var fly_diam = diameter * 1.25;
+        var fly_px = int.max (1, (int) Math.ceil (fly_diam * scale_factor));
+        var surf = new Cairo.ImageSurface (Cairo.Format.ARGB32, fly_px, fly_px);
+        var cr = new Cairo.Context (surf);
+        var half = fly_px / 2.0;
+
+        if (img != null) {
+            cr.arc (half, half, half, 0, 2 * Math.PI);
+            cr.clip ();
+            paint_image (cr, img, 0, 0, fly_px, fly_px);
+        } else {
+            if (color == CheckerColor.WHITE) {
+                cr.set_source_rgb (0.97, 0.97, 0.98);
+            } else {
+                cr.set_source_rgb (0.12, 0.12, 0.14);
+            }
+            cr.arc (half, half, half, 0, 2 * Math.PI);
+            cr.fill ();
+        }
+        return surf;
+    }
+
+    private void ensure_scaled_assets (double side) {
+        var sf = int.max (1, get_scale_factor ());
+        var target_px = (int) Math.round (side * sf);
+        if (target_px <= 0) {
+            return;
+        }
+        if (cached_board_surface != null && cached_board_px == target_px && cached_scale_factor == sf) {
+            return;
+        }
+        cached_board_px = target_px;
+        cached_scale_factor = sf;
+        static_board_dirty = true;
+
+        cached_board_surface = new Cairo.ImageSurface (Cairo.Format.ARGB32, target_px, target_px);
+        cached_board_surface.set_device_scale (sf, sf);
+        var bcr = new Cairo.Context (cached_board_surface);
+        if (board_img != null) {
+            paint_image (bcr, board_img, 0, 0, side, side);
+        } else {
+            bcr.set_source_rgb (0.30, 0.18, 0.08);
+            bcr.rectangle (0, 0, side, side);
+            bcr.fill ();
+            var pad = side * 0.035;
+            bcr.set_source_rgb (0.83, 0.58, 0.28);
+            bcr.rectangle (pad, pad, side - 2 * pad, side - 2 * pad);
+            bcr.fill ();
+        }
+
+        var diameter = BoardLayout.checker_diameter (side);
+        var r = diameter / 2.0;
+        var shadow_y = 2.0 * (diameter / 36.0);
+        var shadow_r = 1.0 * (diameter / 36.0);
+        cached_sprite_pad = Math.ceil (r + shadow_y + shadow_r + 2.0);
+
+        cached_white_static_sprite = build_static_checker_sprite (white_img, CheckerColor.WHITE, diameter, cached_sprite_pad, sf);
+        cached_black_static_sprite = build_static_checker_sprite (black_img, CheckerColor.BLACK, diameter, cached_sprite_pad, sf);
+        cached_white_fly_piece = build_fly_checker_piece (white_img, CheckerColor.WHITE, diameter, sf);
+        cached_black_fly_piece = build_fly_checker_piece (black_img, CheckerColor.BLACK, diameter, sf);
+    }
+
+    private void ensure_static_board_surface (double side) {
+        ensure_scaled_assets (side);
+        if (cached_board_px <= 0) {
+            return;
+        }
+        if (static_board_surface == null
+            || static_board_surface.get_width () != cached_board_px
+            || static_board_surface.get_height () != cached_board_px) {
+            static_board_surface = new Cairo.ImageSurface (Cairo.Format.ARGB32, cached_board_px, cached_board_px);
+            static_board_surface.set_device_scale (cached_scale_factor, cached_scale_factor);
+            static_board_dirty = true;
+        }
+        if (!static_board_dirty) {
+            return;
+        }
+        static_board_dirty = false;
+
+        var scr = new Cairo.Context (static_board_surface);
+        scr.set_operator (Cairo.Operator.SOURCE);
+        scr.set_source_rgba (0, 0, 0, 0);
+        scr.paint ();
+        scr.set_operator (Cairo.Operator.OVER);
+
+        draw_board_background (scr, side);
+        draw_highlights (scr, side);
+        draw_static_checkers (scr, side);
     }
 
     // MARK: - Главная отрисовка
@@ -970,11 +1225,18 @@ public class BoardView : Gtk.DrawingArea {
         cr.save ();
         cr.translate (ox, oy);
 
-        // Последовательный рендеринг слоёв доски снизу вверх:
-        // фон -> подсветки доступных ходов -> стопки фишек -> траектории истории
-        draw_board_background (cr, side);
-        draw_highlights (cr, side);
-        draw_checkers (cr, side);
+        // Статичный слой (фон + подсветки + неподвижные фишки) берётся из кэша;
+        // поверх рисуются только летящие/перетаскиваемые фишки и стрелки истории.
+        ensure_static_board_surface (side);
+        if (static_board_surface != null) {
+            cr.set_source_surface (static_board_surface, 0, 0);
+            cr.paint ();
+        } else {
+            draw_board_background (cr, side);
+            draw_highlights (cr, side);
+            draw_static_checkers (cr, side);
+        }
+        draw_dynamic_checkers (cr, side);
         draw_history_log (cr, side);
 
         cr.restore ();
@@ -995,6 +1257,11 @@ public class BoardView : Gtk.DrawingArea {
     // MARK: - Фон доски
 
     private void draw_board_background (Cairo.Context cr, double side) {
+        if (cached_board_surface != null) {
+            cr.set_source_surface (cached_board_surface, 0, 0);
+            cr.paint ();
+            return;
+        }
         if (board_img != null) {
             paint_image (cr, board_img, 0, 0, side, side);
             return;
@@ -1110,7 +1377,7 @@ public class BoardView : Gtk.DrawingArea {
 
     // MARK: - Фишки (ActiveCheckersLayer + накопители выноса)
 
-    private void draw_checkers (Cairo.Context cr, double side) {
+    private void draw_static_checkers (Cairo.Context cr, double side) {
         var diameter = BoardLayout.checker_diameter (side);
 
         // Накопители выноса — ниже активных фишек
@@ -1157,6 +1424,10 @@ public class BoardView : Gtk.DrawingArea {
                 }
             }
         }
+    }
+
+    private void draw_dynamic_checkers (Cairo.Context cr, double side) {
+        var diameter = BoardLayout.checker_diameter (side);
 
         // Анимированные фишки в полёте рисуются поверх всех статичных стопок
         if (active_moves != null && active_moves.size () > 0) {
@@ -1263,6 +1534,15 @@ public class BoardView : Gtk.DrawingArea {
     /** Фишка (CheckerPieceView): изображение по кругу + тень (radius 1, x 1, y 2) с эффектом подъема. */
     private void draw_checker (Cairo.Context cr, double x, double y, double diameter, CheckerColor color,
                                double scale = 1.0, double lift = 0.0) {
+        if (scale == 1.0 && lift == 0.0) {
+            var sprite = (color == CheckerColor.WHITE) ? cached_white_static_sprite : cached_black_static_sprite;
+            if (sprite != null) {
+                cr.set_source_surface (sprite, x - cached_sprite_pad, y - cached_sprite_pad);
+                cr.paint ();
+                return;
+            }
+        }
+
         var eff_diameter = diameter * scale;
         var r = eff_diameter / 2.0;
         var base_shadow_a = (color == CheckerColor.WHITE) ? 0.22 : 0.35;
@@ -1277,6 +1557,20 @@ public class BoardView : Gtk.DrawingArea {
         cr.set_source_rgba (0, 0, 0, shadow_a * 0.6);
         cr.arc (x + 1, y + shadow_y, r + shadow_r * 0.5, 0, 2 * Math.PI);
         cr.fill ();
+
+        var fly_piece = (color == CheckerColor.WHITE) ? cached_white_fly_piece : cached_black_fly_piece;
+        if (fly_piece != null) {
+            var fw = fly_piece.get_width ();
+            var fh = fly_piece.get_height ();
+            cr.save ();
+            cr.translate (x - r, y - r);
+            cr.scale (eff_diameter / fw, eff_diameter / fh);
+            cr.set_source_surface (fly_piece, 0, 0);
+            cr.get_source ().set_filter (Cairo.Filter.BILINEAR);
+            cr.paint ();
+            cr.restore ();
+            return;
+        }
 
         var img = (color == CheckerColor.WHITE) ? white_img : black_img;
         if (img != null) {
@@ -1309,7 +1603,7 @@ public class BoardView : Gtk.DrawingArea {
         if (!session.find_log_record (log_shown_id, out record, out color) || record == null) {
             return;
         }
-        var t = ((GLib.get_monotonic_time () / 1000000.0) - log_anim_t0) / 0.2;
+        var t = (frame_now_sec () - log_anim_t0) / 0.2;
         var e = ease_in_out (double.min (1.0, double.max (0.0, t)));
         // Появление: стрелка «прорисовывается» (progress 0→1) и проявляется; исчезновение — растворение
         var progress = log_fading_out ? 1.0 : e;

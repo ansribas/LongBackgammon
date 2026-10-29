@@ -396,6 +396,41 @@ public class GameBoard : Object {
         return sb.str;
     }
 
+    /** Быстрое точное сравнение расположения всех фишек на доске и в накопителях. */
+    public bool equals_exact (GameBoard other) {
+        if (white_borne_off_ids.length != other.white_borne_off_ids.length ||
+            black_borne_off_ids.length != other.black_borne_off_ids.length) {
+            return false;
+        }
+        for (var i = 0; i < white_borne_off_ids.length; i++) {
+            if (white_borne_off_ids[i] != other.white_borne_off_ids[i]) {
+                return false;
+            }
+        }
+        for (var i = 0; i < black_borne_off_ids.length; i++) {
+            if (black_borne_off_ids[i] != other.black_borne_off_ids[i]) {
+                return false;
+            }
+        }
+        for (var raw = 1; raw <= 24; raw++) {
+            var s1 = stacks[raw];
+            var s2 = other.stacks[raw];
+            if (s1 == null && s2 == null) {
+                continue;
+            }
+            if (s1 == null || s2 == null || s1.color != s2.color ||
+                s1.checker_ids.length != s2.checker_ids.length) {
+                return false;
+            }
+            for (var i = 0; i < s1.checker_ids.length; i++) {
+                if (s1.checker_ids[i] != s2.checker_ids[i]) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
     /** Глубокая копия доски (для ИИ и отмены ходов). */
     public GameBoard clone () {
         var copy = new GameBoard ();

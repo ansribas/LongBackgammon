@@ -16,6 +16,10 @@ public class BouncingEmoji : Gtk.DrawingArea {
     private string emoji;
     private int64 t0;
     private uint tick = 0;
+    private Cairo.ImageSurface? emoji_surf = null;
+    private int emoji_lw = 0;
+    private int emoji_lh = 0;
+    private int emoji_sf = 0;
 
     public BouncingEmoji (string emoji) {
         this.emoji = emoji;
@@ -23,7 +27,10 @@ public class BouncingEmoji : Gtk.DrawingArea {
         content_height = 96;
         t0 = GLib.get_monotonic_time ();
         set_draw_func (draw);
-        tick = add_tick_callback (() => { queue_draw (); return GLib.Source.CONTINUE; });
+        tick = add_tick_callback ((w, clock) => {
+            queue_draw ();
+            return GLib.Source.CONTINUE;
+        });
     }
 
     private static double ping_pong (double t, double period) {
@@ -33,21 +40,39 @@ public class BouncingEmoji : Gtk.DrawingArea {
         return (k % 2 == 0) ? f : 1 - f;
     }
 
-    private void draw (Gtk.DrawingArea area, Cairo.Context cr, int w, int h) {
-        var t = (GLib.get_monotonic_time () - t0) / 1000000.0;
-        // Масштаб 0.8 ↔ 1.05 с периодом 0.6 с, смещение 10 ↔ −4 с периодом 1.5 с
-        var sc = 0.8 + 0.25 * PanelStyle.ease_in_out (ping_pong (t, 0.6));
-        var dy = 10 - 14 * PanelStyle.ease_in_out (ping_pong (t, 1.5));
+    private void ensure_emoji_surface (Gtk.DrawingArea area) {
+        var sf = int.max (1, get_scale_factor ());
+        if (emoji_surf != null && emoji_sf == sf) {
+            return;
+        }
+        emoji_sf = sf;
         var layout = area.create_pango_layout (emoji);
         var fd = new Pango.FontDescription ();
         fd.set_absolute_size (64 * Pango.SCALE);
         layout.set_font_description (fd);
-        int lw, lh;
-        layout.get_pixel_size (out lw, out lh);
+        layout.get_pixel_size (out emoji_lw, out emoji_lh);
+        var pw = int.max (1, emoji_lw * sf);
+        var ph = int.max (1, emoji_lh * sf);
+        emoji_surf = new Cairo.ImageSurface (Cairo.Format.ARGB32, pw, ph);
+        emoji_surf.set_device_scale (sf, sf);
+        var ecr = new Cairo.Context (emoji_surf);
+        Pango.cairo_show_layout (ecr, layout);
+    }
+
+    private void draw (Gtk.DrawingArea area, Cairo.Context cr, int w, int h) {
+        var fc = get_frame_clock ();
+        var now = (fc != null && fc.get_frame_time () > 0) ? fc.get_frame_time () : GLib.get_monotonic_time ();
+        var t = (now - t0) / 1000000.0;
+        // Масштаб 0.8 ↔ 1.05 с периодом 0.6 с, смещение 10 ↔ −4 с периодом 1.5 с
+        var sc = 0.8 + 0.25 * PanelStyle.ease_in_out (ping_pong (t, 0.6));
+        var dy = 10 - 14 * PanelStyle.ease_in_out (ping_pong (t, 1.5));
+        ensure_emoji_surface (area);
         cr.translate (w / 2.0, h / 2.0 + dy);
         cr.scale (sc, sc);
-        cr.move_to (-lw / 2.0, -lh / 2.0);
-        Pango.cairo_show_layout (cr, layout);
+        if (emoji_surf != null) {
+            cr.set_source_surface (emoji_surf, -emoji_lw / 2.0, -emoji_lh / 2.0);
+            cr.paint ();
+        }
     }
 }
 

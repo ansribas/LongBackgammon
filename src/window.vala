@@ -275,11 +275,12 @@ public class Window : Adw.ApplicationWindow {
         backdrop = new Gtk.Box (Gtk.Orientation.VERTICAL, 0);
         backdrop.hexpand = true;
         backdrop.vexpand = true;
-        backdrop.visible = false;
+        backdrop.can_target = false;
         var bclick = new Gtk.GestureClick ();
         bclick.pressed.connect (() => { on_backdrop_clicked (); });
         backdrop.add_controller (bclick);
         overlay.add_overlay (backdrop);
+        overlay.set_measure_overlay (backdrop, false);
 
         // Полупрозрачный слой диалогов восстановления/подтверждения: клик мимо — мигание
         dim = new Gtk.Box (Gtk.Orientation.VERTICAL, 0);
@@ -292,6 +293,7 @@ public class Window : Adw.ApplicationWindow {
         dclick.pressed.connect (() => { flash_modal (); });
         dim.add_controller (dclick);
         overlay.add_overlay (dim);
+        overlay.set_measure_overlay (dim, false);
 
         // Глобальный слой подсказок лога (не перехватывает мышь)
         tooltip_view = new LogTooltipView (session);
@@ -413,14 +415,14 @@ public class Window : Adw.ApplicationWindow {
             main_kind = kind;
             if (kind != "") {
                 var w = create_main_view (kind);
-                main_popup = show_popup (w, backdrop);
                 var pv = w as PopupView;
                 if (pv != null) {
                     pv.update_board_side (layout.board_side > 0 ? layout.board_side : 600);
                 }
+                main_popup = show_popup (w, backdrop);
             }
         }
-        backdrop.visible = kind != "";
+        backdrop.can_target = kind != "";
 
         var modal = show_restore_game ? "restore" : (show_confirm_new_game ? "confirm" : "");
         if (modal != modal_kind) {

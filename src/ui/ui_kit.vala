@@ -38,9 +38,9 @@ public class UiKit {
         css.load_from_string (
             // Карточка всплывающего окна: радиус 18, тень, тонкая рамка
             ".lb-popup { background-color: var(--window-bg-color, @window_bg_color); border-radius: 18px;" +
-            "  box-shadow: 0 10px 20px alpha(black, 0.5); border: 1px solid alpha(currentColor, 0.1);" +
+            "  box-shadow: 0 10px 20px alpha(black, 0.5); border: 1px solid alpha(currentColor, 0.1); }" +
+            ".lb-popup.lb-flash { box-shadow: inset 0 0 0 3px #ff3b30, 0 10px 20px alpha(black, 0.5);" +
             "  transition: box-shadow 150ms ease-in-out; }" +
-            ".lb-popup.lb-flash { box-shadow: inset 0 0 0 3px #ff3b30, 0 10px 20px alpha(black, 0.5); }" +
             ".lb-popup-rules { border-radius: 16px; border: none; box-shadow: 0 15px 30px alpha(black, 0.4); }" +
             ".lb-popup-stats { box-shadow: 0 10px 20px alpha(black, 0.3); }" +
             ".lb-popup-gameover { border-radius: 24px; border: none; box-shadow: 0 15px 30px alpha(black, 0.4); }" +
@@ -187,6 +187,14 @@ public class UiKit {
         return cubic_bezier_timing (t, 0.42, 0.0, 1.0, 1.0);
     }
 
+    public static double popup_open_curve (double t) {
+        return cubic_bezier_timing (t, 0.22, 1.0, 0.36, 1.0);
+    }
+
+    public static double popup_close_curve (double t) {
+        return cubic_bezier_timing (t, 0.32, 0.0, 0.67, 0.0);
+    }
+
     /** Расчёт прогресса анимации по кубической кривой Безье методом Ньютона: решение x(u) = t. */
     private static double cubic_bezier_timing (double t, double x1, double y1, double x2, double y2) {
         if (t <= 0.0) return 0.0;
@@ -215,6 +223,15 @@ public class SFIcon : Gtk.DrawingArea {
     public double fg_alpha = 1.0;
     public Gdk.RGBA? tile_color = null;
 
+    private Cairo.ImageSurface? cached_surface = null;
+    private int cached_w = 0;
+    private int cached_h = 0;
+    private int cached_sf = 0;
+    private float cached_r = -1.0f;
+    private float cached_g = -1.0f;
+    private float cached_b = -1.0f;
+    private float cached_a = -1.0f;
+
     public SFIcon (string glyph, int size, Gdk.RGBA? color = null, double fg_alpha = 1.0) {
         this.glyph = glyph;
         this.color = color;
@@ -232,38 +249,67 @@ public class SFIcon : Gtk.DrawingArea {
     }
 
     public void set_glyph (string g) {
+        if (glyph == g) {
+            return;
+        }
         glyph = g;
+        cached_surface = null;
         queue_draw ();
     }
 
     private void draw (Gtk.DrawingArea area, Cairo.Context cr, int w, int h) {
-        double s = double.min (w, h);
-        double ox = (w - s) / 2.0;
-        double oy = (h - s) / 2.0;
+        if (w <= 0 || h <= 0) {
+            return;
+        }
+        var sf = int.max (1, get_scale_factor ());
         Gdk.RGBA c;
         if (tile_color != null) {
-            // Плитка 28×28, радиус 6, белый глиф ~16pt
-            cr.set_source_rgba (tile_color.red, tile_color.green, tile_color.blue, tile_color.alpha);
-            rounded (cr, ox, oy, s, s, s * 0.214);
-            cr.fill ();
-            var gs = s * 0.6;
-            ox += (s - gs) / 2.0;
-            oy += (s - gs) / 2.0;
-            s = gs;
             c = UiKit.rgba ("#ffffff");
         } else {
             c = (color != null) ? color : get_color ();
             c.alpha = (float) (c.alpha * fg_alpha);
         }
-        cr.save ();
-        cr.translate (ox, oy);
-        cr.scale (s, s);
-        cr.push_group ();
-        cr.set_source_rgba (c.red, c.green, c.blue, 1.0);
-        draw_glyph (cr, glyph);
-        cr.pop_group_to_source ();
-        cr.paint_with_alpha (c.alpha);
-        cr.restore ();
+
+        if (cached_surface == null || cached_w != w || cached_h != h || cached_sf != sf
+            || cached_r != c.red || cached_g != c.green || cached_b != c.blue || cached_a != c.alpha) {
+            cached_w = w;
+            cached_h = h;
+            cached_sf = sf;
+            cached_r = c.red;
+            cached_g = c.green;
+            cached_b = c.blue;
+            cached_a = c.alpha;
+
+            cached_surface = new Cairo.ImageSurface (Cairo.Format.ARGB32, w * sf, h * sf);
+            cached_surface.set_device_scale (sf, sf);
+            var icr = new Cairo.Context (cached_surface);
+
+            double s = double.min (w, h);
+            double ox = (w - s) / 2.0;
+            double oy = (h - s) / 2.0;
+            if (tile_color != null) {
+                // Плитка 28×28, радиус 6, белый глиф ~16pt
+                icr.set_source_rgba (tile_color.red, tile_color.green, tile_color.blue, tile_color.alpha);
+                rounded (icr, ox, oy, s, s, s * 0.214);
+                icr.fill ();
+                var gs = s * 0.6;
+                ox += (s - gs) / 2.0;
+                oy += (s - gs) / 2.0;
+                s = gs;
+            }
+            icr.save ();
+            icr.translate (ox, oy);
+            icr.scale (s, s);
+            icr.push_group ();
+            icr.set_source_rgba (c.red, c.green, c.blue, 1.0);
+            draw_glyph (icr, glyph);
+            icr.pop_group_to_source ();
+            icr.paint_with_alpha (c.alpha);
+            icr.restore ();
+        }
+
+        cr.set_source_surface (cached_surface, 0, 0);
+        cr.paint ();
     }
 
     private static void rounded (Cairo.Context cr, double x, double y, double w, double h, double r) {
@@ -675,15 +721,22 @@ public class FxBin : Gtk.Widget {
         if (child == null || fx_opacity <= 0.001) {
             return;
         }
+        var has_transform = Math.fabs (fx_scale - 1.0) > 1e-4 || Math.fabs (fx_dy) > 1e-4;
+        var use_opacity = fx_opacity < 0.999;
+        if (!has_transform && !use_opacity) {
+            snapshot_child (child, snapshot);
+            return;
+        }
         var w = get_width ();
         var h = get_height ();
         snapshot.save ();
-        Graphene.Point c = { (float) (w / 2.0), (float) (h / 2.0 + fx_dy) };
-        snapshot.translate (c);
-        snapshot.scale ((float) fx_scale, (float) fx_scale);
-        Graphene.Point back = { (float) (-w / 2.0), (float) (-h / 2.0) };
-        snapshot.translate (back);
-        var use_opacity = fx_opacity < 0.999;
+        if (has_transform) {
+            Graphene.Point c = { (float) (w / 2.0), (float) (h / 2.0 + fx_dy) };
+            snapshot.translate (c);
+            snapshot.scale ((float) fx_scale, (float) fx_scale);
+            Graphene.Point back = { (float) (-w / 2.0), (float) (-h / 2.0) };
+            snapshot.translate (back);
+        }
         if (use_opacity) {
             snapshot.push_opacity (double.min (1.0, fx_opacity));
         }
@@ -695,12 +748,22 @@ public class FxBin : Gtk.Widget {
     }
 }
 
-/** Всплывающее окно: появление/исчезание .opacity + .scale(0.95) с пружиной .spring(). */
+/** Всплывающее окно: плавное появление/исчезание с GPU-кэшированием текстуры на время анимации. */
 public class PopupHost : FxBin {
     public signal void hidden ();
     private double progress = 0.0;
-    private Adw.SpringAnimation? anim = null;
+    private double start_progress = 0.0;
+    private double target_progress = 1.0;
+    private int64 anim_start_us = 0;
+    private uint tick_id = 0;
     public bool closing = false;
+
+    // Предрендеренная GPU-текстура карточки окна (включая внешнюю тень) на время scale/opacity-анимации
+    private Gdk.Texture? cached_texture = null;
+    private int cached_w = 0;
+    private int cached_h = 0;
+    private int cached_sf = 0;
+    private const float SHADOW_PAD = 48.0f;
 
     public PopupHost (Gtk.Widget content) {
         base (content);
@@ -709,42 +772,136 @@ public class PopupHost : FxBin {
         apply ();
     }
 
+    public override void dispose () {
+        if (tick_id != 0) {
+            remove_tick_callback (tick_id);
+            tick_id = 0;
+        }
+        cached_texture = null;
+        base.dispose ();
+    }
+
     public Gtk.Widget content { get { return child; } }
 
     private void apply () {
-        set_fx (0.95 + 0.05 * progress, double.max (0.0, double.min (1.0, progress)));
+        var clamped = double.max (0.0, double.min (1.0, progress));
+        set_fx (0.94 + 0.06 * clamped, clamped);
     }
 
     public void animate_in () {
         closing = false;
         can_target = true;
-        run (1.0);
+        if (progress < 0.02) {
+            progress = 0.02;
+            apply ();
+        }
+        start_anim (1.0);
     }
 
     public void animate_out () {
         closing = true;
         can_target = false;
-        run (0.0);
+        start_anim (0.0);
     }
 
-    private void run (double to) {
-        if (anim != null) {
-            anim.pause ();
+    private void start_anim (double to) {
+        start_progress = progress;
+        target_progress = to;
+        anim_start_us = 0;
+        if (tick_id == 0) {
+            tick_id = add_tick_callback (on_anim_tick);
         }
-        var target = new Adw.CallbackAnimationTarget ((v) => {
-            progress = v;
+    }
+
+    private bool on_anim_tick (Gtk.Widget widget, Gdk.FrameClock clock) {
+        var ft = clock.get_frame_time ();
+        var now = ft > 0 ? ft : GLib.get_monotonic_time ();
+        if (anim_start_us == 0) {
+            anim_start_us = now;
+            queue_draw ();
+            return GLib.Source.CONTINUE;
+        }
+        var duration = closing ? 0.17 : 0.22;
+        var elapsed = (now - anim_start_us) / 1000000.0;
+        var t = double.min (1.0, double.max (0.0, elapsed / duration));
+        var eased = closing ? UiKit.popup_close_curve (t) : UiKit.popup_open_curve (t);
+        progress = start_progress + (target_progress - start_progress) * eased;
+        apply ();
+
+        if (t >= 1.0) {
+            progress = target_progress;
+            tick_id = 0;
+            cached_texture = null;
             apply ();
-        });
-        // .spring(): response 0.55, dampingFraction 0.825 → жёсткость (2π/0.55)²
-        var stiffness = Math.pow (2 * Math.PI / 0.55, 2);
-        anim = new Adw.SpringAnimation (this, progress, to, new Adw.SpringParams (0.825, 1.0, stiffness), target);
-        anim.epsilon = 0.002;
-        anim.done.connect (() => {
-            if (to <= 0.0) {
+            if (target_progress <= 0.0) {
                 hidden ();
             }
-        });
-        anim.play ();
+            return GLib.Source.REMOVE;
+        }
+        return GLib.Source.CONTINUE;
+    }
+
+    private void ensure_cached_texture (int w, int h) {
+        var sf = int.max (1, get_scale_factor ());
+        if (cached_texture != null && cached_w == w && cached_h == h && cached_sf == sf) {
+            return;
+        }
+        if (w <= 0 || h <= 0 || child == null) {
+            return;
+        }
+        var native = get_native ();
+        var renderer = native != null ? native.get_renderer () : null;
+        if (renderer == null || !renderer.is_realized ()) {
+            return;
+        }
+        var child_snap = new Gtk.Snapshot ();
+        child_snap.scale ((float) sf, (float) sf);
+        Graphene.Point pad_pt = { SHADOW_PAD, SHADOW_PAD };
+        child_snap.translate (pad_pt);
+        snapshot_child (child, child_snap);
+        var node = child_snap.free_to_node ();
+        if (node == null) {
+            return;
+        }
+        var vp = Graphene.Rect ().init (0.0f, 0.0f,
+            (w + SHADOW_PAD * 2.0f) * sf,
+            (h + SHADOW_PAD * 2.0f) * sf);
+        cached_texture = renderer.render_texture (node, vp);
+        cached_w = w;
+        cached_h = h;
+        cached_sf = sf;
+    }
+
+    public override void snapshot (Gtk.Snapshot snapshot) {
+        if (child == null || fx_opacity <= 0.001) {
+            return;
+        }
+        var is_animating = tick_id != 0 || Math.fabs (fx_scale - 1.0) > 1e-4 || fx_opacity < 0.999;
+        if (is_animating && (child is PopupView || closing)) {
+            var w = get_width ();
+            var h = get_height ();
+            ensure_cached_texture (w, h);
+            if (cached_texture != null) {
+                snapshot.save ();
+                Graphene.Point c = { (float) (w / 2.0), (float) (h / 2.0 + fx_dy) };
+                snapshot.translate (c);
+                snapshot.scale ((float) fx_scale, (float) fx_scale);
+                Graphene.Point back = { (float) (-w / 2.0), (float) (-h / 2.0) };
+                snapshot.translate (back);
+                if (fx_opacity < 0.999) {
+                    snapshot.push_opacity (double.min (1.0, fx_opacity));
+                }
+                var bounds = Graphene.Rect ().init (-SHADOW_PAD, -SHADOW_PAD,
+                    w + SHADOW_PAD * 2.0f, h + SHADOW_PAD * 2.0f);
+                snapshot.append_scaled_texture (cached_texture, Gsk.ScalingFilter.TRILINEAR, bounds);
+                if (fx_opacity < 0.999) {
+                    snapshot.pop ();
+                }
+                snapshot.restore ();
+                return;
+            }
+        }
+        base.snapshot (snapshot);
     }
 }
 
