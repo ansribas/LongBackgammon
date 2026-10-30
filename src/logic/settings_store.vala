@@ -205,35 +205,33 @@ public class SettingsStore : Object {
 
         var path = StoragePaths.file_path (GameConfig.SETTINGS_FILE_NAME);
         var text = StoragePaths.read_text_file (path);
-        if (text == null) {
-            return;
-        }
-        var keyfile = new KeyFile ();
-        try {
-            if (!keyfile.load_from_data (text, text.length, GLib.KeyFileFlags.NONE)) {
-                return;
+        if (text != null) {
+            var keyfile = new KeyFile ();
+            try {
+                if (keyfile.load_from_data (text, text.length, GLib.KeyFileFlags.NONE)) {
+                    if (keyfile.has_key ("settings", "language")) language = Language.from_raw (keyfile.get_string ("settings", "language"));
+                    if (keyfile.has_key ("settings", "opponent")) opponent = Opponent.from_raw (keyfile.get_string ("settings", "opponent"));
+                    if (keyfile.has_key ("settings", "ai_difficulty")) ai_difficulty = AIDifficulty.from_raw (keyfile.get_string ("settings", "ai_difficulty"));
+                    if (keyfile.has_key ("settings", "game_speed")) game_speed = GameSpeed.from_raw (keyfile.get_string ("settings", "game_speed"));
+                    if (keyfile.has_key ("settings", "board_theme")) board_theme = BoardTheme.from_raw (keyfile.get_string ("settings", "board_theme"));
+                    if (keyfile.has_key ("settings", "movement_type")) movement_type = MovementType.from_raw (keyfile.get_string ("settings", "movement_type"));
+                    if (keyfile.has_key ("settings", "use_board_dice_animation")) use_board_dice_animation = keyfile.get_boolean ("settings", "use_board_dice_animation");
+                    if (keyfile.has_key ("settings", "show_path_computer")) show_path_computer = keyfile.get_boolean ("settings", "show_path_computer");
+                    if (keyfile.has_key ("settings", "show_path_player")) show_path_player = keyfile.get_boolean ("settings", "show_path_player");
+                    if (keyfile.has_key ("settings", "highlight_log_paths")) highlight_log_paths = keyfile.get_boolean ("settings", "highlight_log_paths");
+                    if (keyfile.has_key ("settings", "show_cell_indices")) show_cell_indices = keyfile.get_boolean ("settings", "show_cell_indices");
+                    if (keyfile.has_key ("settings", "enable_debug_export")) enable_debug_export = keyfile.get_boolean ("settings", "enable_debug_export");
+                    if (keyfile.has_key ("settings", "score_display_mode")) score_display_mode = ScoreDisplayMode.from_raw (keyfile.get_string ("settings", "score_display_mode"));
+                    if (keyfile.has_key ("settings", "is_sound_enabled")) is_sound_enabled = keyfile.get_boolean ("settings", "is_sound_enabled");
+                    if (keyfile.has_key ("settings", "is_first_move_rolloff_enabled")) is_first_move_rolloff_enabled = keyfile.get_boolean ("settings", "is_first_move_rolloff_enabled");
+                    if (keyfile.has_key ("settings", "board_side")) board_side = BoardSide.from_raw (keyfile.get_string ("settings", "board_side"));
+                    if (keyfile.has_key ("settings", "is_drag_and_drop_enabled")) is_drag_and_drop_enabled = keyfile.get_boolean ("settings", "is_drag_and_drop_enabled");
+                    if (keyfile.has_key ("settings", "white_player_name")) white_player_name = keyfile.get_string ("settings", "white_player_name");
+                    if (keyfile.has_key ("settings", "black_player_name")) black_player_name = keyfile.get_string ("settings", "black_player_name");
+                }
+            } catch (Error e) {
+                warning ("Settings load error: %s", e.message);
             }
-            if (keyfile.has_key ("settings", "language")) language = Language.from_raw (keyfile.get_string ("settings", "language"));
-            if (keyfile.has_key ("settings", "opponent")) opponent = Opponent.from_raw (keyfile.get_string ("settings", "opponent"));
-            if (keyfile.has_key ("settings", "ai_difficulty")) ai_difficulty = AIDifficulty.from_raw (keyfile.get_string ("settings", "ai_difficulty"));
-            if (keyfile.has_key ("settings", "game_speed")) game_speed = GameSpeed.from_raw (keyfile.get_string ("settings", "game_speed"));
-            if (keyfile.has_key ("settings", "board_theme")) board_theme = BoardTheme.from_raw (keyfile.get_string ("settings", "board_theme"));
-            if (keyfile.has_key ("settings", "movement_type")) movement_type = MovementType.from_raw (keyfile.get_string ("settings", "movement_type"));
-            if (keyfile.has_key ("settings", "use_board_dice_animation")) use_board_dice_animation = keyfile.get_boolean ("settings", "use_board_dice_animation");
-            if (keyfile.has_key ("settings", "show_path_computer")) show_path_computer = keyfile.get_boolean ("settings", "show_path_computer");
-            if (keyfile.has_key ("settings", "show_path_player")) show_path_player = keyfile.get_boolean ("settings", "show_path_player");
-            if (keyfile.has_key ("settings", "highlight_log_paths")) highlight_log_paths = keyfile.get_boolean ("settings", "highlight_log_paths");
-            if (keyfile.has_key ("settings", "show_cell_indices")) show_cell_indices = keyfile.get_boolean ("settings", "show_cell_indices");
-            if (keyfile.has_key ("settings", "enable_debug_export")) enable_debug_export = keyfile.get_boolean ("settings", "enable_debug_export");
-            if (keyfile.has_key ("settings", "score_display_mode")) score_display_mode = ScoreDisplayMode.from_raw (keyfile.get_string ("settings", "score_display_mode"));
-            if (keyfile.has_key ("settings", "is_sound_enabled")) is_sound_enabled = keyfile.get_boolean ("settings", "is_sound_enabled");
-            if (keyfile.has_key ("settings", "is_first_move_rolloff_enabled")) is_first_move_rolloff_enabled = keyfile.get_boolean ("settings", "is_first_move_rolloff_enabled");
-            if (keyfile.has_key ("settings", "board_side")) board_side = BoardSide.from_raw (keyfile.get_string ("settings", "board_side"));
-            if (keyfile.has_key ("settings", "is_drag_and_drop_enabled")) is_drag_and_drop_enabled = keyfile.get_boolean ("settings", "is_drag_and_drop_enabled");
-            if (keyfile.has_key ("settings", "white_player_name")) white_player_name = keyfile.get_string ("settings", "white_player_name");
-            if (keyfile.has_key ("settings", "black_player_name")) black_player_name = keyfile.get_string ("settings", "black_player_name");
-        } catch (Error e) {
-            warning ("Settings load error: %s", e.message);
         }
 
         GLib.Environment.set_variable ("LANGUAGE", language.to_raw (), true);
