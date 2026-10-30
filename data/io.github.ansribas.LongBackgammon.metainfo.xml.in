@@ -59,6 +59,11 @@
   <content_rating type="oars-1.1" />
 
   <releases>
+    <release version="1.0.5" date="2026-10-30">
+      <description>
+        <p>Configurable board side selection (Left / Right) with smooth transitions, animated checker collection into trays, panel docking sound effects, hidden stats reset trigger, and rolloff flow enhancements.</p>
+      </description>
+    </release>
     <release version="1.0" date="2026-10-25">
       <description>
         <p>Initial release of Long Backgammon for Linux.</p>
