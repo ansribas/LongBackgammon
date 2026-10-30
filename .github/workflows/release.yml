@@ -1,0 +1,185 @@
+name: Release Packages
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: 'Release Tag (e.g. v1.0.5)'
+        required: true
+        default: 'v1.0.5'
+
+permissions:
+  contents: write
+
+jobs:
+  build-native:
+    name: Build .deb & .AppImage
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Determine version
+        run: |
+          TAG="${{ github.event.inputs.tag_name || github.ref_name }}"
+          VERSION="${TAG#v}"
+          echo "TAG=${TAG}" >> $GITHUB_ENV
+          echo "VERSION=${VERSION}" >> $GITHUB_ENV
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            meson \
+            ninja-build \
+            valac \
+            libgtk-4-dev \
+            libadwaita-1-dev \
+            desktop-file-utils \
+            appstream \
+            gettext \
+            file \
+            curl \
+            libfuse2
+
+      - name: Configure and build
+        run: |
+          meson setup build-pkg --prefix=/usr
+          ninja -C build-pkg
+
+      - name: Build Debian package (.deb)
+        run: |
+          DESTDIR=$PWD/pkg-deb ninja -C build-pkg install
+          mkdir -p pkg-deb/DEBIAN
+          {
+            echo "Package: longbackgammon"
+            echo "Version: ${VERSION}"
+            echo "Section: games"
+            echo "Priority: optional"
+            echo "Architecture: amd64"
+            echo "Maintainer: Aleksey Svetlov <ansribas@github.com>"
+            echo "Depends: libgtk-4-1, libadwaita-1-0, libc6, libglib2.0-0"
+            echo "Homepage: https://github.com/ansribas/LongBackgammon"
+            echo "Description: Classic Long Backgammon for Linux"
+            echo " Long Backgammon (Russian Nardi / Длинные нарды) for GNOME/Linux (GTK4 + Libadwaita)"
+            echo " featuring authentic rules, fluid animations, and advanced AI."
+          } > pkg-deb/DEBIAN/control
+
+          cat << 'EOF' > pkg-deb/DEBIAN/postinst
+          #!/bin/sh
+          set -e
+          if [ "$1" = "configure" ]; then
+              glib-compile-schemas /usr/share/glib-2.0/schemas 2>/dev/null || true
+              update-desktop-database -q /usr/share/applications 2>/dev/null || true
+              gtk-update-icon-cache -q -t -f /usr/share/icons/hicolor 2>/dev/null || true
+          fi
+          EOF
+          chmod 755 pkg-deb/DEBIAN/postinst
+          sed -i 's/^          //' pkg-deb/DEBIAN/postinst
+
+          cat << 'EOF' > pkg-deb/DEBIAN/postrm
+          #!/bin/sh
+          set -e
+          if [ "$1" = "remove" ] || [ "$1" = "purge" ]; then
+              glib-compile-schemas /usr/share/glib-2.0/schemas 2>/dev/null || true
+              update-desktop-database -q /usr/share/applications 2>/dev/null || true
+              gtk-update-icon-cache -q -t -f /usr/share/icons/hicolor 2>/dev/null || true
+          fi
+          EOF
+          chmod 755 pkg-deb/DEBIAN/postrm
+          sed -i 's/^          //' pkg-deb/DEBIAN/postrm
+
+          dpkg-deb --build --root-owner-group pkg-deb "longbackgammon_${VERSION}_amd64.deb"
+
+      - name: Build AppImage (.AppImage)
+        run: |
+          mkdir -p AppDir
+          DESTDIR=$PWD/AppDir ninja -C build-pkg install
+
+          cp AppDir/usr/share/applications/io.github.ansribas.LongBackgammon.desktop AppDir/
+          cp AppDir/usr/share/icons/hicolor/256x256/apps/io.github.ansribas.LongBackgammon.png AppDir/
+          ln -sf io.github.ansribas.LongBackgammon.png AppDir/.DirIcon
+
+          glib-compile-schemas AppDir/usr/share/glib-2.0/schemas
+
+          cat << 'EOF' > AppDir/AppRun
+          #!/bin/sh
+          SELF=$(readlink -f "$0")
+          HERE=${SELF%/*}
+          export PATH="${HERE}/usr/bin:${PATH}"
+          export XDG_DATA_DIRS="${HERE}/usr/share:${XDG_DATA_DIRS:-/usr/local/share:/usr/share}"
+          export GSETTINGS_SCHEMA_DIR="${HERE}/usr/share/glib-2.0/schemas:${GSETTINGS_SCHEMA_DIR}"
+          exec "${HERE}/usr/bin/longbackgammon" "$@"
+          EOF
+          chmod +x AppDir/AppRun
+          sed -i 's/^          //' AppDir/AppRun
+
+          curl -L -o appimagetool "https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage"
+          chmod +x appimagetool
+          ./appimagetool --appimage-extract
+          ARCH=x86_64 ./squashfs-root/AppRun --no-appstream AppDir "LongBackgammon-${VERSION}-x86_64.AppImage"
+
+      - name: Upload native packages artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-packages
+          path: |
+            longbackgammon_*_amd64.deb
+            LongBackgammon-*-x86_64.AppImage
+
+  build-flatpak:
+    name: Build .flatpak Bundle
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Prepare local Flatpak manifest
+        run: |
+          python3 -c "
+          import json
+          with open('io.github.ansribas.LongBackgammon.json', 'r') as f:
+              m = json.load(f)
+          m['modules'][0]['sources'] = [{'type': 'dir', 'path': '.'}]
+          with open('flatpak-ci.json', 'w') as f:
+              json.dump(m, f, indent=4)
+          "
+
+      - name: Build Flatpak Bundle
+        uses: flatpak/flatpak-github-actions/flatpak-builder@v6
+        with:
+          bundle: io.github.ansribas.LongBackgammon.flatpak
+          manifest-path: flatpak-ci.json
+          cache-key: flatpak-builder-${{ github.sha }}
+
+      - name: Upload Flatpak artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: flatpak-package
+          path: io.github.ansribas.LongBackgammon.flatpak
+
+  publish-release:
+    name: Publish Release Assets
+    needs: [build-native, build-flatpak]
+    if: always() && !cancelled() && (needs.build-native.result == 'success' || needs.build-flatpak.result == 'success')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download all package artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+          merge-multiple: true
+
+      - name: Upload assets to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.inputs.tag_name || github.ref_name }}
+          files: release-assets/*
