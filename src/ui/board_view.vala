@@ -558,8 +558,10 @@ public class BoardView : Gtk.DrawingArea {
             anim_inited = true;
         }
 
-        // Всегда собираем фишки в накопители при смене стороны
-        session.board = GameBoard.in_tray ();
+        // До начала партии собираем фишки в накопители при смене стороны
+        if (!session.is_game_started) {
+            session.board = GameBoard.in_tray ();
+        }
         var targets = build_positions (last_board_side);
 
         var now = frame_now_sec ();

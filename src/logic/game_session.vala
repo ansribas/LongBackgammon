@@ -130,11 +130,14 @@ public class GameSession : Object {
             status_message = Localization.status_new_game ();
         }
 
-        // При смене настроек (язык интерфейса, имена игроков) актуализируем статус партии
+        // При смене настроек (язык интерфейса, имена игроков, сторона доски) актуализируем статус партии
         SettingsStore.shared ().changed.connect (() => {
             var old_status = status_message;
             update_status_on_language_change ();
-            if (old_status != status_message) {
+            if (!is_game_started) {
+                board = GameBoard.in_tray ();
+            }
+            if (old_status != status_message || !is_game_started) {
                 notify_changed ();
             }
         });
