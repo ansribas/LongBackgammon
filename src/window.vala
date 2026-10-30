@@ -450,10 +450,12 @@ public class Window : Adw.ApplicationWindow {
                 var v = new ConfirmNewGameView (session);
                 v.confirmed.connect (() => {
                     show_confirm_new_game = false;
-                    can_close_new_game = true;
-                    is_new_game_presented = true;
-                    session.force_new_game ();
                     sync_overlays ();
+                    session.force_new_game (true, true, () => {
+                        can_close_new_game = true;
+                        is_new_game_presented = true;
+                        sync_overlays ();
+                    });
                 });
                 v.cancelled.connect (() => {
                     show_confirm_new_game = false;

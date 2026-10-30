@@ -50,6 +50,7 @@ install_data(
   'sounds/diceroll02.wav',
   'sounds/diceroll03.wav',
   'sounds/newgame.wav',
+  'sounds/paneldock.wav',
   'sounds/placement_step.wav',
   'sounds/victory.wav',
   install_dir: get_option('datadir') / 'longbackgammon' / 'sounds'

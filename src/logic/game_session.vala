@@ -638,11 +638,143 @@ public class GameSession : Object {
         }
     }
 
-    /** Сброс партии без старта новой (после подтверждения «Новая игра»). */
-    public void force_new_game () {
-        cancel_all_tasks ();
+    public delegate void PlacementCompletion ();
 
-        if (is_game_started && !is_game_over) {
+    private class TrayStep {
+        public uint8 id;
+        public CheckerColor color;
+        public BoardPoint from_point;
+        public TrayStep (uint8 id, CheckerColor color, BoardPoint from_point) {
+            this.id = id;
+            this.color = color;
+            this.from_point = from_point;
+        }
+    }
+
+    /**
+     * Анимированно перемещает все находящиеся на доске фишки в накопители.
+     * Фишки последовательно снимаются сверху стопок на пунктах доски и укладываются в накопители снизу вверх.
+     */
+    public void animate_checkers_to_tray (owned PlacementCompletion? completion = null) {
+        cancel_all_tasks ();
+        SoundManager.shared ().stop_placement ();
+        var cur_gen = gen;
+
+        // Копия доски для моделирования снятия строго сверху стопок (.last)
+        var temp_board = board.clone ();
+        TrayStep[] steps = new TrayStep[0];
+
+        // Белые: обходим пункты по направлению к выходу (от дома к голове: PlayerPath.white reversed)
+        var white_points = PlayerPath.white ();
+        for (var i = white_points.length - 1; i >= 0; i--) {
+            var point = white_points[i];
+            var stack = temp_board.stack_at (point);
+            while (stack != null && stack.color == CheckerColor.WHITE && stack.checker_ids.length > 0) {
+                var top_id = stack.checker_ids[stack.checker_ids.length - 1];
+                steps += new TrayStep (top_id, CheckerColor.WHITE, point);
+                temp_board.place_checker (top_id, CheckerColor.WHITE, null, temp_board.white_borne_off_ids.length);
+                stack = temp_board.stack_at (point);
+            }
+        }
+
+        // Чёрные: обходим пункты по направлению к выходу (от дома к голове: PlayerPath.black reversed)
+        var black_points = PlayerPath.black ();
+        for (var i = black_points.length - 1; i >= 0; i--) {
+            var point = black_points[i];
+            var stack = temp_board.stack_at (point);
+            while (stack != null && stack.color == CheckerColor.BLACK && stack.checker_ids.length > 0) {
+                var top_id = stack.checker_ids[stack.checker_ids.length - 1];
+                steps += new TrayStep (top_id, CheckerColor.BLACK, point);
+                temp_board.place_checker (top_id, CheckerColor.BLACK, null, temp_board.black_borne_off_ids.length);
+                stack = temp_board.stack_at (point);
+            }
+        }
+
+        // Если на доске нет фишек (все уже в накопителях) — сразу завершаем
+        if (steps.length == 0) {
+            board = GameBoard.in_tray ();
+            is_animating = false;
+            is_placing_checkers = false;
+            if (completion != null) {
+                var cb = (owned) completion;
+                cb ();
+            }
+            notify_changed ();
+            return;
+        }
+
+        is_animating = true;
+        is_placing_checkers = true;
+
+        SoundManager.shared ().play_dynamic_placement (steps.length, 0.30f);
+
+        var start_time = GLib.get_monotonic_time () / 1000000.0;
+        var step_idx = 0;
+
+        uint timer_id = 0;
+        timer_id = Timeout.add (8, () => {
+            if (cur_gen != gen || !is_placing_checkers) {
+                is_placing_checkers = false;
+                is_animating = false;
+                SoundManager.shared ().stop_placement ();
+                return Source.REMOVE;
+            }
+
+            var now = GLib.get_monotonic_time () / 1000000.0;
+            var elapsed = double.max (0.0, now - start_time);
+            int target_count = int.min (
+                (int) (elapsed / PlacementAnimation.STEP_INTERVAL) + 1,
+                steps.length
+            );
+
+            bool changed = false;
+            while (step_idx < target_count) {
+                var s = steps[step_idx];
+                var next_index = (s.color == CheckerColor.WHITE)
+                    ? board.white_borne_off_ids.length
+                    : board.black_borne_off_ids.length;
+                board.place_checker (s.id, s.color, null, next_index);
+                step_idx++;
+                changed = true;
+            }
+
+            if (changed) {
+                notify_changed ();
+            }
+
+            if (step_idx >= steps.length) {
+                after (PlacementAnimation.COMPLETION_DELAY, () => {
+                    if (cur_gen != gen) {
+                        is_placing_checkers = false;
+                        is_animating = false;
+                        return;
+                    }
+                    board = GameBoard.in_tray ();
+                    is_animating = false;
+                    is_placing_checkers = false;
+                    if (completion != null) {
+                        var cb = (owned) completion;
+                        cb ();
+                    }
+                    notify_changed ();
+                });
+                return Source.REMOVE;
+            }
+
+            return Source.CONTINUE;
+        });
+    }
+
+    /** Сброс партии без старта новой (после подтверждения «Новая игра»). */
+    public void force_new_game (
+        bool record_abandonment = true,
+        bool animated = false,
+        owned PlacementCompletion? completion = null
+    ) {
+        cancel_all_tasks ();
+        SoundManager.shared ().stop_placement ();
+
+        if (record_abandonment && is_game_started && !is_game_over) {
             var loser_color = current_player;
             var loser_name = player_name (loser_color);
             if (!is_computer_player (loser_color)) {
@@ -699,10 +831,18 @@ public class GameSession : Object {
         status_message = Localization.status_new_game ();
 
         SavedGameStore.shared ().clear ();
-
-        board = GameBoard.in_tray ();
         is_game_started = false;
-        notify_changed ();
+
+        if (animated) {
+            animate_checkers_to_tray ((owned) completion);
+        } else {
+            board = GameBoard.in_tray ();
+            if (completion != null) {
+                var cb = (owned) completion;
+                cb ();
+            }
+            notify_changed ();
+        }
     }
 
     /** Новая партия. */
@@ -782,8 +922,6 @@ public class GameSession : Object {
             notify_changed ();
         }
     }
-
-    public delegate void PlacementCompletion ();
 
     private TargetPlacementLocation[] current_placement_targets = new TargetPlacementLocation[0];
     private int current_placement_index = 0;

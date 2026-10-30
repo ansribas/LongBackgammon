@@ -145,11 +145,41 @@ public class SoundManager {
     private extern static int kill (GLib.Pid pid, int sig);
 
     private Pid placement_pid = 0;
+    private uint panels_dock_timeout_id = 0;
     private static int16[]? cached_step_samples = null;
     private static int cached_step_frames = 0;
 
     public void play_placement_step () {
         play ("placement_step");
+    }
+
+    /** Воспроизводит звук вставания боковых панелей на свои места при смене стороны доски. */
+    public void play_panels_dock_in_place () {
+        play ("paneldock");
+    }
+
+    /**
+     * Запускает звук расстановки фишек и последующий звук вставания панелей на свои места при смене стороны доски.
+     */
+    public void play_board_side_switch_animation () {
+        if (!SettingsStore.shared ().is_sound_enabled) {
+            return;
+        }
+        // 1. Звук каскада фишек (деревянные щелчки приземления)
+        play_dynamic_placement (30, 0.30f);
+
+        // 2. Отменяем предыдущую задачу стыковки панелей при быстром повторном переключении
+        if (panels_dock_timeout_id != 0) {
+            GLib.Source.remove (panels_dock_timeout_id);
+            panels_dock_timeout_id = 0;
+        }
+
+        // Задержка под момент завершения 1.0-секундной анимации панелей (870 мс + 130 мс пик paneldock ≈ 1.00 с)
+        panels_dock_timeout_id = GLib.Timeout.add (870, () => {
+            panels_dock_timeout_id = 0;
+            play_panels_dock_in_place ();
+            return GLib.Source.REMOVE;
+        });
     }
 
     /** Останавливает звук расстановки (при сбросе/отмене партии). */
@@ -158,6 +188,10 @@ public class SoundManager {
             kill (placement_pid, 15);
             Process.close_pid (placement_pid);
             placement_pid = 0;
+        }
+        if (panels_dock_timeout_id != 0) {
+            GLib.Source.remove (panels_dock_timeout_id);
+            panels_dock_timeout_id = 0;
         }
     }
 

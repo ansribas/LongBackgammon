@@ -93,8 +93,22 @@ public class NewGameView : PopupView {
         var side_seg = new Segmented (new string[] {
             Localization.settings_board_side_left (), Localization.settings_board_side_right ()
         }, s.board_side == BoardSide.RIGHT ? 1 : 0, 180);
+        side_seg.sensitive = !s.is_board_side_switching;
         side_seg.changed.connect ((i) => {
-            s.set_board_side (i == 1 ? BoardSide.RIGHT : BoardSide.LEFT);
+            if (s.is_board_side_switching) {
+                return;
+            }
+            var target_side = (i == 1 ? BoardSide.RIGHT : BoardSide.LEFT);
+            if (s.board_side != target_side) {
+                s.set_board_side (target_side);
+            }
+        });
+        s.changed.connect (() => {
+            side_seg.sensitive = !s.is_board_side_switching;
+            var expected = (s.board_side == BoardSide.RIGHT ? 1 : 0);
+            if (side_seg.selected_index != expected) {
+                side_seg.set_selected (expected);
+            }
         });
         sec2.add_row (new SettingsRow ("rectangle.lefthalf.inset.filled", MacColors.INDIGO, Localization.settings_board_side_label (), side_seg));
 

@@ -600,6 +600,61 @@ public class LogicTestSuite {
                  "evaluate_board initial score is finite number");
 
     // =========================================================================
+    // SUITE 10: Tray Collection & Board Side Animation Safety Tests
+    // =========================================================================
+    var tray_b = new GameBoard ();
+    tray_b.set_stack (BoardPoint.P24, CheckerColor.WHITE, new uint8[] { 0, 1, 2, 3 });
+    tray_b.set_stack (BoardPoint.P10, CheckerColor.WHITE, new uint8[] { 4, 5 });
+    tray_b.set_stack (BoardPoint.P1, CheckerColor.WHITE, new uint8[] { 6, 7 });
+    tray_b.white_borne_off_ids = new uint8[] { 8, 9, 10, 11, 12, 13, 14 };
+    tray_b.black_borne_off_ids = new uint8[] { 23, 24, 25, 26, 27, 28, 29 };
+    tray_b.set_stack (BoardPoint.P12, CheckerColor.BLACK, new uint8[] { 15, 16, 17, 18 });
+    tray_b.set_stack (BoardPoint.P13, CheckerColor.BLACK, new uint8[] { 19, 20 });
+    tray_b.set_stack (BoardPoint.P20, CheckerColor.BLACK, new uint8[] { 21, 22 });
+
+    var temp_tb = tray_b.clone ();
+    var collected_steps = 0;
+    var w_order = PlayerPath.white ();
+    for (var i = w_order.length - 1; i >= 0; i--) {
+        var pt = w_order[i];
+        var st = temp_tb.stack_at (pt);
+        while (st != null && st.color == CheckerColor.WHITE && st.checker_ids.length > 0) {
+            var top_id = st.checker_ids[st.checker_ids.length - 1];
+            collected_steps++;
+            temp_tb.place_checker (top_id, CheckerColor.WHITE, null, temp_tb.white_borne_off_ids.length);
+            st = temp_tb.stack_at (pt);
+        }
+    }
+    var b_order = PlayerPath.black ();
+    for (var i = b_order.length - 1; i >= 0; i--) {
+        var pt = b_order[i];
+        var st = temp_tb.stack_at (pt);
+        while (st != null && st.color == CheckerColor.BLACK && st.checker_ids.length > 0) {
+            var top_id = st.checker_ids[st.checker_ids.length - 1];
+            collected_steps++;
+            temp_tb.place_checker (top_id, CheckerColor.BLACK, null, temp_tb.black_borne_off_ids.length);
+            st = temp_tb.stack_at (pt);
+        }
+    }
+    assert_equal_int (collected_steps, 16, "tray collection removed exactly 16 checkers from board");
+    assert_equal_int (temp_tb.borne_off_count (CheckerColor.WHITE), 15, "all 15 white in tray");
+    assert_equal_int (temp_tb.borne_off_count (CheckerColor.BLACK), 15, "all 15 black in tray");
+    assert_true (temp_tb.is_in_tray (), "board is completely in tray after collection");
+
+    var fng_session = new GameSession ();
+    fng_session.is_game_started = true;
+    fng_session.board = GameBoard.initial_long ();
+    fng_session.current_player = CheckerColor.WHITE;
+    fng_session.force_new_game (false, false);
+    assert_false (fng_session.is_game_started, "force_new_game resets is_game_started");
+    assert_equal_int (fng_session.board.borne_off_count (CheckerColor.WHITE), 15, "all 15 white in tray on reset");
+    assert_equal_int (fng_session.board.borne_off_count (CheckerColor.BLACK), 15, "all 15 black in tray on reset");
+
+    SoundManager.shared ().play_board_side_switch_animation ();
+    SoundManager.shared ().play_panels_dock_in_place ();
+    SoundManager.shared ().stop_placement ();
+
+    // =========================================================================
     // Финальный отчет
     // =========================================================================
     if (failed == 0) {

@@ -180,6 +180,7 @@ public class BoardView : Gtk.DrawingArea {
                 var old_side = last_board_side;
                 last_board_side = cur_side;
                 animate_board_side_change (old_side);
+                SoundManager.shared ().play_board_side_switch_animation ();
             }
             static_board_dirty = true;
             update_cursor ();

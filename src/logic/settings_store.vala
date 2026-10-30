@@ -39,6 +39,9 @@ public class SettingsStore : Object {
     public bool is_sound_enabled;
     public bool is_first_move_rolloff_enabled;
     public BoardSide board_side;
+    public bool is_board_side_switching { get; private set; default = false; }
+    private bool is_initialized = false;
+    private uint board_side_switch_timeout_id = 0;
     public bool is_drag_and_drop_enabled;
     public string white_player_name;
     public string black_player_name;
@@ -121,7 +124,27 @@ public class SettingsStore : Object {
         if (is_first_move_rolloff_enabled != value) { is_first_move_rolloff_enabled = value; save (); changed (); }
     }
     public void set_board_side (BoardSide value) {
-        if (board_side != value) { board_side = value; save (); changed (); }
+        if (!is_initialized) {
+            board_side = value;
+            return;
+        }
+        if (board_side == value) {
+            return;
+        }
+        board_side = value;
+        save ();
+        is_board_side_switching = true;
+        if (board_side_switch_timeout_id != 0) {
+            GLib.Source.remove (board_side_switch_timeout_id);
+            board_side_switch_timeout_id = 0;
+        }
+        board_side_switch_timeout_id = GLib.Timeout.add (1900, () => {
+            is_board_side_switching = false;
+            board_side_switch_timeout_id = 0;
+            changed ();
+            return GLib.Source.REMOVE;
+        });
+        changed ();
     }
     public void set_is_drag_and_drop_enabled (bool value) {
         if (is_drag_and_drop_enabled != value) { is_drag_and_drop_enabled = value; save (); changed (); }
@@ -215,6 +238,7 @@ public class SettingsStore : Object {
 
         GLib.Environment.set_variable ("LANGUAGE", language.to_raw (), true);
         GLib.Intl.setlocale (GLib.LocaleCategory.MESSAGES, "");
+        is_initialized = true;
     }
 
     private SettingsStore () {

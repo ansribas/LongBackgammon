@@ -1107,6 +1107,15 @@ public class Segmented : Gtk.Box {
         }
     }
 
+    public int selected_index {
+        get {
+            for (var i = 0; i < buttons.length; i++) {
+                if (buttons[i].active) return i;
+            }
+            return -1;
+        }
+    }
+
     public void set_selected (int i) {
         updating = true;
         if (i >= 0 && i < buttons.length) {
