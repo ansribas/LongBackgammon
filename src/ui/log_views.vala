@@ -32,42 +32,67 @@ public class LogTooltipState : Object {
 
 /**
  * Слой всплывающей подсказки: плашка с расшифровкой шагов записи хода под курсором мыши.
+ * Каждая подсказка имеет собственную плавную анимацию появления и затухания (0.20 с easeInOut + масштаб 0.95..1.0),
+ * благодаря чему при перемещении курсора между строками лога старая подсказка плавно гаснет, а новая плавно появляется.
  */
 public class LogTooltipView : Gtk.Widget {
+    private class TooltipItem {
+        public int record_id;
+        public int side;
+        public double x;
+        public double y;
+        public Gtk.Label label;
+        public bool target_visible;
+        public double progress;
+        public double start_val;
+        public int64 start_us;
+    }
+
     private GameSession session;
-    private Gtk.Label label;
-    private double shown_x = 0;
-    private double shown_y = 0;
-    private int shown_side = -1;
+    private TooltipItem[] items = new TooltipItem[0];
+    private uint tick_id = 0;
 
     public LogTooltipView (GameSession session) {
         this.session = session;
         PanelStyle.ensure_css ();
         can_target = false;
         can_focus = false;
-        label = new Gtk.Label ("");
-        label.add_css_class ("lb-tooltip");
-        label.wrap = true;
-        label.wrap_mode = Pango.WrapMode.WORD;
-        label.justify = Gtk.Justification.CENTER;
-        label.set_parent (this);
-        label.visible = false;
         session.changed.connect (refresh);
         LogTooltipState.shared ().changed.connect (refresh);
         SettingsStore.shared ().changed.connect (refresh);
     }
 
     public override void dispose () {
-        if (label != null) {
-            label.unparent ();
-            label = null;
+        if (tick_id != 0) {
+            remove_tick_callback (tick_id);
+            tick_id = 0;
         }
+        foreach (var item in items) {
+            if (item.label != null) {
+                item.label.unparent ();
+                item.label = null;
+            }
+        }
+        items = new TooltipItem[0];
         base.dispose ();
+    }
+
+    private int64 now_us () {
+        var fc = get_frame_clock ();
+        if (fc != null) {
+            var ft = fc.get_frame_time ();
+            if (ft > 0) {
+                return ft;
+            }
+        }
+        return GLib.get_monotonic_time ();
     }
 
     private void refresh () {
         var st = LogTooltipState.shared ();
         string msg = "";
+        int active_id = -1;
+        int active_side = -1;
         if (st.hovered_side >= 0 && session.highlighted_log_id >= 0) {
             var side = (CheckerColor) st.hovered_side;
             var log = side == CheckerColor.WHITE ? session.white_turn_log : session.black_turn_log;
@@ -83,25 +108,108 @@ public class LogTooltipView : Gtk.Widget {
                 record = session.current_turn_record;
             }
             if (record != null) {
-                var parts = new string[0];
-                foreach (var s in record.move_strings) {
-                    parts += translate_move_string (s);
+                msg = record.formatted_message (side, session);
+                if (msg != "") {
+                    active_id = record.id;
+                    active_side = st.hovered_side;
                 }
-                var moves = string.joinv (", ", parts);
-                msg = record.is_rolloff ? moves : (moves == "" ? "" : "%d. %s".printf (record.turn_number, moves));
             }
         }
-        if (msg == "") {
-            label.visible = false;
-            shown_side = -1;
-        } else {
-            label.label = msg;
-            label.visible = true;
-            shown_x = st.hovered_x;
-            shown_y = st.hovered_y;
-            shown_side = st.hovered_side;
+
+        var now = now_us ();
+        var need_tick = false;
+        TooltipItem? found_active = null;
+
+        foreach (var item in items) {
+            if (active_id >= 0 && item.record_id == active_id && item.side == active_side) {
+                found_active = item;
+                item.label.label = msg;
+                item.x = st.hovered_x;
+                item.y = st.hovered_y;
+                if (!item.target_visible) {
+                    item.target_visible = true;
+                    item.start_val = item.progress;
+                    item.start_us = now;
+                    need_tick = true;
+                }
+            } else {
+                if (item.target_visible) {
+                    item.target_visible = false;
+                    item.start_val = item.progress;
+                    item.start_us = now;
+                    need_tick = true;
+                }
+            }
+        }
+
+        if (active_id >= 0 && found_active == null) {
+            var item = new TooltipItem ();
+            item.record_id = active_id;
+            item.side = active_side;
+            item.x = st.hovered_x;
+            item.y = st.hovered_y;
+            item.target_visible = true;
+            item.progress = 0.0;
+            item.start_val = 0.0;
+            item.start_us = now;
+            item.label = new Gtk.Label (msg);
+            item.label.add_css_class ("lb-tooltip");
+            item.label.wrap = true;
+            item.label.wrap_mode = Pango.WrapMode.WORD;
+            item.label.justify = Gtk.Justification.CENTER;
+            item.label.opacity = 0.0;
+            item.label.set_parent (this);
+            items += item;
+            need_tick = true;
+        }
+
+        if (need_tick && tick_id == 0) {
+            tick_id = add_tick_callback (on_anim_tick);
         }
         queue_allocate ();
+    }
+
+    private bool on_anim_tick (Gtk.Widget w, Gdk.FrameClock clock) {
+        var ft = clock.get_frame_time ();
+        var now = ft > 0 ? ft : GLib.get_monotonic_time ();
+        const double duration = 0.20;
+        var next_items = new TooltipItem[0];
+        var still_animating = false;
+
+        foreach (var item in items) {
+            var target = item.target_visible ? 1.0 : 0.0;
+            if (Math.fabs (item.progress - target) > 1e-4) {
+                var elapsed = double.max (0.0, (now - item.start_us) / 1000000.0);
+                var p = double.min (1.0, elapsed / duration);
+                var ease = PanelStyle.ease_in_out (p);
+                item.progress = item.start_val + (target - item.start_val) * ease;
+                if (p < 1.0) {
+                    still_animating = true;
+                } else {
+                    item.progress = target;
+                }
+            }
+            if (item.label != null) {
+                item.label.opacity = item.progress;
+            }
+            if (!item.target_visible && item.progress <= 0.001) {
+                if (item.label != null) {
+                    item.label.unparent ();
+                    item.label = null;
+                }
+            } else {
+                next_items += item;
+            }
+        }
+
+        items = next_items;
+        queue_allocate ();
+
+        if (!still_animating) {
+            tick_id = 0;
+            return GLib.Source.REMOVE;
+        }
+        return GLib.Source.CONTINUE;
     }
 
     public override void measure (Gtk.Orientation orientation, int for_size, out int minimum, out int natural,
@@ -113,76 +221,44 @@ public class LogTooltipView : Gtk.Widget {
     }
 
     public override void size_allocate (int width, int height, int baseline) {
-        if (label == null || !label.visible) {
-            return;
-        }
-        // Динамическая ширина плашки по содержимому (до максимума 170px)
         const int MAX_WIDTH = 170;
-        int min_w, nat_w, mb, nb;
-        label.measure (Gtk.Orientation.HORIZONTAL, -1, out min_w, out nat_w, out mb, out nb);
-        var w = int.max (min_w, int.min (nat_w, MAX_WIDTH));
-        int min_h, nat_h;
-        label.measure (Gtk.Orientation.VERTICAL, w, out min_h, out nat_h, out mb, out nb);
-        var h = nat_h;
+        foreach (var item in items) {
+            if (item.label == null) {
+                continue;
+            }
+            int min_w, nat_w, mb, nb;
+            item.label.measure (Gtk.Orientation.HORIZONTAL, -1, out min_w, out nat_w, out mb, out nb);
+            var w = int.max (min_w, int.min (nat_w, MAX_WIDTH));
+            int min_h, nat_h;
+            item.label.measure (Gtk.Orientation.VERTICAL, w, out min_h, out nat_h, out mb, out nb);
+            var h = nat_h;
 
-        int x;
-        if (shown_side == (int) CheckerColor.WHITE) {
-            // Белые (панель справа): правый край плашки выровнен по линии панели
-            var right_anchor = shown_x + 85.0;
-            x = (int) (right_anchor - w);
-        } else if (shown_side == (int) CheckerColor.BLACK) {
-            // Чёрные (панель слева): левый край плашки выровнен по линии панели
-            var left_anchor = shown_x - 85.0;
-            x = (int) left_anchor;
-        } else {
-            x = (int) (shown_x - w / 2.0);
-        }
-        var y = (int) (shown_y - h / 2.0);
-        x = int.max (0, int.min (width - w, x));
-        y = int.max (0, int.min (height - h, y));
-        var t = new Gsk.Transform ().translate ({ (float) x, (float) y });
-        label.allocate (w, h, -1, t);
-    }
-
-    private string translate_move_string (string move_string) {
-        var translated = move_string;
-        if (translated == "Ничья" || translated == "Tie") {
-            return Localization.status_rolloff_tie_label ();
-        }
-        if (translated.has_suffix (" ходит первый!") || translated.has_suffix (" starts first!")) {
-            var player = translated.replace (" ходит первый!", "").replace (" starts first!", "");
-            return Localization.status_rolloff_result (translate_player_name (player));
-        }
-        var trimmed = translated.strip ();
-        string? dice = null;
-        if (trimmed.has_prefix ("(пропущено ") && trimmed.has_suffix (")")) {
-            dice = trimmed.substring ("(пропущено ".length, trimmed.length - "(пропущено ".length - 1);
-        } else if (trimmed.has_prefix ("(skipped ") && trimmed.has_suffix (")")) {
-            dice = trimmed.substring ("(skipped ".length, trimmed.length - "(skipped ".length - 1);
-        }
-        if (dice != null) {
-            var localized = Localization.skipped_dice_status (dice);
-            return translated.has_prefix (" ") ? localized : localized.strip ();
-        }
-        return translated;
-    }
-
-    private string translate_player_name (string name) {
-        switch (name) {
-        case "Компьютер":
-        case "Computer":
-            return Localization.settings_opponent_computer ();
-        case "Игрок":
-        case "Player":
-            return Localization.default_player_name ();
-        case "Игрок 1":
-        case "Player 1":
-            return Localization.default_player1_name ();
-        case "Игрок 2":
-        case "Player 2":
-            return Localization.default_player2_name ();
-        default:
-            return name;
+            int x;
+            if (item.side == (int) CheckerColor.WHITE || item.side == (int) CheckerColor.BLACK) {
+                var is_right_side = BoardLayout.is_player_on_right_side ((CheckerColor) item.side);
+                if (is_right_side) {
+                    // Панель справа: правый край плашки выровнен по линии панели
+                    var right_anchor = item.x + 85.0;
+                    x = (int) (right_anchor - w);
+                } else {
+                    // Панель слева: левый край плашки выровнен по линии панели
+                    var left_anchor = item.x - 85.0;
+                    x = (int) left_anchor;
+                }
+            } else {
+                x = (int) (item.x - w / 2.0);
+            }
+            var y = (int) (item.y - h / 2.0);
+            x = int.max (0, int.min (width - w, x));
+            y = int.max (0, int.min (height - h, y));
+            var scale = (float) (0.95 + 0.05 * item.progress);
+            var cx = (float) x + w / 2.0f;
+            var cy = (float) y + h / 2.0f;
+            var t = new Gsk.Transform ()
+                .translate ({ cx, cy })
+                .scale (scale, scale)
+                .translate ({ -w / 2.0f, -h / 2.0f });
+            item.label.allocate (w, h, -1, t);
         }
     }
 }
@@ -299,7 +375,8 @@ public class LogCellView : Gtk.DrawingArea {
         if (!compute_bounds (st.container, out b)) {
             return;
         }
-        st.hovered_x = panel.color == CheckerColor.WHITE ? b.get_x () - 95 : b.get_x () + b.get_width () + 95;
+        var is_right_side = BoardLayout.is_player_on_right_side (panel.color);
+        st.hovered_x = is_right_side ? b.get_x () - 95 : b.get_x () + b.get_width () + 95;
         st.hovered_y = b.get_y () + b.get_height () / 2;
         st.hovered_side = (int) panel.color;
         st.changed ();
@@ -396,7 +473,7 @@ public class LogCellView : Gtk.DrawingArea {
     }
 
     private void draw_rolloff (Cairo.Context cr, bool highlighted) {
-        var is_tie = record.move_strings.length > 0 && record.move_strings[0] == Localization.status_rolloff_tie_label ();
+        var is_tie = record.is_rolloff_tie ();
         var is_winner = record.is_rolloff_winner;
         var x = card_x ();
         var y = 2.0;

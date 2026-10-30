@@ -35,10 +35,12 @@ public class CMove {
     public double lift;
     public CheckerColor color;
     public bool is_drag_drop;
+    public int stack_index;
 
     public CMove (double sx, double sy, double ex, double ey, double t0, double duration,
                   bool spring = false, double arc_scale = 0.0, bool is_top_half = false,
-                  CheckerColor color = CheckerColor.WHITE, bool is_drag_drop = false) {
+                  CheckerColor color = CheckerColor.WHITE, bool is_drag_drop = false,
+                  int stack_index = 0) {
         this.sx = sx;
         this.sy = sy;
         this.ex = ex;
@@ -52,6 +54,7 @@ public class CMove {
         this.lift = is_drag_drop ? 0.4 : 0.0;
         this.color = color;
         this.is_drag_drop = is_drag_drop;
+        this.stack_index = stack_index;
     }
 }
 
@@ -95,6 +98,8 @@ public class BoardView : Gtk.DrawingArea {
     private CheckerColor last_current_player = CheckerColor.WHITE;
     private bool last_can_bear_off = false;
     private int last_remaining_dice_len = -1;
+    private BoardTheme last_board_theme = SettingsStore.shared ().board_theme;
+    private BoardSide last_board_side = SettingsStore.shared ().board_side;
 
     // Курсор-кубик (BoardCursorArea.diceCursor)
     private Gdk.Cursor? dice_cursor = null;
@@ -165,13 +170,24 @@ public class BoardView : Gtk.DrawingArea {
             }
         });
         SettingsStore.shared ().changed.connect (() => {
-            load_images ();
+            var cur_theme = SettingsStore.shared ().board_theme;
+            if (cur_theme != last_board_theme) {
+                last_board_theme = cur_theme;
+                load_images ();
+            }
+            var cur_side = SettingsStore.shared ().board_side;
+            if (cur_side != last_board_side) {
+                var old_side = last_board_side;
+                last_board_side = cur_side;
+                animate_board_side_change (old_side);
+            }
             static_board_dirty = true;
             update_cursor ();
             queue_draw ();
         });
         notify["overlay-presented"].connect (() => { update_cursor (); });
         load_images ();
+        init_checker_positions ();
 
         // Обработка кликов: pressed — бросок костей при активном курсоре-кубике,
         // released — выбор фишек, ход, вынос или сброс выделения.
@@ -346,10 +362,11 @@ public class BoardView : Gtk.DrawingArea {
     }
 
     /** Позиция фишки index в стопке точки (пиксели доски). */
-    private void stack_position (BoardPoint point, int index, double side, out double x, out double y) {
+    private void stack_position (BoardPoint point, int index, double side, out double x, out double y, BoardSide? side_option = null) {
         var diameter = BoardLayout.checker_diameter (side);
-        BoardLayout.position (point, side, out x, out y);
-        y += BoardLayout.stack_offset (index, diameter, point.stack_direction ());
+        BoardLayout.position (point, side, out x, out y, side_option);
+        var dir = point.stack_direction_for (side_option ?? SettingsStore.shared ().board_side);
+        y += BoardLayout.stack_offset (index, diameter, dir);
     }
 
     private int stack_count (BoardPoint point) {
@@ -368,8 +385,19 @@ public class BoardView : Gtk.DrawingArea {
 
     // MARK: - Анимация перемещения фишек
 
+    /** Инициализация позиций фишек при создании доски. */
+    private void init_checker_positions () {
+        var targets = build_positions (last_board_side);
+        cur_pos = copy_positions (targets);
+        prev_pos = copy_positions (targets);
+        active_moves = new HashTable<uint8, CMove> (null, null);
+        prev_board = session.board.clone ();
+        anim_inited = true;
+        static_board_dirty = true;
+    }
+
     /** Целевые позиции всех фишек в долях стороны доски. */
-    private HashTable<uint8, CPoint> build_positions () {
+    private HashTable<uint8, CPoint> build_positions (BoardSide? side_option = null) {
         var map = new HashTable<uint8, CPoint> (null, null);
         for (var raw = 1; raw <= 24; raw++) {
             var point = (BoardPoint) raw;
@@ -379,20 +407,20 @@ public class BoardView : Gtk.DrawingArea {
             }
             for (var i = 0; i < stack.checker_ids.length; i++) {
                 double x, y;
-                stack_position (point, i, 1.0, out x, out y);
+                stack_position (point, i, 1.0, out x, out y, side_option);
                 map.insert (stack.checker_ids[i], new CPoint (x, y));
             }
         }
         uint8[] wb = session.board.white_borne_off_ids;
         for (var i = 0; i < wb.length; i++) {
             double bx, by;
-            BoardLayout.bear_off_position (CheckerColor.WHITE, i, 1.0, out bx, out by);
+            BoardLayout.bear_off_position (CheckerColor.WHITE, i, 1.0, out bx, out by, side_option);
             map.insert (wb[i], new CPoint (bx, by));
         }
         uint8[] bb = session.board.black_borne_off_ids;
         for (var i = 0; i < bb.length; i++) {
             double bx, by;
-            BoardLayout.bear_off_position (CheckerColor.BLACK, i, 1.0, out bx, out by);
+            BoardLayout.bear_off_position (CheckerColor.BLACK, i, 1.0, out bx, out by, side_option);
             map.insert (bb[i], new CPoint (bx, by));
         }
         return map;
@@ -419,7 +447,7 @@ public class BoardView : Gtk.DrawingArea {
     }
 
     private bool on_board_changed () {
-        if (anim_inited && prev_board != null && !session.board.is_in_tray ()
+        if (anim_inited && prev_board != null
             && prev_board.equals_exact (session.board)) {
             return false;
         }
@@ -485,7 +513,7 @@ public class BoardView : Gtk.DrawingArea {
 
                 double arc_scale = 0.0;
                 var is_top = (from_point != null) ? from_point.is_top_half () :
-                             (to_point != null ? to_point.is_top_half () : (color == CheckerColor.BLACK));
+                             (to_point != null ? to_point.is_top_half () : !BoardLayout.is_player_on_right_side (color));
 
                 var is_dropped = (key == dropped_checker_id);
                 var is_placing = session.is_placing_checkers;
@@ -510,7 +538,7 @@ public class BoardView : Gtk.DrawingArea {
                 }
 
                 var move_dur = is_placing ? PlacementAnimation.SPRING_RESPONSE : duration;
-                active_moves.insert (key, new CMove (sx, sy, tgt.x, tgt.y, now, move_dur, is_placing, is_placing ? 0.0 : arc_scale, is_top, color, is_dropped));
+                active_moves.insert (key, new CMove (sx, sy, tgt.x, tgt.y, now, move_dur, is_placing, is_placing ? 0.0 : arc_scale, is_top, color, is_dropped, to_idx));
             }
         });
         prev_pos = copy_positions (targets);
@@ -518,6 +546,54 @@ public class BoardView : Gtk.DrawingArea {
         static_board_dirty = true;
         ensure_anim_tick ();
         return true;
+    }
+
+    /** Анимация переворота доски (сбор в накопители без пружины с четким перелетом). */
+    private void animate_board_side_change (BoardSide old_side) {
+        if (cur_pos == null || prev_pos == null || active_moves == null) {
+            cur_pos = build_positions (old_side);
+            prev_pos = copy_positions (cur_pos);
+            active_moves = new HashTable<uint8, CMove> (null, null);
+            prev_board = session.board.clone ();
+            anim_inited = true;
+        }
+
+        // Всегда собираем фишки в накопители при смене стороны
+        session.board = GameBoard.in_tray ();
+        var targets = build_positions (last_board_side);
+
+        var now = frame_now_sec ();
+        var move_dur = 0.90;
+
+        targets.foreach ((key, tgt) => {
+            var from = cur_pos.lookup (key) ?? prev_pos.lookup (key);
+            if (from == null) {
+                cur_pos.insert (key, new CPoint (tgt.x, tgt.y));
+                return;
+            }
+            if (from.x == tgt.x && from.y == tgt.y) {
+                return;
+            }
+            BoardPoint? to_point;
+            int to_idx;
+            session.board.find_checker_location (key, out to_point, out to_idx);
+            var delay = (double) int.max (0, to_idx) * 0.06;
+            var color = (key < 15) ? CheckerColor.WHITE : CheckerColor.BLACK;
+            var is_top = (to_point != null) ? to_point.is_top_half () : !BoardLayout.is_player_on_right_side (color);
+            active_moves.insert (
+                key,
+                new CMove (from.x, from.y, tgt.x, tgt.y, now + delay, move_dur, false, 0.0, is_top, color, false, to_idx)
+            );
+        });
+
+        prev_pos = copy_positions (targets);
+        prev_board = session.board.clone ();
+        static_board_dirty = true;
+        ensure_anim_tick ();
+    }
+
+    public int active_moves_count () {
+        return (active_moves != null) ? (int) active_moves.size () : 0;
     }
 
     private HashTable<uint8, CPoint> copy_positions (HashTable<uint8, CPoint> src) {
@@ -569,6 +645,12 @@ public class BoardView : Gtk.DrawingArea {
 
         active_moves.foreach ((key, m) => {
             var elapsed = now - m.t0;
+            if (elapsed <= 0) {
+                cur_pos.insert (key, new CPoint (m.sx, m.sy));
+                m.scale = 1.0;
+                m.lift = 0.0;
+                return;
+            }
             var total = m.spring ? (m.duration > 0 ? m.duration : PlacementAnimation.SPRING_RESPONSE) : m.duration;
             if (elapsed >= total || total <= 0) {
                 cur_pos.insert (key, new CPoint (m.ex, m.ey));
@@ -982,23 +1064,37 @@ public class BoardView : Gtk.DrawingArea {
 
         dragging = false;
         static_board_dirty = true;
-        if (best_target != null) {
+
+        var should_bear_off = false;
+        if (session.can_bear_off_selected) {
+            double bx, by;
+            BoardLayout.bear_off_position (drag_color, session.board.borne_off_count (drag_color), side, out bx, out by);
+            var dist = Math.hypot (drag_x - bx, drag_y - by);
+            var tray_margin = diameter * 1.5;
+            bool in_bear_off_tray;
+            if (BoardLayout.is_player_on_right_side (drag_color)) {
+                in_bear_off_tray = drag_x >= (0.943 * side - tray_margin);
+            } else {
+                in_bear_off_tray = drag_x <= (0.057 * side + tray_margin);
+            }
+            if (dist < diameter * 3.0 || in_bear_off_tray) {
+                if (best_target == null || dist < best_dist || in_bear_off_tray) {
+                    should_bear_off = true;
+                }
+            }
+        }
+
+        if (should_bear_off) {
+            plant_drag_position (side);
+            dropped_checker_id = drag_id;
+            session.bear_off_selected (true);
+            dropped_checker_id = 255;
+        } else if (best_target != null) {
             // Доводка фишки в точку назначения от текущего положения курсора без резких скачков
             plant_drag_position (side);
             dropped_checker_id = drag_id;
             session.apply_move (best_target, drag_point, true);
             dropped_checker_id = 255;
-        } else if (session.can_bear_off_selected) {
-            double bx, by;
-            BoardLayout.bear_off_position (drag_color, session.board.borne_off_count (drag_color), side, out bx, out by);
-            if (Math.hypot (drag_x - bx, drag_y - by) < diameter * 3) {
-                plant_drag_position (side);
-                dropped_checker_id = drag_id;
-                session.bear_off_selected (true);
-                dropped_checker_id = 255;
-            } else {
-                spring_back (side);
-            }
         } else {
             spring_back (side);
         }
@@ -1429,19 +1525,37 @@ public class BoardView : Gtk.DrawingArea {
     private void draw_dynamic_checkers (Cairo.Context cr, double side) {
         var diameter = BoardLayout.checker_diameter (side);
 
-        // Анимированные фишки в полёте рисуются поверх всех статичных стопок
+        // Анимированные фишки в полёте рисуются поверх всех статичных стопок (в порядке возрастания stack_index)
         if (active_moves != null && active_moves.size () > 0) {
+            uint8[] keys = new uint8[0];
             active_moves.foreach ((cid, mv) => {
-                if (dragging && cid == drag_id) {
-                    return;
+                keys += cid;
+            });
+            for (var i = 0; i < keys.length - 1; i++) {
+                for (var j = i + 1; j < keys.length; j++) {
+                    var ma = active_moves.lookup (keys[i]);
+                    var mb = active_moves.lookup (keys[j]);
+                    if (ma != null && mb != null) {
+                        if (ma.stack_index > mb.stack_index || (ma.stack_index == mb.stack_index && keys[i] > keys[j])) {
+                            var tmp = keys[i];
+                            keys[i] = keys[j];
+                            keys[j] = tmp;
+                        }
+                    }
                 }
+            }
+            foreach (var cid in keys) {
+                if (dragging && cid == drag_id) {
+                    continue;
+                }
+                var mv = active_moves.lookup (cid);
                 var p = lookup_pos (cid);
-                if (p != null) {
+                if (mv != null && p != null) {
                     var x = p.x * side;
                     var y = p.y * side;
                     draw_checker (cr, x, y, diameter, mv.color, mv.scale, mv.lift);
                 }
-            });
+            }
         }
 
         // Перетаскиваемая фишка — поверх всего (zIndex 1000), вместе с радиальным свечением и рамкой выбора

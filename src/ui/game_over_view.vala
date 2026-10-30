@@ -133,6 +133,7 @@ public class GameOverView : Gtk.Box {
     private FxBin table_fx;
     private Gtk.Label[] stat_labels = new Gtk.Label[0];
     private int[] stat_values = new int[0];
+    private ulong layout_handler = 0;
 
     public GameOverView (GameSession session) {
         Object (orientation: Gtk.Orientation.VERTICAL, spacing: 0);
@@ -159,19 +160,22 @@ public class GameOverView : Gtk.Box {
         final_total = st != null ? st.total_points : 0;
         var color_class = is_red ? "red" : "orange";
 
-        // Кнопка закрытия в правом верхнем углу
-        var close_row = new Gtk.Box (Gtk.Orientation.HORIZONTAL, 0);
-        close_row.margin_top = 14;
-        close_row.margin_start = 14;
-        close_row.margin_end = 14;
-        close_row.append (UiKit.spacer ());
-        var close = new Gtk.Button ();
-        close.add_css_class ("lb-go-close");
-        close.set_child (new SFIcon ("xmark", 11, null, 0.55));
-        close.set_cursor_from_name ("pointer");
+        // Кнопка закрытия в верхнем углу (слева или справа согласно настройкам GNOME)
+        var close_controls = new WindowControlsBox ();
+        var close = new XCloseButton ();
         close.clicked.connect (() => { close_requested (); });
-        close_row.append (close);
-        append (close_row);
+        close_controls.append (close);
+        close_controls.margin_top = 10;
+        close_controls.margin_start = 10;
+        close_controls.margin_end = 10;
+        update_game_over_close_position (close_controls);
+        var settings = Gtk.Settings.get_default ();
+        if (settings != null) {
+            layout_handler = settings.notify["gtk-decoration-layout"].connect (() => {
+                update_game_over_close_position (close_controls);
+            });
+        }
+        append (close_controls);
 
         var content = new Gtk.Box (Gtk.Orientation.VERTICAL, 22);
         content.margin_start = 28;
@@ -237,10 +241,14 @@ public class GameOverView : Gtk.Box {
         div.margin_end = 10;
         table.append (div);
 
+        var is_right_side_white = (SettingsStore.shared ().board_side == BoardSide.RIGHT);
+        var left_player_name = is_right_side_white ? session.black_player_name : session.white_player_name;
+        var right_player_name = is_right_side_white ? session.white_player_name : session.black_player_name;
+
         var head = new Gtk.Box (Gtk.Orientation.HORIZONTAL, 0);
         head.margin_start = 12;
         head.margin_end = 12;
-        var bl = UiKit.label (session.black_player_name, "lb-caption2-bold lb-secondary");
+        var bl = UiKit.label (left_player_name, "lb-caption2-bold lb-secondary");
         bl.width_request = 90;
         bl.max_width_chars = 1;
         bl.ellipsize = Pango.EllipsizeMode.END;
@@ -248,7 +256,7 @@ public class GameOverView : Gtk.Box {
         head.append (UiKit.spacer ());
         head.append (UiKit.label (Localization.info_section_title ().up (), "lb-go-info", 0.5f));
         head.append (UiKit.spacer ());
-        var wl = UiKit.label (session.white_player_name, "lb-caption2-bold lb-secondary", 1.0f);
+        var wl = UiKit.label (right_player_name, "lb-caption2-bold lb-secondary", 1.0f);
         wl.width_request = 90;
         wl.max_width_chars = 1;
         wl.ellipsize = Pango.EllipsizeMode.END;
@@ -258,10 +266,22 @@ public class GameOverView : Gtk.Box {
         var rows = new Gtk.Box (Gtk.Orientation.VERTICAL, 12);
         rows.margin_start = 12;
         rows.margin_end = 12;
-        rows.append (stat_row (Localization.game_over_moves_stat (), session.black_moves_count, session.white_moves_count));
-        rows.append (stat_row (Localization.game_over_doubles_stat (), session.black_doubles_count, session.white_doubles_count));
-        rows.append (stat_row (Localization.game_over_fellout_dice_stat (), session.black_total_dice_sum, session.white_total_dice_sum));
-        rows.append (stat_row (Localization.game_over_burned_dice_stat (), session.black_burned_dice_sum, session.white_burned_dice_sum));
+        rows.append (stat_row (
+            Localization.game_over_moves_stat (),
+            is_right_side_white ? session.black_moves_count : session.white_moves_count,
+            is_right_side_white ? session.white_moves_count : session.black_moves_count));
+        rows.append (stat_row (
+            Localization.game_over_doubles_stat (),
+            is_right_side_white ? session.black_doubles_count : session.white_doubles_count,
+            is_right_side_white ? session.white_doubles_count : session.black_doubles_count));
+        rows.append (stat_row (
+            Localization.game_over_fellout_dice_stat (),
+            is_right_side_white ? session.black_total_dice_sum : session.white_total_dice_sum,
+            is_right_side_white ? session.white_total_dice_sum : session.black_total_dice_sum));
+        rows.append (stat_row (
+            Localization.game_over_burned_dice_stat (),
+            is_right_side_white ? session.black_burned_dice_sum : session.white_burned_dice_sum,
+            is_right_side_white ? session.white_burned_dice_sum : session.black_burned_dice_sum));
         table.append (rows);
 
         var btn = new Gtk.Button.with_label (Localization.game_over_button_new_game ());
@@ -281,6 +301,33 @@ public class GameOverView : Gtk.Box {
             update_animation ();
             return GLib.Source.CONTINUE;
         });
+    }
+
+    public override void dispose () {
+        if (tick_id != 0) {
+            remove_tick_callback (tick_id);
+            tick_id = 0;
+        }
+        if (layout_handler != 0) {
+            var settings = Gtk.Settings.get_default ();
+            if (settings != null) {
+                settings.disconnect (layout_handler);
+            }
+            layout_handler = 0;
+        }
+        base.dispose ();
+    }
+
+    private static void update_game_over_close_position (WindowControlsBox controls) {
+        var left = UiKit.is_close_button_left ();
+        controls.halign = left ? Gtk.Align.START : Gtk.Align.END;
+        if (left) {
+            controls.remove_css_class ("end");
+            controls.add_css_class ("start");
+        } else {
+            controls.remove_css_class ("start");
+            controls.add_css_class ("end");
+        }
     }
 
     private Gtk.Widget stat_row (string title, int black_val, int white_val) {

@@ -8,11 +8,34 @@
 namespace Longbackgammon {
 
 public class BoardLayout {
+    /** Определяет, находится ли указанный цвет фишек на правой половине/панели доски. */
+    public static bool is_player_on_right_side (CheckerColor color, BoardSide? board_side_option = null) {
+        var side = (board_side_option != null) ? board_side_option : SettingsStore.shared ().board_side;
+        return (side == BoardSide.RIGHT) ? (color == CheckerColor.WHITE) : (color == CheckerColor.BLACK);
+    }
+
+    /** Визуальная точка на доске с учетом выбранной стороны (Правая / Левая). */
+    public static BoardPoint visual_point (BoardPoint point, BoardSide? side_option = null) {
+        var side = (side_option != null) ? side_option : SettingsStore.shared ().board_side;
+        switch (side) {
+        case BoardSide.RIGHT:
+            return point;
+        case BoardSide.LEFT:
+            var mapped = (point.raw_value () + 11) % 24 + 1;
+            return BoardPoint.from_raw (mapped) ?? point;
+        default:
+            return point;
+        }
+    }
+
     /** Центр основания треугольника для точки доски (нормализованные координаты). */
-    public static void position (BoardPoint point, double board_side, out double x, out double y) {
+    public static void position (BoardPoint point, double board_side, out double x, out double y, BoardSide? side_option = null) {
+        var effective_side = (side_option != null) ? side_option : SettingsStore.shared ().board_side;
+        var mapped_point = visual_point (point, effective_side);
+
         // Таблица нормализованных горизонтальных координат X для каждой из 24 лунок (1..24)
         double px;
-        switch (point.raw_value ()) {
+        switch (mapped_point.raw_value ()) {
         case 1:  px = 0.861; break;
         case 2:  px = 0.800; break;
         case 3:  px = 0.739; break;
@@ -39,7 +62,7 @@ public class BoardLayout {
         case 23: px = 0.801; break;
         default: px = 0.861; break; // 24
         }
-        var py = point.is_top_half () ? 0.066 : 0.936;
+        var py = point.is_top_half_for (effective_side) ? 0.066 : 0.936;
         x = px * board_side;
         y = py * board_side;
     }
@@ -63,11 +86,12 @@ public class BoardLayout {
     }
 
     /** Позиция вынесенной за борт фишки. */
-    public static void bear_off_position (CheckerColor color, int index, double board_side, out double x, out double y) {
+    public static void bear_off_position (CheckerColor color, int index, double board_side, out double x, out double y, BoardSide? side_option = null) {
+        var is_right_side = is_player_on_right_side (color, side_option);
         double ax;
         double ay;
         int direction;
-        if (color == CheckerColor.WHITE) {
+        if (is_right_side) {
             ax = 0.943;
             ay = 0.936;
             direction = -1;

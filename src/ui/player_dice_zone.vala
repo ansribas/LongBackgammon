@@ -50,7 +50,7 @@ public class PlayerDiceZone : Gtk.DrawingArea {
             return 0;
         }
         if (session.is_first_move_rolloff_in_progress) {
-            var rolling_this = session.is_rolling && (
+            var rolling_this = session.is_rolling && !SettingsStore.shared ().use_board_dice_animation && (
                 (color == CheckerColor.WHITE && session.rolling_die_index == 0) ||
                 (color == CheckerColor.BLACK && session.rolling_die_index == 1));
             if (rolling_this) {
@@ -116,7 +116,8 @@ public class PlayerDiceZone : Gtk.DrawingArea {
             var rd = panel.color == CheckerColor.WHITE ? session.white_rolloff_dice : session.black_rolloff_dice;
             if (rd != null) {
                 for (var idx = 0; idx < 2; idx++) {
-                    if (panel.is_flying (idx == 0 ? 100 : 101)) {
+                    var fly_id = idx == 0 ? 100 : 101;
+                    if (panel.is_flying (fly_id) || panel.has_flown_rolloff (fly_id)) {
                         continue;
                     }
                     var r = rolloff_slot_rect (idx);
@@ -218,8 +219,6 @@ public class DiceCardBox : Gtk.Box {
     }
 
     public override void snapshot (Gtk.Snapshot snapshot) {
-        base.snapshot (snapshot);
-
         var w = (float) get_width ();
         var h = (float) get_height ();
         if (w <= 0 || h <= 0) {
@@ -227,7 +226,15 @@ public class DiceCardBox : Gtk.Box {
         }
 
         var r = Gsk.RoundedRect ();
-        r.init_from_rect (Graphene.Rect ().init (0.5f, 0.5f, w - 1.0f, h - 1.0f), 12.0f);
+        r.init_from_rect (Graphene.Rect ().init (0.0f, 0.0f, w, h), 12.0f);
+
+        // Тень карточки при перемещении над доской
+        snapshot.append_outset_shadow (r, Gdk.RGBA () { red = 0.0f, green = 0.0f, blue = 0.0f, alpha = 0.16f }, 0.0f, 4.0f, 0.0f, 10.0f);
+
+        base.snapshot (snapshot);
+
+        var r_border = Gsk.RoundedRect ();
+        r_border.init_from_rect (Graphene.Rect ().init (0.5f, 0.5f, w - 1.0f, h - 1.0f), 12.0f);
 
         var fg = get_color ();
         var t = (float) highlight;
@@ -240,7 +247,48 @@ public class DiceCardBox : Gtk.Box {
 
         float widths[4] = { 1.0f, 1.0f, 1.0f, 1.0f };
         Gdk.RGBA colors[4] = { border_color, border_color, border_color, border_color };
-        snapshot.append_border (r, widths, colors);
+        snapshot.append_border (r_border, widths, colors);
+    }
+}
+
+/**
+ * Обёртка карточки кубиков без обрезки (overflow = VISIBLE), позволяющая
+ * плавно смещать всю карточку по горизонтали при смене стороны доски.
+ */
+public class DiceCardMover : Gtk.Widget {
+    private Gtk.Widget child;
+    public double offset_x = 0.0;
+
+    public DiceCardMover (Gtk.Widget child) {
+        this.child = child;
+        child.set_parent (this);
+        overflow = Gtk.Overflow.VISIBLE;
+    }
+
+    public override void dispose () {
+        child?.unparent ();
+        child = null;
+        base.dispose ();
+    }
+
+    public override void measure (Gtk.Orientation orientation, int for_size, out int minimum, out int natural,
+                                  out int minimum_baseline, out int natural_baseline) {
+        child.measure (orientation, for_size, out minimum, out natural, out minimum_baseline, out natural_baseline);
+    }
+
+    public override void size_allocate (int width, int height, int baseline) {
+        child.allocate (width, height, baseline, null);
+    }
+
+    public override void snapshot (Gtk.Snapshot snapshot) {
+        if (Math.fabs (offset_x) > 0.01) {
+            snapshot.save ();
+            snapshot.translate (Graphene.Point ().init ((float) offset_x, 0.0f));
+            snapshot_child (child, snapshot);
+            snapshot.restore ();
+        } else {
+            snapshot_child (child, snapshot);
+        }
     }
 }
 

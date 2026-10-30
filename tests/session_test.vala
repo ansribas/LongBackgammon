@@ -147,28 +147,50 @@ int main (string[] args) {
     // Restore roll-off tie: dice clear and the first player gets to roll again.
     var tie_session = new GameSession ();
     tie_session.restore_from_store (rolloff_restore_data (5, 5, 6, 4));
+    if (tie_session.rolloff_active_player != null) {
+        stdout.printf ("FAIL: rolloff_active_player expected null on tie restore\n");
+        return 1;
+    }
     if (!wait_until (() => tie_session.white_rolloff_dice == null
                          && tie_session.black_rolloff_dice == null
                          && !tie_session.is_animating, 8.0)) {
         stdout.printf ("FAIL: restored roll-off tie did not resolve\n");
         return 1;
     }
-    if (tie_session.current_player != CheckerColor.WHITE || !tie_session.is_first_move_rolloff_in_progress) {
-        stdout.printf ("FAIL: roll-off tie did not return the roll to white\n");
+    if (tie_session.current_player != CheckerColor.WHITE || !tie_session.is_first_move_rolloff_in_progress
+        || tie_session.rolloff_active_player != CheckerColor.WHITE
+        || tie_session.status_message != Localization.status_rolloff_prompt ()) {
+        stdout.printf ("FAIL: roll-off tie did not return the roll to white with status_rolloff_prompt\n");
+        return 1;
+    }
+    if (tie_session.white_turn_log.length == 0 || !tie_session.white_turn_log[0].is_rolloff_tie ()
+        || tie_session.white_turn_log[0].formatted_message (CheckerColor.WHITE, tie_session) != Localization.status_rolloff_tie_label ()) {
+        stdout.printf ("FAIL: roll-off tie log record not formatted properly\n");
         return 1;
     }
 
     // Restore roll-off win: phase ends and the winner becomes the current player.
     var win_session = new GameSession ();
     win_session.restore_from_store (rolloff_restore_data (6, 5, 1, 2));
+    if (win_session.rolloff_active_player != CheckerColor.WHITE) {
+        stdout.printf ("FAIL: rolloff_active_player expected WHITE on win restore\n");
+        return 1;
+    }
     if (!wait_until (() => !win_session.is_first_move_rolloff_in_progress
                          && !win_session.is_animating, 8.0)) {
         stdout.printf ("FAIL: restored roll-off win did not resolve\n");
         return 1;
     }
     if (win_session.current_player != CheckerColor.WHITE
-        || win_session.white_rolloff_dice != null || win_session.black_rolloff_dice != null) {
+        || win_session.rolloff_active_player != null
+        || win_session.white_rolloff_dice != null || win_session.black_rolloff_dice != null
+        || win_session.status_message != Localization.status_roll_dice ()) {
         stdout.printf ("FAIL: roll-off winner was not restored correctly\n");
+        return 1;
+    }
+    if (win_session.white_turn_log.length == 0 || win_session.white_turn_log[0].rolloff_winner != CheckerColor.WHITE
+        || win_session.white_turn_log[0].formatted_message (CheckerColor.WHITE, win_session) != Localization.status_rolloff_result (win_session.white_player_name)) {
+        stdout.printf ("FAIL: roll-off win log record not formatted properly\n");
         return 1;
     }
 

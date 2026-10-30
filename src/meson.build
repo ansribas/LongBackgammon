@@ -16,10 +16,10 @@ longbackgammon_logic_sources = files(
   'logic/saved_game_store.vala',
   'logic/game_session.vala',
   'logic/sound_manager.vala',
+  'ui/board_layout.vala',
 )
 
 longbackgammon_ui_sources = files(
-  'ui/board_layout.vala',
   'ui/dice_drawing.vala',
   'ui/dice_overlay.vala',
   'ui/board_view.vala',

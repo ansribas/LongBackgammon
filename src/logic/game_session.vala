@@ -76,8 +76,8 @@ public class GameSession : Object {
 
     /** Точные координаты слотов кубиков в боковой панели (в системе координат доски). */
     public void dice_slot_centers (CheckerColor color, double board_side, out double x1, out double y1, out double x2, out double y2) {
-        var is_white = (color == CheckerColor.WHITE);
-        var mid_x = is_white ? (board_side + 70.0) : -70.0;
+        var is_right_side = BoardLayout.is_player_on_right_side (color);
+        var mid_x = is_right_side ? (board_side + 70.0) : -70.0;
         var mid_y = 74.0;
         x1 = mid_x - 26.5;
         y1 = mid_y;
@@ -86,6 +86,7 @@ public class GameSession : Object {
     }
 
     // MARK: - Розыгрыш первого хода (по два кубика у каждого игрока)
+    public CheckerColor? rolloff_active_player = CheckerColor.WHITE;
     public DiceRoll? white_rolloff_dice = null;
     public DiceRoll? black_rolloff_dice = null;
     /** Идентификатор анимации переноса кубиков розыгрыша в лог (0 — нет). */
@@ -121,16 +122,21 @@ public class GameSession : Object {
 
         if (SettingsStore.shared ().is_first_move_rolloff_enabled) {
             is_first_move_rolloff_in_progress = true;
+            rolloff_active_player = CheckerColor.WHITE;
             status_message = Localization.status_rolloff_prompt ();
         } else {
             is_first_move_rolloff_in_progress = false;
+            rolloff_active_player = null;
             status_message = Localization.status_new_game ();
         }
 
         // При смене настроек (язык интерфейса, имена игроков) актуализируем статус партии
         SettingsStore.shared ().changed.connect (() => {
+            var old_status = status_message;
             update_status_on_language_change ();
-            notify_changed ();
+            if (old_status != status_message) {
+                notify_changed ();
+            }
         });
     }
 
@@ -208,14 +214,32 @@ public class GameSession : Object {
 
     /** Ход компьютера (чёрные против компьютера). */
     public bool is_computer_turn {
-        get { return current_player == CheckerColor.BLACK && is_black_computer; }
+        get {
+            if (is_first_move_rolloff_in_progress) {
+                if (rolloff_active_player != null) {
+                    return rolloff_active_player == CheckerColor.BLACK && is_black_computer;
+                }
+            }
+            return current_player == CheckerColor.BLACK && is_black_computer;
+        }
     }
 
     /** Проверяет возможность текущего игрока выполнить бросок костей. */
     public bool can_roll {
         get {
-            return is_game_started && dice_roll == null && !is_rolling && !is_doubling
-                   && !is_no_moves_flashing && !is_game_over && !is_animating;
+            if (!is_game_started || dice_roll != null || is_rolling || is_doubling || is_no_moves_flashing || is_game_over || is_animating) {
+                return false;
+            }
+            if (is_first_move_rolloff_in_progress) {
+                if (white_rolloff_dice != null && black_rolloff_dice != null) {
+                    return true;
+                }
+                if (rolloff_active_player == null) {
+                    return false;
+                }
+                return rolloff_active_player == CheckerColor.WHITE ? white_rolloff_dice == null : black_rolloff_dice == null;
+            }
+            return true;
         }
     }
 
@@ -230,13 +254,14 @@ public class GameSession : Object {
     /** Определяет необходимость отображения интерактивного курсора-кубика на доске. */
     public bool show_dice_cursor {
         get {
-            return is_game_started && !is_game_over && !is_computer_turn && !suppress_dice_cursor
-                   && dice_roll == null && !is_rolling && !is_doubling && !is_no_moves_flashing && !is_animating;
+            var is_rolloff_resolving = is_first_move_rolloff_in_progress
+                && white_rolloff_dice != null && black_rolloff_dice != null;
+            return can_roll && !is_computer_turn && !suppress_dice_cursor && !is_rolloff_resolving;
         }
     }
 
     public bool is_game_in_progress {
-        get { return is_game_started && !is_game_over; }
+        get { return is_game_started && !is_placing_checkers && !is_game_over && !showing_game_over_result; }
     }
 
     /** Ходы подсвеченной записи лога. */
@@ -593,6 +618,16 @@ public class GameSession : Object {
         cached_legal_options = new MoveOption[0];
         selected_point = null;
         checkers_moved_from_head_this_turn = 0;
+
+        is_doubling = false;
+        double_division_progress = 1.0;
+        is_dice_flash_active = false;
+        dice_flash_opacity = 0.0;
+        is_no_moves_flashing = false;
+        is_rolling = false;
+        is_animating = false;
+        is_auto_playing_black = false;
+
         status_message = is_computer_turn ? Localization.status_computer_moving () : Localization.status_roll_dice ();
         notify_changed ();
         if (is_computer_turn) {
@@ -651,6 +686,7 @@ public class GameSession : Object {
         rolloff_animation_id = 0;
         rolling_die_index = -1;
         is_first_move_rolloff_in_progress = false;
+        rolloff_active_player = null;
 
         reset_stats ();
         move_history = new MoveSnapshot[0];
@@ -661,6 +697,7 @@ public class GameSession : Object {
 
         SavedGameStore.shared ().clear ();
 
+        board = GameBoard.in_tray ();
         is_game_started = false;
         notify_changed ();
     }
@@ -714,9 +751,11 @@ public class GameSession : Object {
 
         if (SettingsStore.shared ().is_first_move_rolloff_enabled) {
             is_first_move_rolloff_in_progress = true;
+            rolloff_active_player = CheckerColor.WHITE;
             status_message = Localization.status_rolloff_prompt ();
         } else {
             is_first_move_rolloff_in_progress = false;
+            rolloff_active_player = null;
             status_message = Localization.status_new_game ();
         }
 
@@ -994,7 +1033,18 @@ public class GameSession : Object {
         if (is_game_over) {
             status_message = (current_player == CheckerColor.WHITE) ? Localization.victory_white () : Localization.victory_black ();
         } else if (is_first_move_rolloff_in_progress) {
-            status_message = Localization.status_rolloff_prompt ();
+            if (white_rolloff_dice != null && black_rolloff_dice != null) {
+                var w_sum = white_rolloff_dice.die1 + white_rolloff_dice.die2;
+                var b_sum = black_rolloff_dice.die1 + black_rolloff_dice.die2;
+                if (w_sum == b_sum) {
+                    status_message = Localization.status_rolloff_tie ();
+                } else {
+                    var winner = w_sum > b_sum ? CheckerColor.WHITE : CheckerColor.BLACK;
+                    status_message = Localization.status_rolloff_result (player_name (winner));
+                }
+            } else {
+                status_message = is_computer_turn ? Localization.status_rolloff_ai () : Localization.status_rolloff_prompt ();
+            }
         } else if (dice_roll == null) {
             status_message = is_computer_turn ? Localization.status_computer_moving () : Localization.status_roll_dice ();
         } else if (is_animating && is_computer_turn) {
@@ -1214,7 +1264,7 @@ public class GameSession : Object {
         }
         int target_index;
         if (is_first_move_rolloff_in_progress) {
-            target_index = (white_rolloff_dice == null) ? 0 : 1;
+            target_index = (rolloff_active_player == CheckerColor.BLACK) ? 1 : 0;
         } else {
             target_index = -1;
         }
@@ -1222,6 +1272,13 @@ public class GameSession : Object {
         is_rolling = true;
         rolling_die_index = target_index;
         is_animating = true;
+        if (is_first_move_rolloff_in_progress) {
+            status_message = is_computer_turn ? Localization.status_rolloff_ai () : Localization.status_rolloff_prompt ();
+        } else if (is_computer_turn) {
+            status_message = Localization.status_computer_moving ();
+        } else {
+            status_message = "";
+        }
         notify_changed ();
 
         roll_task.begin (gen);
@@ -1266,6 +1323,26 @@ public class GameSession : Object {
             yield rolloff_white (anim, g);
         } else if (black_rolloff_dice == null) {
             yield rolloff_black (anim, g);
+        } else {
+            var w_roll = white_rolloff_dice;
+            var b_roll = black_rolloff_dice;
+            var w_sum = w_roll.die1 + w_roll.die2;
+            var b_sum = b_roll.die1 + b_roll.die2;
+            if (w_sum == b_sum) {
+                yield handle_rolloff_tie (w_roll, b_roll, g);
+            } else {
+                var winner = w_sum > b_sum ? CheckerColor.WHITE : CheckerColor.BLACK;
+                yield handle_rolloff_win (winner, w_roll, b_roll, g);
+            }
+            if (g != gen) {
+                return;
+            }
+            is_animating = false;
+            notify_changed ();
+            if (is_computer_turn) {
+                auto_play_if_needed ();
+            }
+            return;
         }
         if (g != gen) {
             return;
@@ -1289,17 +1366,27 @@ public class GameSession : Object {
         rolling_die_index = 0;
         suppress_dice_cursor = true;
         is_animating = false;
-        status_message = Localization.status_rolloff_prompt ();
+        status_message = "";
         notify_changed ();
 
+        yield sleep_async (0.75);
+        if (g != gen) {
+            return;
+        }
+
+        rolloff_active_player = CheckerColor.BLACK;
+
         if (is_black_computer) {
-            yield sleep_async (0.8);
+            status_message = Localization.status_rolloff_ai ();
+            notify_changed ();
+            yield sleep_async (0.60);
             if (g != gen) {
                 return;
             }
             suppress_dice_cursor = false;
             roll_dice ();
         } else {
+            status_message = Localization.status_rolloff_prompt ();
             suppress_dice_cursor = false;
             notify_changed ();
         }
@@ -1318,8 +1405,18 @@ public class GameSession : Object {
         rolling_die_index = 1;
         notify_changed ();
 
+        yield sleep_async (0.75);
+        if (g != gen) {
+            return;
+        }
+
         var w_roll = white_rolloff_dice;
         var b_roll = black_rolloff_dice;
+        if (w_roll == null || b_roll == null) {
+            is_animating = false;
+            notify_changed ();
+            return;
+        }
         var w_sum = w_roll.die1 + w_roll.die2;
         var b_sum = b_roll.die1 + b_roll.die2;
 
@@ -1339,19 +1436,27 @@ public class GameSession : Object {
         }
     }
 
-    private TurnRecord make_rolloff_record (DiceRoll roll, string text, bool winner) {
+    private TurnRecord make_rolloff_record (DiceRoll roll, string text, bool winner, CheckerColor? winner_color) {
         var r = new TurnRecord.with_dice (0, new DiceRoll (roll.die1, roll.die2));
         r.is_rolloff = true;
         r.is_rolloff_winner = winner;
+        r.rolloff_winner = winner_color;
         r.move_strings = new string[] { text };
         return r;
     }
 
     private async void handle_rolloff_tie (DiceRoll w_roll, DiceRoll b_roll, uint g) {
+        rolloff_active_player = null;
         status_message = Localization.status_rolloff_tie ();
         var tie_label = Localization.status_rolloff_tie_label ();
-        insert_log_record (CheckerColor.WHITE, make_rolloff_record (w_roll, tie_label, false));
-        insert_log_record (CheckerColor.BLACK, make_rolloff_record (b_roll, tie_label, false));
+        var is_already_logged = white_turn_log.length > 0 && black_turn_log.length > 0
+            && white_turn_log[0].is_rolloff_tie ()
+            && same_roll (white_turn_log[0].dice_roll, w_roll)
+            && same_roll (black_turn_log[0].dice_roll, b_roll);
+        if (!is_already_logged) {
+            insert_log_record (CheckerColor.WHITE, make_rolloff_record (w_roll, tie_label, false, null));
+            insert_log_record (CheckerColor.BLACK, make_rolloff_record (b_roll, tie_label, false, null));
+        }
 
         rolloff_animation_id = ++rolloff_anim_counter;
         notify_changed ();
@@ -1360,9 +1465,11 @@ public class GameSession : Object {
         if (g != gen) {
             return;
         }
+        rolloff_active_player = CheckerColor.WHITE;
         suppress_dice_cursor = false;
         white_rolloff_dice = null;
         black_rolloff_dice = null;
+        board_dice_state = null;
         rolloff_animation_id = 0;
         rolling_dice_value1 = 6;
         rolling_dice_value2 = 6;
@@ -1372,10 +1479,17 @@ public class GameSession : Object {
     }
 
     private async void handle_rolloff_win (CheckerColor winner, DiceRoll w_roll, DiceRoll b_roll, uint g) {
+        rolloff_active_player = winner;
         var result_msg = Localization.status_rolloff_result (player_name (winner));
         status_message = result_msg;
-        insert_log_record (CheckerColor.WHITE, make_rolloff_record (w_roll, result_msg, winner == CheckerColor.WHITE));
-        insert_log_record (CheckerColor.BLACK, make_rolloff_record (b_roll, result_msg, winner == CheckerColor.BLACK));
+        var is_already_logged = white_turn_log.length > 0 && black_turn_log.length > 0
+            && white_turn_log[0].is_rolloff && white_turn_log[0].rolloff_winner == winner
+            && same_roll (white_turn_log[0].dice_roll, w_roll)
+            && same_roll (black_turn_log[0].dice_roll, b_roll);
+        if (!is_already_logged) {
+            insert_log_record (CheckerColor.WHITE, make_rolloff_record (w_roll, result_msg, winner == CheckerColor.WHITE, winner));
+            insert_log_record (CheckerColor.BLACK, make_rolloff_record (b_roll, result_msg, winner == CheckerColor.BLACK, winner));
+        }
 
         rolloff_animation_id = ++rolloff_anim_counter;
         notify_changed ();
@@ -1386,15 +1500,17 @@ public class GameSession : Object {
         }
 
         is_first_move_rolloff_in_progress = false;
+        rolloff_active_player = null;
         suppress_dice_cursor = false;
         current_player = winner;
         white_rolloff_dice = null;
         black_rolloff_dice = null;
+        board_dice_state = null;
         rolloff_animation_id = 0;
         dice_roll = null;
         remaining_dice = new int[0];
         rolling_die_index = -1;
-        status_message = Localization.status_roll_dice ();
+        status_message = is_computer_turn ? Localization.status_computer_moving () : Localization.status_roll_dice ();
         notify_changed ();
     }
 
@@ -1522,8 +1638,10 @@ public class GameSession : Object {
             return;
         }
 
+        rolloff_active_player = CheckerColor.BLACK;
+
         if (is_black_computer) {
-            status_message = Localization.status_computer_moving ();
+            status_message = Localization.status_rolloff_ai ();
             notify_changed ();
             yield sleep_async (0.60);
             if (g != gen) {
@@ -1646,15 +1764,6 @@ public class GameSession : Object {
 
         var rolling_player = current_player;
 
-        // Для живого игрока активируем возможность ходить сразу по приземлении кубиков
-        if (!is_comp) {
-            apply_dice_roll (roll);
-            status_message = Localization.status_select_checker ();
-            is_animating = false;
-            update_available_moves_cache ();
-            notify_changed ();
-        }
-
         // 2. Пауза в покое на доске (0.70 с) — кубики застывают на доске
         yield sleep_async (0.70);
         if (g != gen) {
@@ -1682,10 +1791,8 @@ public class GameSession : Object {
         if (board_dice_state != null && board_dice_state.id == state_id) {
             board_dice_state = null;
         }
-        if (is_comp) {
-            apply_dice_roll (roll);
-            update_available_moves_cache ();
-        }
+        apply_dice_roll (roll);
+        update_available_moves_cache ();
         notify_changed ();
 
         if (current_player == rolling_player && is_game_started && !is_game_over) {
@@ -1701,6 +1808,12 @@ public class GameSession : Object {
             return;
         }
 
+        if (!is_comp) {
+            status_message = Localization.status_select_checker ();
+            is_animating = false;
+            notify_changed ();
+        }
+
         var has_playable = false;
         foreach (var o in cached_legal_options) {
             if (!o.is_illegal_prime) {
@@ -1708,7 +1821,8 @@ public class GameSession : Object {
                 break;
             }
         }
-        if (!has_playable && remaining_dice.length > 0) {
+        var initial_dice_count = move_values (roll).length;
+        if (!has_playable && remaining_dice.length == initial_dice_count) {
             notify_changed ();
             yield handle_no_moves (roll, g);
             return;
@@ -1728,14 +1842,16 @@ public class GameSession : Object {
     private async void handle_normal_roll (AnimationSpeed anim, uint g) {
         rolling_die_index = -1;
         if (is_computer_turn) {
-            status_message = Localization.status_computer_rolled ();
+            status_message = Localization.status_computer_moving ();
         }
         if (!(yield animate_rolling (anim, g))) {
             return;
         }
 
         var roll = DiceRoll.random ();
+        var rolling_player = current_player;
         apply_dice_roll (roll);
+        update_available_moves_cache ();
         notify_changed ();
 
         if (roll.is_double) {
@@ -1745,8 +1861,15 @@ public class GameSession : Object {
             }
         }
 
-        status_message = Localization.status_select_checker ();
-        update_available_moves_cache ();
+        if (current_player != rolling_player || !is_game_started || is_game_over) {
+            return;
+        }
+
+        if (!is_computer_turn) {
+            status_message = Localization.status_select_checker ();
+            is_animating = false;
+            notify_changed ();
+        }
 
         var has_playable = false;
         foreach (var o in cached_legal_options) {
@@ -1755,7 +1878,8 @@ public class GameSession : Object {
                 break;
             }
         }
-        if (!has_playable) {
+        var initial_dice_count = move_values (roll).length;
+        if (!has_playable && remaining_dice.length == initial_dice_count) {
             notify_changed ();
             yield handle_no_moves (roll, g);
             return;
@@ -1771,12 +1895,18 @@ public class GameSession : Object {
     }
 
     private async void handle_double_animation (uint g) {
+        var rolling_player = current_player;
         is_doubling = true;
         notify_changed ();
 
         // Задержка 350 мс перед началом раскрытия костей на доске
         yield sleep_async (0.35);
-        if (g != gen) {
+        if (g != gen || !is_game_in_progress || current_player != rolling_player) {
+            is_doubling = false;
+            is_dice_flash_active = false;
+            dice_flash_opacity = 0.0;
+            double_division_progress = 1.0;
+            notify_changed ();
             return;
         }
 
@@ -1813,20 +1943,30 @@ public class GameSession : Object {
                 break;
             }
             yield sleep_async (0.016);
-            if (g != gen) {
+            if (g != gen || !is_game_in_progress || current_player != rolling_player) {
+                is_doubling = false;
+                is_dice_flash_active = false;
+                dice_flash_opacity = 0.0;
+                double_division_progress = 1.0;
+                notify_changed ();
                 return;
             }
         }
         is_dice_flash_active = false;
         dice_flash_opacity = 0.0;
+        double_division_progress = 1.0;
         notify_changed ();
 
         // Фиксация раскрытых костей на экране перед передачей управления ходом
         yield sleep_async (0.22);
-        if (g != gen) {
+        is_doubling = false;
+        if (g != gen || !is_game_in_progress || current_player != rolling_player) {
+            notify_changed ();
             return;
         }
-        is_doubling = false;
+        if (is_computer_turn) {
+            status_message = Localization.status_computer_moving ();
+        }
         notify_changed ();
     }
 
@@ -1907,6 +2047,8 @@ public class GameSession : Object {
         if (g != gen) {
             return;
         }
+        status_message = Localization.status_computer_moving ();
+        notify_changed ();
 
         var max_iterations = 20;
         while (remaining_dice.length > 0 && !is_game_over && !board.is_winner (current_player) && max_iterations > 0) {
@@ -2036,23 +2178,30 @@ public class GameSession : Object {
 
         if (!has_playable) {
             move_history = new MoveSnapshot[0];
-            if (is_computer_turn) {
-                status_message = Localization.status_computer_moving ();
-            }
+            status_message = Localization.no_available_moves ();
             is_animating = true;
             notify_changed ();
             no_moves_after_move_task.begin (gen);
         } else {
-            status_message = Localization.status_select_checker ();
+            status_message = is_computer_turn ? Localization.status_computer_moving () : Localization.status_select_checker ();
             notify_changed ();
         }
     }
 
     private async void no_moves_after_move_task (uint g) {
         var animation = SettingsStore.shared ().animation_speed;
-        yield sleep_async (animation.checker_move_duration);
-        if (g != gen) {
-            return;
+        var has_used_die = false;
+        foreach (var d in current_turn_dice) {
+            if (d.is_used) {
+                has_used_die = true;
+                break;
+            }
+        }
+        if (!is_computer_turn && has_used_die) {
+            yield sleep_async (animation.checker_move_duration);
+            if (g != gen) {
+                return;
+            }
         }
         var pause = animation.intermediate_step_delay;
         yield sleep_async (pause);
@@ -2239,7 +2388,17 @@ public class GameSession : Object {
             if (is_head && checkers_moved_from_head_this_turn >= max_head) {
                 status_message = Localization.status_head_limit_reached ();
             } else {
-                status_message = Localization.status_move_blocked_by_opponent ();
+                var is_blocked_by_opponent = false;
+                foreach (var die in remaining_dice) {
+                    var target = PlayerPath.point_from (point, die, current_player);
+                    if (target != null && MoveValidator.is_blocked (target, board, current_player)) {
+                        is_blocked_by_opponent = true;
+                        break;
+                    }
+                }
+                status_message = is_blocked_by_opponent
+                    ? Localization.status_move_blocked_by_opponent ()
+                    : Localization.no_available_moves ();
             }
         } else {
             status_message = Localization.status_select_target ();
@@ -2417,7 +2576,7 @@ public class GameSession : Object {
         var from = selected_point;
         MoveOption? move = null;
         foreach (var o in options_from (from)) {
-            if (o.to == null) {
+            if (o.to == null && !o.is_illegal_prime) {
                 move = o;
                 break;
             }
@@ -2559,18 +2718,35 @@ public class GameSession : Object {
 
     // MARK: - Генерация текста лога партии
 
+    /** Имя игрока на английском для логов (GameLogStore). */
+    public string english_player_name (CheckerColor color) {
+        var store = SettingsStore.shared ();
+        if (color == CheckerColor.WHITE) {
+            var trimmed = store.white_player_name.strip ();
+            if (trimmed != "") {
+                return trimmed;
+            }
+            return store.opponent == Opponent.COMPUTER ? "Player" : "Player 1";
+        }
+        if (store.opponent == Opponent.COMPUTER) {
+            return "Computer";
+        }
+        var trimmed = store.black_player_name.strip ();
+        return trimmed == "" ? "Player 2" : trimmed;
+    }
+
     /** Текстовый дамп состояния на английском (для GameLogStore). */
     public string generate_log_text () {
         var b = new StringBuilder ();
         b.append ("--- LONG BACKGAMMON DEBUG ---\n");
-        b.append ("Turn: %s\n".printf (player_name (current_player)));
+        b.append ("Turn: %s\n".printf (english_player_name (current_player)));
         b.append ("Pips: W:%d B:%d\n".printf (white_pip_count, black_pip_count));
         b.append ("\n--- BOARD STACKS ---\n");
         append_board (b);
         b.append ("\n--- WHITE LOG ---\n");
-        append_log_english (b, white_turn_log);
+        append_log_english (b, white_turn_log, CheckerColor.WHITE);
         b.append ("\n--- BLACK LOG ---\n");
-        append_log_english (b, black_turn_log);
+        append_log_english (b, black_turn_log, CheckerColor.BLACK);
         b.append ("\n--- SETTINGS ---\n");
         b.append ("Game Speed: %s\n".printf (SettingsStore.shared ().game_speed == GameSpeed.FAST ? "Fast" : "Slow"));
         return b.str;
@@ -2585,18 +2761,11 @@ public class GameSession : Object {
         }
     }
 
-    private void append_log_english (StringBuilder b, TurnRecord[] log) {
+    private void append_log_english (StringBuilder b, TurnRecord[] log, CheckerColor color = CheckerColor.WHITE) {
         foreach (var record in log) {
             b.append ("%d. [%d:%d] ".printf (record.turn_number, record.dice_roll.die1, record.dice_roll.die2));
-            if (record.move_strings.length == 0) {
-                b.append ("NONE\n");
-            } else {
-                var moves = string.joinv (", ", record.move_strings);
-                moves = moves.replace (" (пропущено ", " (skipped ");
-                moves = moves.replace ("Компьютер ходит первый!", "Computer starts first!");
-                moves = moves.replace ("Ничья", "Tie");
-                b.append (moves).append_c ('\n');
-            }
+            var moves = record.export_moves_string (color, this, true);
+            b.append (moves == "" ? "NONE" : moves).append_c ('\n');
         }
     }
 
@@ -2619,9 +2788,9 @@ public class GameSession : Object {
         b.append ("\n").append (Localization.debug_export_board ()).append_c ('\n');
         append_board (b);
         b.append ("\n\n").append (Localization.debug_export_white_log ()).append_c ('\n');
-        append_log_localized (b, white_turn_log);
+        append_log_localized (b, white_turn_log, CheckerColor.WHITE);
         b.append ("\n").append (Localization.debug_export_black_log ()).append_c ('\n');
-        append_log_localized (b, black_turn_log);
+        append_log_localized (b, black_turn_log, CheckerColor.BLACK);
         b.append ("\n").append (Localization.debug_export_settings ()).append_c ('\n');
         b.append (Localization.settings_speed_label ()).append (": ")
          .append (SettingsStore.shared ().game_speed == GameSpeed.FAST
@@ -2630,10 +2799,11 @@ public class GameSession : Object {
         return b.str;
     }
 
-    private void append_log_localized (StringBuilder b, TurnRecord[] log) {
+    private void append_log_localized (StringBuilder b, TurnRecord[] log, CheckerColor color = CheckerColor.WHITE) {
         foreach (var record in log) {
             b.append ("%d. [%d:%d] ".printf (record.turn_number, record.dice_roll.die1, record.dice_roll.die2));
-            b.append (record.move_strings.length == 0 ? Localization.debug_export_none () : string.joinv (", ", record.move_strings));
+            var moves = record.export_moves_string (color, this, false);
+            b.append (moves == "" ? Localization.debug_export_none () : moves);
             b.append_c ('\n');
         }
     }
@@ -2714,6 +2884,7 @@ public class GameSession : Object {
         data.black_player_name = black_player_name;
         data.is_black_computer = is_black_computer;
         data.is_auto_playing_black = is_auto_playing_black;
+        data.board_side = SettingsStore.shared ().board_side.to_raw ();
         data.checkers_moved_from_head_this_turn = checkers_moved_from_head_this_turn;
         data.current_turn_record = current_turn_record;
         data.move_history = move_history;
@@ -2738,6 +2909,21 @@ public class GameSession : Object {
             ? new DiceRoll (data.white_rolloff_die1, data.white_rolloff_die2) : null;
         black_rolloff_dice = (data.black_rolloff_die1 > 0 && data.black_rolloff_die2 > 0)
             ? new DiceRoll (data.black_rolloff_die1, data.black_rolloff_die2) : null;
+        if (data.is_first_move_rolloff_in_progress) {
+            if (white_rolloff_dice != null && black_rolloff_dice != null) {
+                var w_sum = white_rolloff_dice.die1 + white_rolloff_dice.die2;
+                var b_sum = black_rolloff_dice.die1 + black_rolloff_dice.die2;
+                if (w_sum == b_sum) {
+                    rolloff_active_player = null;
+                } else {
+                    rolloff_active_player = w_sum > b_sum ? CheckerColor.WHITE : CheckerColor.BLACK;
+                }
+            } else {
+                rolloff_active_player = (white_rolloff_dice == null) ? CheckerColor.WHITE : CheckerColor.BLACK;
+            }
+        } else {
+            rolloff_active_player = null;
+        }
         rolloff_animation_id = 0;
         rolling_die_index = -1;
         is_rolling = false;
@@ -2759,6 +2945,11 @@ public class GameSession : Object {
         black_total_dice_sum = data.black_total_dice_sum;
         white_burned_dice_sum = data.white_burned_dice_sum;
         black_burned_dice_sum = data.black_burned_dice_sum;
+
+        SettingsStore.shared ().set_opponent (data.is_black_computer ? Opponent.COMPUTER : Opponent.HUMAN);
+        if (data.board_side != null && data.board_side != "") {
+            SettingsStore.shared ().set_board_side (BoardSide.from_raw (data.board_side));
+        }
 
         white_player_name = data.white_player_name;
         black_player_name = data.black_player_name;
@@ -2858,7 +3049,18 @@ public class GameSession : Object {
         if (is_game_over) {
             status_message = (current_player == CheckerColor.WHITE) ? Localization.victory_white () : Localization.victory_black ();
         } else if (is_first_move_rolloff_in_progress) {
-            status_message = Localization.status_rolloff_prompt ();
+            if (white_rolloff_dice != null && black_rolloff_dice != null) {
+                var w_sum = white_rolloff_dice.die1 + white_rolloff_dice.die2;
+                var b_sum = black_rolloff_dice.die1 + black_rolloff_dice.die2;
+                if (w_sum == b_sum) {
+                    status_message = Localization.status_rolloff_tie ();
+                } else {
+                    var winner = w_sum > b_sum ? CheckerColor.WHITE : CheckerColor.BLACK;
+                    status_message = Localization.status_rolloff_result (player_name (winner));
+                }
+            } else {
+                status_message = is_computer_turn ? Localization.status_rolloff_ai () : Localization.status_rolloff_prompt ();
+            }
         } else if (dice_roll == null) {
             status_message = is_computer_turn ? Localization.status_computer_moving () : Localization.status_roll_dice ();
         } else if (remaining_dice.length == 0) {
@@ -2907,6 +3109,7 @@ public class GameSession : Object {
         white_player_name = "Алексей";
         black_player_name = "Computer";
         is_first_move_rolloff_in_progress = false;
+        rolloff_active_player = null;
         is_rolling = false;
         is_animating = false;
         selected_point = null;

@@ -83,13 +83,22 @@ public class NewGameView : PopupView {
         update_opponent ();
         groups.append (SettingsSection.group (Localization.settings_opponent_label ().up (), sec1));
 
-        // СЕКЦИЯ 2: Правило розыгрыша первого хода (Roll-off)
+        // СЕКЦИЯ 2: Настройки партии (розыгрыш первого хода и сторона доски)
         var sec2 = new SettingsSection ();
         var sw = new Gtk.Switch ();
         sw.active = s.is_first_move_rolloff_enabled;
         sw.notify["active"].connect (() => { s.set_is_first_move_rolloff_enabled (sw.active); });
         sec2.add_row (new SettingsRow ("dice.fill", MacColors.TEAL, Localization.settings_first_move_rolloff_label (), sw));
-        groups.append (SettingsSection.group (Localization.settings_first_move_rolloff_label ().up (), sec2));
+
+        var side_seg = new Segmented (new string[] {
+            Localization.settings_board_side_left (), Localization.settings_board_side_right ()
+        }, s.board_side == BoardSide.RIGHT ? 1 : 0, 180);
+        side_seg.changed.connect ((i) => {
+            s.set_board_side (i == 1 ? BoardSide.RIGHT : BoardSide.LEFT);
+        });
+        sec2.add_row (new SettingsRow ("rectangle.lefthalf.inset.filled", MacColors.INDIGO, Localization.settings_board_side_label (), side_seg));
+
+        groups.append (SettingsSection.group (Localization.settings_game_settings_section ().up (), sec2));
         content.append (groups);
 
         // Кнопка запуска партии
@@ -136,11 +145,8 @@ public class ConfirmNewGameView : PopupView {
         base (420);
         flasher = new Flasher (this);
 
-        var title = UiKit.label (Localization.confirm_new_game_title (), "lb-title2", 0.5f);
-        title.add_css_class ("lb-popup-header");
-        title.wrap = true;
-        title.justify = Gtk.Justification.CENTER;
-        append (title);
+        var header = new PopupHeader (Localization.confirm_new_game_title (), false);
+        append (header);
         append (new Gtk.Separator (Gtk.Orientation.HORIZONTAL));
 
         var msg = UiKit.label (Localization.confirm_new_game_message (session.player_name (session.current_player)),

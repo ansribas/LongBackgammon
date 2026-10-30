@@ -84,6 +84,22 @@ int main (string[] args) {
         return 1;
     }
 
+    // Тест анимации смены стороны доски на старте (без сохранения)
+    var orig_side = SettingsStore.shared ().board_side;
+    SettingsStore.shared ().set_board_side (BoardSide.RIGHT);
+    var s_fresh = new GameSession ();
+    var v_fresh = new BoardView (s_fresh);
+    assert (v_fresh != null);
+    // Меняем сторону на LEFT — все 30 фишек должны начать анимацию перемещения
+    SettingsStore.shared ().set_board_side (BoardSide.LEFT);
+    var moves_count = v_fresh.active_moves_count ();
+    stderr.printf ("side_switch active_moves=%d\n", moves_count);
+    if (moves_count != 30) {
+        stderr.printf ("FAIL: expected 30 active moves during board side switch, got %d\n", moves_count);
+        return 1;
+    }
+    SettingsStore.shared ().set_board_side (orig_side);
+
     stderr.printf ("ui_test OK\n");
     return 0;
 }

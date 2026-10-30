@@ -209,6 +209,25 @@ public enum AIDifficulty {
     }
 }
 
+public enum BoardSide {
+    LEFT,
+    RIGHT;
+
+    public string to_raw () {
+        return (this == BoardSide.LEFT) ? "left" : "right";
+    }
+
+    public static BoardSide from_raw (string raw) {
+        return (raw == "left") ? BoardSide.LEFT : BoardSide.RIGHT;
+    }
+
+    public string display_name (Language? custom_lang = null) {
+        return (this == BoardSide.LEFT)
+            ? Localization.tr ("settingsBoardSideLeft", custom_lang)
+            : Localization.tr ("settingsBoardSideRight", custom_lang);
+    }
+}
+
 public class PlacementAnimation {
     public const double STEP_INTERVAL = 0.051;
     public const double SPRING_RESPONSE = 0.68;
@@ -378,7 +397,11 @@ public class Localization {
     public static string settings_section_appearance () { return tr ("settingsSectionAppearance"); }
     public static string settings_section_controls ()   { return tr ("settingsSectionControls"); }
     public static string settings_section_debug ()      { return tr ("settingsSectionDebug"); }
+    public static string settings_game_settings_section () { return tr ("settingsGameSettingsSection"); }
     public static string settings_first_move_rolloff_label () { return tr ("settingsFirstMoveRollOffLabel"); }
+    public static string settings_board_side_label ()   { return tr ("settingsBoardSideLabel"); }
+    public static string settings_board_side_left ()    { return tr ("settingsBoardSideLeft"); }
+    public static string settings_board_side_right ()   { return tr ("settingsBoardSideRight"); }
     public static string settings_opponent_label () { return tr ("settingsOpponentLabel"); }
     public static string settings_opponent_computer () { return tr ("settingsOpponentComputer"); }
     public static string settings_opponent_human () { return tr ("settingsOpponentHuman"); }

@@ -472,7 +472,51 @@ public class LogicTestSuite {
         var status = loc.string_for_key ("statusRollOffAI", language);
         assert_true (status != "" && status != "statusRollOffAI",
                      "translated roll-off status: " + language.to_raw ());
+
+        var game_settings = loc.string_for_key ("settingsGameSettingsSection", language);
+        assert_true (game_settings != "" && game_settings != "settingsGameSettingsSection",
+                     "translated settingsGameSettingsSection: " + language.to_raw ());
+        var side_label = loc.string_for_key ("settingsBoardSideLabel", language);
+        assert_true (side_label != "" && side_label != "settingsBoardSideLabel",
+                     "translated settingsBoardSideLabel: " + language.to_raw ());
+        var side_left = BoardSide.LEFT.display_name (language);
+        assert_true (side_left != "" && side_left != "settingsBoardSideLeft",
+                     "translated settingsBoardSideLeft: " + language.to_raw ());
+        var side_right = BoardSide.RIGHT.display_name (language);
+        assert_true (side_right != "" && side_right != "settingsBoardSideRight",
+                     "translated settingsBoardSideRight: " + language.to_raw ());
     }
+
+    // Проверка визуального переворота доски (BoardSide.RIGHT vs BoardSide.LEFT)
+    assert_true (BoardLayout.visual_point (BoardPoint.P24, BoardSide.RIGHT) == BoardPoint.P24, "visual_point P24 right");
+    assert_true (BoardLayout.visual_point (BoardPoint.P24, BoardSide.LEFT) == BoardPoint.P12, "visual_point P24 left");
+    assert_true (BoardLayout.visual_point (BoardPoint.P12, BoardSide.LEFT) == BoardPoint.P24, "visual_point P12 left");
+    assert_true (BoardLayout.visual_point (BoardPoint.P1, BoardSide.LEFT) == BoardPoint.P13, "visual_point P1 left");
+    assert_true (BoardLayout.visual_point (BoardPoint.P13, BoardSide.LEFT) == BoardPoint.P1, "visual_point P13 left");
+
+    assert_true (BoardPoint.P24.is_top_half_for (BoardSide.RIGHT), "P24 top half on right");
+    assert_true (!BoardPoint.P24.is_top_half_for (BoardSide.LEFT), "P24 bottom half on left");
+    assert_equal_int (BoardPoint.P24.stack_direction_for (BoardSide.RIGHT), 1, "P24 stack dir right");
+    assert_equal_int (BoardPoint.P24.stack_direction_for (BoardSide.LEFT), -1, "P24 stack dir left");
+
+    assert_true (BoardLayout.is_player_on_right_side (CheckerColor.WHITE, BoardSide.RIGHT), "White on right when RIGHT");
+    assert_true (!BoardLayout.is_player_on_right_side (CheckerColor.BLACK, BoardSide.RIGHT), "Black on left when RIGHT");
+    assert_true (!BoardLayout.is_player_on_right_side (CheckerColor.WHITE, BoardSide.LEFT), "White on left when LEFT");
+    assert_true (BoardLayout.is_player_on_right_side (CheckerColor.BLACK, BoardSide.LEFT), "Black on right when LEFT");
+
+    double rx, ry, lx, ly;
+    BoardLayout.bear_off_position (CheckerColor.WHITE, 0, 1.0, out rx, out ry, BoardSide.RIGHT);
+    BoardLayout.bear_off_position (CheckerColor.BLACK, 0, 1.0, out lx, out ly, BoardSide.LEFT);
+    assert_true (Math.fabs (rx - lx) < 1e-6 && Math.fabs (ry - ly) < 1e-6, "bear_off right side matches for White(RIGHT) and Black(LEFT)");
+
+    // Проверка инвариантности игровой логики и ИИ от выбранной стороны доски
+    var saved_side = SettingsStore.shared ().board_side;
+    SettingsStore.shared ().set_board_side (BoardSide.RIGHT);
+    var moves_right = MoveValidator.all_moves (init_board, CheckerColor.WHITE, new int[] { 6, 5 }, 0, false, false);
+    SettingsStore.shared ().set_board_side (BoardSide.LEFT);
+    var moves_left = MoveValidator.all_moves (init_board, CheckerColor.WHITE, new int[] { 6, 5 }, 0, false, false);
+    SettingsStore.shared ().set_board_side (saved_side);
+    assert_equal_int (moves_right.length, moves_left.length, "MoveValidator count invariant to board_side");
 
     // =========================================================================
     // SUITE 8: AdvancedAITests

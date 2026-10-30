@@ -23,7 +23,7 @@ public class PanelStyle {
         css_loaded = true;
         var css = new Gtk.CssProvider ();
         css.load_from_string (
-            ".lb-card { background-color: var(--card-bg-color, @card_bg_color); border-radius: 12px;" +
+            ".lb-card { background-color: var(--popover-bg-color, @popover_bg_color); border-radius: 12px;" +
             "  border: 1px solid alpha(currentColor, 0.12); box-shadow: 0 4px 10px alpha(black, 0.12); }" +
             ".lb-card-dice { border: none; }" +
             ".lb-header-strip { background-color: alpha(currentColor, 0.06); border-bottom: 1px solid alpha(currentColor, 0.08); transition: background-color 250ms ease-in-out, border-color 250ms ease-in-out; }" +
@@ -224,14 +224,15 @@ public class PanelStyle {
 public class PlayerPanel : Gtk.Box {
     public GameSession session { get; construct set; }
     public CheckerColor color { get; construct set; }
+    public double current_board_width = 600.0;
 
     private Gtk.Overlay overlay;
     private DiceCardBox dice_card;
+    private DiceCardMover dice_card_mover;
     private Gtk.Box header_box;
     private Gtk.Label name_label;
     private PlayerDiceZone dice_zone;
-    private Gtk.Label doubled_label;
-    private Gtk.Label status_label;
+    private StatusMessagePlate status_plate;
     private PlayerScoreBlock score_block;
     private Gtk.Box log_card;
     private Gtk.ScrolledWindow log_scroller;
@@ -258,6 +259,7 @@ public class PlayerPanel : Gtk.Box {
 
     // Анимации перелёта кубиков между верхней зоной и логом
     private FlyingDie[] flying = new FlyingDie[0];
+    private int[] flown_rolloff_ids = new int[0];
     private int[] pending_skipped = new int[0];
     private int[] pending_fly = new int[0];
     private int[] pending_unfly = new int[0];
@@ -267,6 +269,12 @@ public class PlayerPanel : Gtk.Box {
     private int64[] skipped_cross_started_us = new int64[4];
     private uint skipped_cross_tick = 0;
 
+    // Анимация обмена местами верхней карточки игрока при перевороте доски
+    private BoardSide last_board_side = SettingsStore.shared ().board_side;
+    private double swap_start_offset = 0.0;
+    private int64 swap_start_us = 0;
+    private uint swap_tick_id = 0;
+
     public PlayerPanel (GameSession session, CheckerColor color) {
         Object (session: session, color: color, orientation: Gtk.Orientation.VERTICAL, spacing: 0);
     }
@@ -274,9 +282,11 @@ public class PlayerPanel : Gtk.Box {
     construct {
         PanelStyle.ensure_css ();
         set_vexpand (true);
+        overflow = Gtk.Overflow.VISIBLE;
 
         overlay = new Gtk.Overlay ();
         overlay.set_vexpand (true);
+        overlay.overflow = Gtk.Overflow.VISIBLE;
         append (overlay);
 
         var content = new Gtk.Box (Gtk.Orientation.VERTICAL, 7);
@@ -285,6 +295,7 @@ public class PlayerPanel : Gtk.Box {
         content.margin_start = 10;
         content.margin_end = 10;
         content.set_vexpand (true);
+        content.overflow = Gtk.Overflow.VISIBLE;
         overlay.set_child (content);
 
         // 1. Карточка кубиков и текущего статуса
@@ -308,36 +319,10 @@ public class PlayerPanel : Gtk.Box {
         dice_zone.margin_bottom = 6;
         dice_card.append (dice_zone);
 
-        var strip = new Gtk.Box (Gtk.Orientation.VERTICAL, 1);
-        strip.add_css_class ("lb-status-strip");
-        strip.set_size_request (-1, 48);
-        strip.vexpand = false;
-        var strip_inner = new Gtk.Box (Gtk.Orientation.VERTICAL, 2);
-        strip_inner.valign = Gtk.Align.CENTER;
-        strip_inner.vexpand = true;
-        strip_inner.margin_top = 2;
-        strip_inner.margin_bottom = 2;
-        strip_inner.margin_start = 6;
-        strip_inner.margin_end = 6;
-        doubled_label = new Gtk.Label (Localization.status_double_doubled ());
-        doubled_label.add_css_class ("lb-caption2-bold");
-        doubled_label.add_css_class ("lb-orange");
-        doubled_label.wrap = true;
-        doubled_label.wrap_mode = Pango.WrapMode.WORD;
-        doubled_label.justify = Gtk.Justification.CENTER;
-        doubled_label.valign = Gtk.Align.CENTER;
-        status_label = new Gtk.Label ("");
-        status_label.add_css_class ("lb-caption-bold");
-        status_label.wrap = true;
-        status_label.wrap_mode = Pango.WrapMode.WORD;
-        status_label.justify = Gtk.Justification.CENTER;
-        status_label.valign = Gtk.Align.CENTER;
-        status_label.vexpand = true;
-        strip_inner.append (doubled_label);
-        strip_inner.append (status_label);
-        strip.append (strip_inner);
-        dice_card.append (strip);
-        content.append (dice_card);
+        status_plate = new StatusMessagePlate ();
+        dice_card.append (status_plate);
+        dice_card_mover = new DiceCardMover (dice_card);
+        content.append (dice_card_mover);
 
         // 2. Карточка счёта и прогресса
         score_block = new PlayerScoreBlock (this);
@@ -397,10 +382,46 @@ public class PlayerPanel : Gtk.Box {
 
         session.changed.connect (on_session_changed);
         SettingsStore.shared ().changed.connect (() => {
+            var cur_side = SettingsStore.shared ().board_side;
+            if (cur_side != last_board_side) {
+                last_board_side = cur_side;
+                start_name_swap_animation ();
+            }
             log_signature = "";
             on_session_changed ();
         });
         on_session_changed ();
+    }
+
+    private void start_name_swap_animation () {
+        var pw = get_width () > 0 ? (double) get_width () : (double) (GameConfig.CONTROL_PANEL_WIDTH / 2);
+        var bw = current_board_width > 0 ? current_board_width : 600.0;
+        var swap_distance = bw + pw;
+        var is_left_panel = !BoardLayout.is_player_on_right_side (color);
+        swap_start_offset = is_left_panel ? swap_distance : -swap_distance;
+        dice_card_mover.offset_x = swap_start_offset;
+        swap_start_us = frame_now_us ();
+        if (swap_tick_id == 0) {
+            swap_tick_id = add_tick_callback (on_swap_tick);
+        }
+        dice_card_mover.queue_draw ();
+    }
+
+    private bool on_swap_tick (Gtk.Widget w, Gdk.FrameClock clock) {
+        var ft = clock.get_frame_time ();
+        var now = ft > 0 ? ft : GLib.get_monotonic_time ();
+        var elapsed = double.max (0.0, (now - swap_start_us) / 1000000.0);
+        var total_duration = 1.00;
+        if (elapsed >= total_duration) {
+            dice_card_mover.offset_x = 0.0;
+            dice_card_mover.queue_draw ();
+            swap_tick_id = 0;
+            return GLib.Source.REMOVE;
+        }
+        var p = PanelStyle.ease_in_out (elapsed / total_duration);
+        dice_card_mover.offset_x = swap_start_offset * (1.0 - p);
+        dice_card_mover.queue_draw ();
+        return GLib.Source.CONTINUE;
     }
 
     /** Вычисляет координаты центров слотов кубиков в локальной системе координат PlayerPanel. */
@@ -423,6 +444,9 @@ public class PlayerPanel : Gtk.Box {
 
     /** Проверяет, активна ли панель текущего игрока. */
     public bool is_active () {
+        if (!session.is_game_in_progress) {
+            return false;
+        }
         if (session.is_first_move_rolloff_in_progress) {
             if (color == CheckerColor.WHITE && session.white_rolloff_dice != null) {
                 return true;
@@ -430,22 +454,31 @@ public class PlayerPanel : Gtk.Box {
             if (color == CheckerColor.BLACK && session.black_rolloff_dice != null) {
                 return true;
             }
-            return session.white_rolloff_dice == null ? color == CheckerColor.WHITE : color == CheckerColor.BLACK;
+            if (session.rolloff_active_player != null) {
+                return session.rolloff_active_player == color;
+            }
+            return true;
         }
         return session.current_player == color;
     }
 
     private bool is_my_turn_to_act () {
-        if (session.is_first_move_rolloff_in_progress) {
-            if (session.white_rolloff_dice == null) {
-                return color == CheckerColor.WHITE;
-            }
-            if (session.black_rolloff_dice == null) {
-                return color == CheckerColor.BLACK;
-            }
+        if (!session.is_game_in_progress) {
             return false;
         }
+        if (session.is_first_move_rolloff_in_progress) {
+            return session.rolloff_active_player == color;
+        }
         return session.current_player == color;
+    }
+
+    public bool has_flown_rolloff (int id) {
+        foreach (var f in flown_rolloff_ids) {
+            if (f == id) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public bool is_flying (int id) {
@@ -594,10 +627,20 @@ public class PlayerPanel : Gtk.Box {
             name_label.add_css_class ("lb-secondary");
         }
 
-        doubled_label.label = Localization.status_double_doubled ();
-        doubled_label.visible = session.is_doubling && active;
-        status_label.visible = !session.is_doubling || !my_turn;
-        status_label.label = (my_turn && session.is_game_started) ? session.status_message : "";
+        string current_status_msg = "";
+        if (session.is_game_in_progress) {
+            if (session.is_first_move_rolloff_in_progress && session.rolloff_active_player == null) {
+                current_status_msg = session.status_message;
+            } else if (my_turn) {
+                if (!session.is_computer_turn && session.is_rolling) {
+                    current_status_msg = "";
+                } else {
+                    current_status_msg = session.status_message;
+                }
+            }
+        }
+        var is_doubling_for_plate = session.is_doubling && (session.dice_roll != null && session.dice_roll.is_double) && my_turn;
+        status_plate.update_state (current_status_msg, is_doubling_for_plate, active, my_turn);
         dice_zone.queue_draw ();
 
         // При броске костей автоматически прокручиваем лог к началу
@@ -616,13 +659,18 @@ public class PlayerPanel : Gtk.Box {
         update_footer ();
 
         handle_dice_state_change ();
+        var my_rd = color == CheckerColor.WHITE ? session.white_rolloff_dice : session.black_rolloff_dice;
+        if (my_rd == null && flown_rolloff_ids.length > 0) {
+            flown_rolloff_ids = new int[0];
+        }
         if (session.rolloff_animation_id != last_rolloff_anim_id) {
             last_rolloff_anim_id = session.rolloff_animation_id;
             if (session.rolloff_animation_id != 0) {
-                var dice = color == CheckerColor.WHITE ? session.white_rolloff_dice : session.black_rolloff_dice;
-                if (dice != null) {
-                    animate_rolloff_dice_to_log (dice);
+                if (my_rd != null) {
+                    animate_rolloff_dice_to_log (my_rd);
                 }
+            } else {
+                flown_rolloff_ids = new int[0];
             }
         }
         if (flying.length > 0) {
@@ -817,6 +865,9 @@ public class PlayerPanel : Gtk.Box {
         for (var idx = 0; idx < 2; idx++) {
             var fly_id = idx == 0 ? 100 : 101;
             var val = values[idx];
+            if (!has_flown_rolloff (fly_id)) {
+                flown_rolloff_ids += fly_id;
+            }
             if (idx == 0) {
                 start_flying (fly_id, val, true, false);
             } else {
@@ -1138,6 +1189,239 @@ public class PlayerPanel : Gtk.Box {
             }
             cr.restore ();
         }
+    }
+}
+
+/**
+ * Нижняя плашка со статусом текущего хода и удвоения куша (аналог StatusMessagePlateView в Swift):
+ * плавная смена и затухание сообщений (0.25 с easeInOut), световая вспышка (0.38 с easeOut)
+ * и анимация появления индикатора удвоения куша.
+ */
+private class StatusMessagePlate : Gtk.DrawingArea {
+    private string current_msg = "";
+    private string prev_msg = "";
+    private double msg_progress = 1.0;
+    private double prev_start_alpha = 0.0;
+    private int64 msg_start_us = 0;
+
+    private int64 flash_start_us = 0;
+    private double flash_opacity = 0.0;
+
+    private bool target_doubling = false;
+    private double doubling_progress = 0.0;
+    private double doubling_start_val = 0.0;
+    private int64 doubling_start_us = 0;
+
+    private bool initialized = false;
+    private uint tick_id = 0;
+
+    public StatusMessagePlate () {
+        add_css_class ("lb-status-strip");
+        set_content_height (48);
+        set_size_request (-1, 48);
+        vexpand = false;
+        hexpand = true;
+        set_draw_func (draw_cb);
+    }
+
+    private int64 now_us () {
+        var fc = get_frame_clock ();
+        if (fc != null) {
+            var ft = fc.get_frame_time ();
+            if (ft > 0) {
+                return ft;
+            }
+        }
+        return GLib.get_monotonic_time ();
+    }
+
+    public void update_state (string message, bool is_doubling, bool is_active, bool is_current_turn) {
+        var want_doubling = is_doubling && is_active;
+        var effective_msg = (!is_doubling || !is_current_turn) ? message : "";
+        var now = now_us ();
+
+        if (!initialized) {
+            initialized = true;
+            current_msg = effective_msg;
+            prev_msg = "";
+            msg_progress = 1.0;
+            target_doubling = want_doubling;
+            doubling_progress = want_doubling ? 1.0 : 0.0;
+            if (effective_msg != "") {
+                flash_opacity = 1.0;
+                flash_start_us = now;
+                ensure_tick ();
+            }
+            queue_draw ();
+            return;
+        }
+
+        var need_tick = false;
+        if (effective_msg != current_msg) {
+            var cur_ease = PanelStyle.ease_in_out (msg_progress);
+            prev_msg = current_msg;
+            prev_start_alpha = cur_ease;
+            current_msg = effective_msg;
+            msg_progress = 0.0;
+            msg_start_us = now;
+            if (effective_msg != "") {
+                flash_opacity = 1.0;
+                flash_start_us = now;
+            } else {
+                flash_opacity = 0.0;
+                flash_start_us = 0;
+            }
+            need_tick = true;
+        }
+
+        if (want_doubling != target_doubling) {
+            target_doubling = want_doubling;
+            doubling_start_val = doubling_progress;
+            doubling_start_us = now;
+            need_tick = true;
+        }
+
+        if (need_tick) {
+            ensure_tick ();
+        }
+        queue_draw ();
+    }
+
+    private void ensure_tick () {
+        if (tick_id == 0) {
+            tick_id = add_tick_callback (on_tick);
+        }
+    }
+
+    private bool on_tick (Gtk.Widget w, Gdk.FrameClock clock) {
+        var ft = clock.get_frame_time ();
+        var now = ft > 0 ? ft : GLib.get_monotonic_time ();
+        var active_anim = false;
+
+        if (msg_progress < 1.0) {
+            var elapsed = double.max (0.0, (now - msg_start_us) / 1000000.0);
+            msg_progress = double.min (1.0, elapsed / 0.25);
+            if (msg_progress < 1.0) {
+                active_anim = true;
+            } else {
+                prev_msg = "";
+                prev_start_alpha = 0.0;
+            }
+        }
+
+        if (flash_start_us > 0) {
+            var elapsed = double.max (0.0, (now - flash_start_us) / 1000000.0);
+            if (elapsed < 0.38) {
+                var t = elapsed / 0.38;
+                flash_opacity = 1.0 - UiKit.ease_out (t);
+                active_anim = true;
+            } else {
+                flash_opacity = 0.0;
+                flash_start_us = 0;
+            }
+        }
+
+        var target_d = target_doubling ? 1.0 : 0.0;
+        if (Math.fabs (doubling_progress - target_d) > 1e-4) {
+            var elapsed = double.max (0.0, (now - doubling_start_us) / 1000000.0);
+            var p = double.min (1.0, elapsed / 0.25);
+            var ease = PanelStyle.ease_in_out (p);
+            doubling_progress = doubling_start_val + (target_d - doubling_start_val) * ease;
+            if (p < 1.0) {
+                active_anim = true;
+            } else {
+                doubling_progress = target_d;
+            }
+        }
+
+        queue_draw ();
+        if (!active_anim) {
+            tick_id = 0;
+            return GLib.Source.REMOVE;
+        }
+        return GLib.Source.CONTINUE;
+    }
+
+    private void draw_cb (Gtk.DrawingArea area, Cairo.Context cr, int width, int height) {
+        if (doubling_progress > 0.001) {
+            draw_doubling_text (cr, width, height, doubling_progress);
+        }
+
+        var t = PanelStyle.ease_in_out (msg_progress);
+        if (prev_msg != "" && t < 1.0) {
+            var prev_a = prev_start_alpha * (1.0 - t);
+            draw_status_text (cr, width, height, prev_msg, prev_a, 0.0);
+        }
+        if (current_msg != "" && t > 0.001) {
+            draw_status_text (cr, width, height, current_msg, t, flash_opacity);
+        }
+    }
+
+    private void draw_doubling_text (Cairo.Context cr, int width, int height, double progress) {
+        var text = Localization.status_double_doubled ();
+        if (text == "") {
+            return;
+        }
+        var avail_w = int.max (20, width - 16);
+        var layout = create_pango_layout (text);
+        var fd = new Pango.FontDescription ();
+        fd.set_family ("Sans");
+        fd.set_weight (Pango.Weight.BOLD);
+        fd.set_absolute_size (10.0 * Pango.SCALE);
+        layout.set_font_description (fd);
+        layout.set_width (avail_w * Pango.SCALE);
+        layout.set_wrap (Pango.WrapMode.WORD_CHAR);
+        layout.set_alignment (Pango.Alignment.CENTER);
+
+        int tw, th;
+        layout.get_pixel_size (out tw, out th);
+        var x = (width - avail_w) / 2.0;
+        var y = (height - th) / 2.0 - 8.0 * (1.0 - progress);
+
+        cr.set_source_rgba (1.0, 0.584, 0.0, progress);
+        cr.move_to (x, y);
+        Pango.cairo_show_layout (cr, layout);
+    }
+
+    private void draw_status_text (Cairo.Context cr, int width, int height, string text, double alpha, double flash) {
+        if (text == "" || alpha <= 0.001) {
+            return;
+        }
+        var avail_w = int.max (20, width - 16);
+        var layout = create_pango_layout (text);
+        var fd = new Pango.FontDescription ();
+        fd.set_family ("Sans");
+        fd.set_weight (Pango.Weight.BOLD);
+        fd.set_absolute_size (11.0 * Pango.SCALE);
+        layout.set_font_description (fd);
+        layout.set_width (avail_w * Pango.SCALE);
+        layout.set_wrap (Pango.WrapMode.WORD_CHAR);
+        layout.set_alignment (Pango.Alignment.CENTER);
+
+        int tw, th;
+        layout.get_pixel_size (out tw, out th);
+        var x = (width - avail_w) / 2.0;
+        var y = (height - th) / 2.0;
+
+        if (flash > 0.01) {
+            var glow_a = alpha * flash * 0.85;
+            double[] offsets_x = { -1.5, 1.5, 0.0, 0.0, -1.0, 1.0, -1.0, 1.0 };
+            double[] offsets_y = { 0.0, 0.0, -1.5, 1.5, -1.0, -1.0, 1.0, 1.0 };
+            cr.set_source_rgba (1.0, 1.0, 1.0, glow_a / 8.0);
+            for (var i = 0; i < 8; i++) {
+                cr.move_to (x + offsets_x[i] * flash, y + offsets_y[i] * flash);
+                Pango.cairo_show_layout (cr, layout);
+            }
+        }
+
+        var fg = PanelStyle.fg (this);
+        var boost = double.min (1.0, flash * 0.45);
+        var r = fg.red + (1.0 - fg.red) * boost;
+        var g = fg.green + (1.0 - fg.green) * boost;
+        var b = fg.blue + (1.0 - fg.blue) * boost;
+        cr.set_source_rgba (r, g, b, alpha);
+        cr.move_to (x, y);
+        Pango.cairo_show_layout (cr, layout);
     }
 }
 

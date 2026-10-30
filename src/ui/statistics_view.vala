@@ -14,6 +14,8 @@ public class StatisticsView : PopupView {
     private string? selected_player = null;
     private Gtk.Box body;
     private Gtk.Button reset_button;
+    private Gtk.Revealer reset_revealer;
+    private int reset_click_count = 0;
     private ulong stats_handler = 0;
 
     public StatisticsView () {
@@ -23,6 +25,16 @@ public class StatisticsView : PopupView {
 
         var header = new PopupHeader (Localization.stats_title (), true);
         header.close_button.clicked.connect (() => { close_requested (); });
+        var title_click = new Gtk.GestureClick ();
+        title_click.released.connect (() => {
+            if (reset_click_count < 10) {
+                reset_click_count++;
+                if (reset_click_count >= 10) {
+                    reset_revealer.reveal_child = true;
+                }
+            }
+        });
+        header.title_label.add_controller (title_click);
         append (header);
         append (new Gtk.Separator (Gtk.Orientation.HORIZONTAL));
 
@@ -31,14 +43,20 @@ public class StatisticsView : PopupView {
         append (body);
 
         append (new Gtk.Separator (Gtk.Orientation.HORIZONTAL));
-        var buttons = new Gtk.Box (Gtk.Orientation.HORIZONTAL, 12);
+        var buttons = new Gtk.Box (Gtk.Orientation.HORIZONTAL, 0);
         buttons.halign = Gtk.Align.CENTER;
         buttons.margin_top = 20;
         buttons.margin_bottom = 20;
         reset_button = UiKit.button (Localization.stats_reset_button (), "lb-btn-red");
         reset_button.add_css_class ("lb-btn-narrow");
+        reset_button.margin_end = 12;
         reset_button.clicked.connect (confirm_reset);
-        buttons.append (reset_button);
+        reset_revealer = new Gtk.Revealer ();
+        reset_revealer.transition_type = Gtk.RevealerTransitionType.SLIDE_RIGHT;
+        reset_revealer.transition_duration = 200;
+        reset_revealer.reveal_child = false;
+        reset_revealer.set_child (reset_button);
+        buttons.append (reset_revealer);
         var close = UiKit.button (Localization.settings_close_button (), "lb-btn-blue");
         close.clicked.connect (() => { close_requested (); });
         buttons.append (close);

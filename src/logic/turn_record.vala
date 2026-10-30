@@ -68,6 +68,7 @@ public class TurnRecord : Object {
     public LogMove[] moves;
     public bool is_rolloff;
     public bool is_rolloff_winner = false;
+    public CheckerColor? rolloff_winner = null;
     public TurnDie[] dice = new TurnDie[0];
 
     /** Глубокая копия (для снимков отмены хода). */
@@ -83,9 +84,91 @@ public class TurnRecord : Object {
         }
         r.is_rolloff = is_rolloff;
         r.is_rolloff_winner = is_rolloff_winner;
+        r.rolloff_winner = rolloff_winner;
         r.dice = TurnDie.clone_array (dice);
         r.id = id;   // Сохраняем оригинальный идентификатор записи для связки с UI
         return r;
+    }
+
+    /** Является ли запись розыгрыша ничьей. */
+    public bool is_rolloff_tie () {
+        return is_rolloff && rolloff_winner == null && !is_rolloff_winner;
+    }
+
+    /** Динамически локализованная строка хода для всплывающей подсказки. */
+    public string formatted_message (CheckerColor color, GameSession session) {
+        if (is_rolloff) {
+            CheckerColor? winner = rolloff_winner != null ? rolloff_winner : (is_rolloff_winner ? (CheckerColor?) color : null);
+            if (winner != null) {
+                return Localization.status_rolloff_result (session.player_name (winner));
+            }
+            return Localization.status_rolloff_tie_label ();
+        }
+        var localized_moves = export_moves_string (color, session, false);
+        return localized_moves == "" ? "" : "%d. %s".printf (turn_number, localized_moves);
+    }
+
+    /** Текстовое представление шагов записи для экспорта лога (локализованное или на английском). */
+    public string export_moves_string (CheckerColor color, GameSession session, bool force_english = false) {
+        if (is_rolloff) {
+            CheckerColor? winner = rolloff_winner != null ? rolloff_winner : (is_rolloff_winner ? (CheckerColor?) color : null);
+            if (winner != null) {
+                if (force_english) {
+                    return "%s starts first!".printf (session.english_player_name (winner));
+                }
+                return Localization.status_rolloff_result (session.player_name (winner));
+            }
+            return force_english ? "Tie" : Localization.status_rolloff_tie_label ();
+        }
+
+        var parts = new string[0];
+        for (var i = 0; i < moves.length; i++) {
+            var move = moves[i];
+            if (move.steps.length == 0) {
+                if (i < move_strings.length) {
+                    parts += move_strings[i];
+                }
+            } else if (move.steps.length == 1) {
+                var step = move.steps[0];
+                parts += "%d-%s".printf (step.from.raw_value (), step.to == null ? "^" : step.to.raw_value ().to_string ());
+            } else {
+                var sb = new StringBuilder (move.steps[0].from.raw_value ().to_string ());
+                foreach (var s in move.steps) {
+                    sb.append_c ('-');
+                    sb.append (s.to == null ? "^" : s.to.raw_value ().to_string ());
+                }
+                parts += sb.str;
+            }
+        }
+        if (parts.length == 0 && move_strings.length > 0) {
+            foreach (var str in move_strings) {
+                var t = str.strip ();
+                if (!(t.has_prefix ("(") && t.has_suffix (")"))) {
+                    parts += str;
+                }
+            }
+        }
+
+        var skipped_values = new int[0];
+        foreach (var d in dice) {
+            if (d.is_skipped) {
+                skipped_values += d.value;
+            }
+        }
+        if (skipped_values.length == 0) {
+            skipped_values = extract_skipped_dice_values ();
+        }
+        if (skipped_values.length > 0) {
+            var dice_strs = new string[skipped_values.length];
+            for (var i = 0; i < skipped_values.length; i++) {
+                dice_strs[i] = skipped_values[i].to_string ();
+            }
+            var dice_str = string.joinv (", ", dice_strs);
+            var skip_text = force_english ? "(skipped %s)".printf (dice_str) : Localization.skipped_dice_status (dice_str).strip ();
+            parts += skip_text;
+        }
+
+        return string.joinv (", ", parts);
     }
 
     /** Набор кубиков для отображения в ячейке истории лога. */
@@ -125,20 +208,30 @@ public class TurnRecord : Object {
         var res = new int[0];
         foreach (var str in move_strings) {
             var t = str.strip ();
-            string? raw = null;
-            if (t.has_prefix ("(пропущено ") && t.has_suffix (")")) {
-                raw = t.substring ("(пропущено ".length, t.length - "(пропущено ".length - 1);
-            } else if (t.has_prefix ("(skipped ") && t.has_suffix (")")) {
-                raw = t.substring ("(skipped ".length, t.length - "(skipped ".length - 1);
-            }
-            if (raw != null) {
-                foreach (var part in raw.split (",")) {
-                    var v = int.parse (part.strip ());
-                    if (v > 0) {
+            if (t.has_prefix ("(") && t.has_suffix (")")) {
+                var inner = t.substring (1, t.length - 2);
+                var num_buf = new StringBuilder ();
+                for (var i = 0; i < inner.length; i++) {
+                    var c = inner[i];
+                    if (c >= '0' && c <= '9') {
+                        num_buf.append_c (c);
+                    } else if (num_buf.len > 0) {
+                        var v = int.parse (num_buf.str);
+                        if (v >= 1 && v <= 6) {
+                            res += v;
+                        }
+                        num_buf.truncate (0);
+                    }
+                }
+                if (num_buf.len > 0) {
+                    var v = int.parse (num_buf.str);
+                    if (v >= 1 && v <= 6) {
                         res += v;
                     }
                 }
-                return res;
+                if (res.length > 0) {
+                    return res;
+                }
             }
         }
         return res;

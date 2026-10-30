@@ -31,14 +31,23 @@ public enum BoardPoint {
         return (int) this;
     }
 
-    /** true, если точка на верхней половине доски (13…24). */
+    /** true, если точка находится на верхней половине доски (с учетом стороны доски). */
     public bool is_top_half () {
-        return (int) this >= 13;
+        return is_top_half_for (SettingsStore.shared ().board_side);
+    }
+
+    public bool is_top_half_for (BoardSide side_option) {
+        var is_default_top = (int) this >= 13;
+        return (side_option == BoardSide.RIGHT) ? is_default_top : !is_default_top;
     }
 
     /** Направление роста стопки: вниз (+1) наверху, вверх (−1) внизу. */
     public int stack_direction () {
-        return is_top_half () ? 1 : -1;
+        return stack_direction_for (SettingsStore.shared ().board_side);
+    }
+
+    public int stack_direction_for (BoardSide side_option) {
+        return is_top_half_for (side_option) ? 1 : -1;
     }
 }
 

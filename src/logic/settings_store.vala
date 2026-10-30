@@ -38,6 +38,7 @@ public class SettingsStore : Object {
     public ScoreDisplayMode score_display_mode;
     public bool is_sound_enabled;
     public bool is_first_move_rolloff_enabled;
+    public BoardSide board_side;
     public bool is_drag_and_drop_enabled;
     public string white_player_name;
     public string black_player_name;
@@ -119,6 +120,9 @@ public class SettingsStore : Object {
     public void set_is_first_move_rolloff_enabled (bool value) {
         if (is_first_move_rolloff_enabled != value) { is_first_move_rolloff_enabled = value; save (); changed (); }
     }
+    public void set_board_side (BoardSide value) {
+        if (board_side != value) { board_side = value; save (); changed (); }
+    }
     public void set_is_drag_and_drop_enabled (bool value) {
         if (is_drag_and_drop_enabled != value) { is_drag_and_drop_enabled = value; save (); changed (); }
     }
@@ -148,6 +152,7 @@ public class SettingsStore : Object {
         keyfile.set_string ("settings", "score_display_mode", score_display_mode.to_raw ());
         keyfile.set_boolean ("settings", "is_sound_enabled", is_sound_enabled);
         keyfile.set_boolean ("settings", "is_first_move_rolloff_enabled", is_first_move_rolloff_enabled);
+        keyfile.set_string ("settings", "board_side", board_side.to_raw ());
         keyfile.set_boolean ("settings", "is_drag_and_drop_enabled", is_drag_and_drop_enabled);
         keyfile.set_string ("settings", "white_player_name", white_player_name);
         keyfile.set_string ("settings", "black_player_name", black_player_name);
@@ -170,6 +175,7 @@ public class SettingsStore : Object {
         score_display_mode = ScoreDisplayMode.PROGRESS;
         is_sound_enabled = true;
         is_first_move_rolloff_enabled = true;
+        board_side = BoardSide.RIGHT;
         is_drag_and_drop_enabled = true;
         white_player_name = "";
         black_player_name = "";
@@ -199,6 +205,7 @@ public class SettingsStore : Object {
             if (keyfile.has_key ("settings", "score_display_mode")) score_display_mode = ScoreDisplayMode.from_raw (keyfile.get_string ("settings", "score_display_mode"));
             if (keyfile.has_key ("settings", "is_sound_enabled")) is_sound_enabled = keyfile.get_boolean ("settings", "is_sound_enabled");
             if (keyfile.has_key ("settings", "is_first_move_rolloff_enabled")) is_first_move_rolloff_enabled = keyfile.get_boolean ("settings", "is_first_move_rolloff_enabled");
+            if (keyfile.has_key ("settings", "board_side")) board_side = BoardSide.from_raw (keyfile.get_string ("settings", "board_side"));
             if (keyfile.has_key ("settings", "is_drag_and_drop_enabled")) is_drag_and_drop_enabled = keyfile.get_boolean ("settings", "is_drag_and_drop_enabled");
             if (keyfile.has_key ("settings", "white_player_name")) white_player_name = keyfile.get_string ("settings", "white_player_name");
             if (keyfile.has_key ("settings", "black_player_name")) black_player_name = keyfile.get_string ("settings", "black_player_name");

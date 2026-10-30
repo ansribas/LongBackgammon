@@ -54,6 +54,7 @@ public class SavedGameData : Object {
     public string black_player_name;
     public bool is_black_computer;
     public bool is_auto_playing_black;
+    public string? board_side;
 
     public int checkers_moved_from_head_this_turn;
 
@@ -69,6 +70,7 @@ public class SavedGameData : Object {
         black_turn_log = new TurnRecord[0];
         white_player_name = "";
         black_player_name = "";
+        board_side = null;
         current_turn_record = null;
         move_history = new MoveSnapshot[0];
     }
@@ -266,6 +268,9 @@ public class SavedGameStore : Object {
         kf.set_integer (group, prefix + "_die2", r.dice_roll.die2);
         kf.set_boolean (group, prefix + "_rolloff", r.is_rolloff);
         kf.set_boolean (group, prefix + "_rolloff_winner", r.is_rolloff_winner);
+        if (r.rolloff_winner != null) {
+            kf.set_string (group, prefix + "_rolloff_winner_color", r.rolloff_winner.to_string ());
+        }
         kf.set_string_list (group, prefix + "_strings", r.move_strings);
         kf.set_string (group, prefix + "_dice", encode_dice (r.dice));
 
@@ -295,6 +300,9 @@ public class SavedGameStore : Object {
             record.is_rolloff = kf.get_boolean (group, prefix + "_rolloff");
             if (kf.has_key (group, prefix + "_rolloff_winner")) {
                 record.is_rolloff_winner = kf.get_boolean (group, prefix + "_rolloff_winner");
+            }
+            if (kf.has_key (group, prefix + "_rolloff_winner_color")) {
+                record.rolloff_winner = CheckerColor.from_string (kf.get_string (group, prefix + "_rolloff_winner_color"));
             }
             record.move_strings = kf.get_string_list (group, prefix + "_strings");
             if (kf.has_key (group, prefix + "_dice")) {
@@ -386,6 +394,9 @@ public class SavedGameStore : Object {
         kf.set_string ("game", "black_player_name", d.black_player_name);
         kf.set_boolean ("game", "is_black_computer", d.is_black_computer);
         kf.set_boolean ("game", "is_auto_playing_black", d.is_auto_playing_black);
+        if (d.board_side != null && d.board_side != "") {
+            kf.set_string ("game", "board_side", d.board_side);
+        }
         kf.set_integer ("game", "checkers_moved_from_head", d.checkers_moved_from_head_this_turn);
 
         encode_log (kf, "white_log", d.white_turn_log);
@@ -478,6 +489,9 @@ public class SavedGameStore : Object {
             data.black_player_name = kf.get_string ("game", "black_player_name");
             data.is_black_computer = kf.get_boolean ("game", "is_black_computer");
             data.is_auto_playing_black = kf.get_boolean ("game", "is_auto_playing_black");
+            if (kf.has_key ("game", "board_side")) {
+                data.board_side = kf.get_string ("game", "board_side");
+            }
             data.checkers_moved_from_head_this_turn = kf.get_integer ("game", "checkers_moved_from_head");
         } catch (Error e) {
             warning ("Saved game decode error: %s", e.message);
@@ -485,6 +499,22 @@ public class SavedGameStore : Object {
 
         data.white_turn_log = decode_log (kf, "white_log");
         data.black_turn_log = decode_log (kf, "black_log");
+
+        var min_len = int.min (data.white_turn_log.length, data.black_turn_log.length);
+        for (var i = 0; i < min_len; i++) {
+            var w_rec = data.white_turn_log[i];
+            var b_rec = data.black_turn_log[i];
+            if (w_rec.is_rolloff && b_rec.is_rolloff && w_rec.rolloff_winner == null && b_rec.rolloff_winner == null) {
+                if (w_rec.is_rolloff_winner) {
+                    w_rec.rolloff_winner = CheckerColor.WHITE;
+                    b_rec.rolloff_winner = CheckerColor.WHITE;
+                } else if (b_rec.is_rolloff_winner) {
+                    w_rec.rolloff_winner = CheckerColor.BLACK;
+                    b_rec.rolloff_winner = CheckerColor.BLACK;
+                }
+            }
+        }
+
         data.current_turn_record = kf.has_group ("current") ? decode_record (kf, "current", "rec") : null;
 
         var history = new MoveSnapshot[0];

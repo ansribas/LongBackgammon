@@ -109,7 +109,7 @@ public class BoardDiceOverlayLayer : Gtk.Widget {
         var now = (fc != null && fc.get_frame_time () > 0) ? fc.get_frame_time () : GLib.get_monotonic_time ();
         var elapsed = (now - state.start_time_us) / 1000000.0;
         var raw_t = double.min (1.0, double.max (0.0, elapsed / state.duration));
-        var is_white = (state.color == CheckerColor.WHITE);
+        var is_right_side = BoardLayout.is_player_on_right_side (state.color);
 
         var pw = (double) (GameConfig.CONTROL_PANEL_WIDTH / 2);
         var side = (double) (width - GameConfig.CONTROL_PANEL_WIDTH);
@@ -120,7 +120,7 @@ public class BoardDiceOverlayLayer : Gtk.Widget {
         // Центр зоны остановки на доске (в координатах оверлея):
         var board_x = pw;
         var board_y = (double) (height - side) / 2.0;
-        var target_center_x = board_x + side * (is_white ? 0.71 : 0.29);
+        var target_center_x = board_x + side * (is_right_side ? 0.71 : 0.29);
         var target_center_y = board_y + side * 0.50;
 
         var target1_x = target_center_x - 38.0 + state.jitter_x1;
@@ -132,24 +132,24 @@ public class BoardDiceOverlayLayer : Gtk.Widget {
         var target_yaw2 = 0.18 + state.jitter_yaw2;
 
         // Точки начала вылета:
-        // Белые: вылетают из зоны над правой панелью
-        // Черные: вылетают из зоны над левой панелью
-        var start1_x = is_white ? (board_x + side + 65.0) : (board_x - 65.0);
+        // Правая сторона: вылетают из зоны над правой панелью
+        // Левая сторона: вылетают из зоны над левой панелью
+        var start1_x = is_right_side ? (board_x + side + 65.0) : (board_x - 65.0);
         var start1_y = target_center_y - 65.0;
-        var start2_x = is_white ? (board_x + side + 85.0) : (board_x - 85.0);
+        var start2_x = is_right_side ? (board_x + side + 85.0) : (board_x - 85.0);
         var start2_y = target_center_y + 65.0;
 
         // Конечные точки слотов кубиков в панели управления:
         double s1x, s1y, s2x, s2y;
         double slot1_x, slot1_y, slot2_x, slot2_y;
-        if (is_white) {
-            white_panel.get_dice_slot_centers (out s1x, out s1y, out s2x, out s2y);
+        var panel = (state.color == CheckerColor.WHITE) ? white_panel : black_panel;
+        panel.get_dice_slot_centers (out s1x, out s1y, out s2x, out s2y);
+        if (is_right_side) {
             slot1_x = board_x + side + s1x;
             slot1_y = s1y;
             slot2_x = board_x + side + s2x;
             slot2_y = s2y;
         } else {
-            black_panel.get_dice_slot_centers (out s1x, out s1y, out s2x, out s2y);
             slot1_x = s1x;
             slot1_y = s1y;
             slot2_x = s2x;
@@ -174,7 +174,7 @@ public class BoardDiceOverlayLayer : Gtk.Widget {
             compute_motion (eff_t1, out pos_f1, out alt1, out sc_p1);
             x1 = start1_x + (target1_x - start1_x) * pos_f1;
             y1 = start1_y + (target1_y - start1_y) * pos_f1 - alt1;
-            compute_3d_rotation (eff_t1, target_yaw1, state.spin_pitch1, state.spin_roll1, state.spin_yaw1, is_white,
+            compute_3d_rotation (eff_t1, target_yaw1, state.spin_pitch1, state.spin_roll1, state.spin_yaw1, is_right_side,
                                  out pitch1, out yaw1, out roll1);
             scale1 = 1.0 + sc_p1;
             shadow_rad1 = 3.5 + alt1 * 0.35;
@@ -200,7 +200,7 @@ public class BoardDiceOverlayLayer : Gtk.Widget {
             compute_motion (eff_t2, out pos_f2, out alt2, out sc_p2);
             x2 = start2_x + (target2_x - start2_x) * pos_f2;
             y2 = start2_y + (target2_y - start2_y) * pos_f2 - alt2;
-            compute_3d_rotation (eff_t2, target_yaw2, state.spin_pitch2, state.spin_roll2, state.spin_yaw2, is_white,
+            compute_3d_rotation (eff_t2, target_yaw2, state.spin_pitch2, state.spin_roll2, state.spin_yaw2, is_right_side,
                                  out pitch2, out yaw2, out roll2);
             scale2 = 1.0 + sc_p2;
             shadow_rad2 = 3.5 + alt2 * 0.35;

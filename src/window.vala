@@ -18,6 +18,7 @@ public class GameLayout : Gtk.Widget {
     private BoardView board;
     private PlayerPanel white_panel;
     private BoardDiceOverlayLayer dice_layer;
+    private BoardSide last_layout_board_side = SettingsStore.shared ().board_side;
     public int board_side { get; private set; default = 0; }
     public signal void side_changed (int side);
 
@@ -32,6 +33,15 @@ public class GameLayout : Gtk.Widget {
         dice_layer.set_parent (this);
         hexpand = true;
         vexpand = true;
+
+        SettingsStore.shared ().changed.connect (() => {
+            var cur_side = SettingsStore.shared ().board_side;
+            if (cur_side != last_layout_board_side) {
+                last_layout_board_side = cur_side;
+                queue_allocate ();
+                queue_draw ();
+            }
+        });
     }
 
     public override void dispose () {
@@ -73,9 +83,16 @@ public class GameLayout : Gtk.Widget {
         var x0 = (width - total_w) / 2;
         var y0 = (height - total_h) / 2;
 
-        allocate_child (black_panel, x0, y0, pw, total_h);
+        black_panel.current_board_width = side;
+        white_panel.current_board_width = side;
+
+        var is_right_side = (SettingsStore.shared ().board_side == BoardSide.RIGHT);
+        var left_panel = is_right_side ? black_panel : white_panel;
+        var right_panel = is_right_side ? white_panel : black_panel;
+
+        allocate_child (left_panel, x0, y0, pw, total_h);
         allocate_child (board, x0 + pw, y0 + pad, side, side);
-        allocate_child (white_panel, x0 + pw + side, y0, pw, total_h);
+        allocate_child (right_panel, x0 + pw + side, y0, pw, total_h);
         allocate_child (dice_layer, x0, y0, total_w, total_h);
 
         if (side != board_side) {
@@ -85,8 +102,8 @@ public class GameLayout : Gtk.Widget {
     }
 
     public override void snapshot (Gtk.Snapshot snapshot) {
-        snapshot_child (black_panel, snapshot);
         snapshot_child (board, snapshot);
+        snapshot_child (black_panel, snapshot);
         snapshot_child (white_panel, snapshot);
         snapshot_child (dice_layer, snapshot);
     }
