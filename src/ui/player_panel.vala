@@ -253,6 +253,12 @@ public class PlayerPanel : Gtk.Box {
     private uint clear_anim_tick_id = 0;
     private bool is_clearing_log = false;
 
+    // Анимация плавного каскадного появления строк лога при возобновлении партии
+    private LogCellView[] restoring_cells = new LogCellView[0];
+    private int64 restore_anim_start_us = 0;
+    private uint restore_anim_tick_id = 0;
+    private bool is_restoring_log = false;
+
     // Плавная анимация подсветки активного игрока при смене хода
     private uint turn_tick_id = 0;
     private double current_highlight = 0.0;
@@ -389,6 +395,7 @@ public class PlayerPanel : Gtk.Box {
 
         session.changed.connect (on_session_changed);
         session.clearing_logs_animated.connect (start_log_clearing_animation);
+        session.restoring_logs_animated.connect (start_log_restoring_animation);
         SettingsStore.shared ().changed.connect (() => {
             var cur_side = SettingsStore.shared ().board_side;
             if (cur_side != last_board_side) {
@@ -704,6 +711,9 @@ public class PlayerPanel : Gtk.Box {
                 return;
             }
         }
+        if (is_restoring_log) {
+            finish_log_restoring ();
+        }
 
         var sig = compute_signature ();
         if (sig == log_signature) {
@@ -759,7 +769,7 @@ public class PlayerPanel : Gtk.Box {
     }
 
     private void update_footer () {
-        if (is_clearing_log) {
+        if (is_clearing_log || is_restoring_log) {
             return;
         }
         if (session.is_first_move_rolloff_in_progress || !session.is_game_started) {
@@ -880,6 +890,97 @@ public class PlayerPanel : Gtk.Box {
         footer.visible = false;
         var adj = log_scroller.get_vadjustment ();
         adj.value = adj.lower;
+    }
+
+    /** Запуск плавной каскадной анимации появления записей лога при возобновлении партии. */
+    public void start_log_restoring_animation () {
+        if (is_clearing_log) {
+            finish_log_clearing ();
+        }
+        if (is_restoring_log) {
+            finish_log_restoring ();
+        }
+        var cells = all_cells ();
+        if (cells.length == 0) {
+            update_footer ();
+            return;
+        }
+
+        is_restoring_log = true;
+        restoring_cells = cells;
+        restore_anim_start_us = 0;
+
+        foreach (var c in cells) {
+            c.set_clearing_fx (0.0, -18.0, 0.95);
+        }
+        if (footer.visible) {
+            footer.opacity = 0.0;
+        }
+
+        if (restore_anim_tick_id == 0) {
+            restore_anim_tick_id = add_tick_callback (on_restore_anim_tick);
+        }
+    }
+
+    private bool on_restore_anim_tick (Gtk.Widget widget, Gdk.FrameClock clock) {
+        var ft = clock.get_frame_time ();
+        var now = ft > 0 ? ft : GLib.get_monotonic_time ();
+        if (restore_anim_start_us == 0) {
+            restore_anim_start_us = now;
+            return GLib.Source.CONTINUE;
+        }
+
+        var count = restoring_cells.length;
+        if (count == 0) {
+            finish_log_restoring ();
+            return GLib.Source.REMOVE;
+        }
+
+        var elapsed = (now - restore_anim_start_us) / 1000000.0;
+        const double CELL_DURATION = 0.56;
+        var step_delay = double.min (0.060, 0.700 / double.max (1, count));
+        var total_duration = (count - 1) * step_delay + CELL_DURATION;
+
+        for (var i = 0; i < count; i++) {
+            var cell = restoring_cells[i];
+            var start = i * step_delay;
+            if (elapsed < start) {
+                cell.set_clearing_fx (0.0, -18.0, 0.95);
+            } else {
+                var t = double.min (1.0, (elapsed - start) / CELL_DURATION);
+                var ease = UiKit.ease_out (t);
+                var opacity = ease;
+                var offset_y = -18.0 * (1.0 - ease);
+                var scale = 0.95 + ease * 0.05;
+                cell.set_clearing_fx (opacity, offset_y, scale);
+            }
+        }
+
+        if (footer.visible) {
+            var f_t = double.min (1.0, elapsed / 0.50);
+            footer.opacity = UiKit.ease_out (f_t);
+        }
+
+        if (elapsed >= total_duration) {
+            finish_log_restoring ();
+            return GLib.Source.REMOVE;
+        }
+
+        return GLib.Source.CONTINUE;
+    }
+
+    private void finish_log_restoring () {
+        if (restore_anim_tick_id != 0) {
+            remove_tick_callback (restore_anim_tick_id);
+            restore_anim_tick_id = 0;
+        }
+        foreach (var c in restoring_cells) {
+            c.set_clearing_fx (1.0, 0.0, 1.0);
+        }
+        restoring_cells = new LogCellView[0];
+        is_restoring_log = false;
+        footer.opacity = 1.0;
+        update_footer ();
     }
 
     private void handle_dice_state_change () {

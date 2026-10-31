@@ -102,6 +102,8 @@ public class GameSession : Object {
     public signal void changed ();
     /** Сигнал запуска плавной анимации очистки логов в боковых панелях игроков. */
     public signal void clearing_logs_animated ();
+    /** Сигнал запуска плавной анимации каскадного появления строк лога при возобновлении партии. */
+    public signal void restoring_logs_animated ();
 
     // MARK: - Внутренние поля
     private MoveSnapshot[] move_history;
@@ -3148,6 +3150,7 @@ public class GameSession : Object {
         move_history = data.move_history;
 
         notify_changed ();
+        restoring_logs_animated ();
 
         animate_placement (target_board, true, false, () => {
             update_status_on_restore ();

@@ -644,12 +644,15 @@ public class Window : Adw.ApplicationWindow {
         var v = new RestoreGameView (name);
         v.continue_requested.connect (() => {
             var d = SavedGameStore.shared ().load ();
-            if (d != null) {
-                session.restore_from_store (d);
-            }
             show_restore_game = false;
             SavedGameStore.shared ().clear ();
             sync_overlays ();
+            GLib.Timeout.add (180, () => {
+                if (d != null) {
+                    session.restore_from_store (d);
+                }
+                return GLib.Source.REMOVE;
+            });
         });
         v.forfeit_requested.connect (() => {
             forfeit_saved_game ();
