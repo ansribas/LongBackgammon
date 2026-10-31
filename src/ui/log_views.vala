@@ -575,7 +575,8 @@ public class LogCellView : Gtk.DrawingArea {
         var log = panel.color == CheckerColor.WHITE ? session.white_turn_log : session.black_turn_log;
         var is_latest = log.length > 0 && log[0].id == record.id;
         for (var idx = 0; idx < 2; idx++) {
-            if (is_latest && panel.is_flying (idx == 0 ? 100 : 101)) {
+            var fly_id = idx == 0 ? 100 : 101;
+            if (is_latest && (panel.is_flying (fly_id) || panel.is_pending_fly (fly_id))) {
                 continue;
             }
             var r = die_rect (idx);

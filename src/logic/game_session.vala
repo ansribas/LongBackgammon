@@ -79,9 +79,10 @@ public class GameSession : Object {
         var is_right_side = BoardLayout.is_player_on_right_side (color);
         var mid_x = is_right_side ? (board_side + 70.0) : -70.0;
         var mid_y = 74.0;
-        x1 = mid_x - 26.5;
+        var offset = 26.5;
+        x1 = mid_x - offset;
         y1 = mid_y;
-        x2 = mid_x + 26.5;
+        x2 = mid_x + offset;
         y2 = mid_y;
     }
 

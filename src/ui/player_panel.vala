@@ -686,6 +686,8 @@ public class PlayerPanel : Gtk.Box {
                 }
             } else {
                 flown_rolloff_ids = new int[0];
+                remove_pending_fly (100);
+                remove_pending_fly (101);
             }
         }
         if (flying.length > 0) {
@@ -1012,7 +1014,7 @@ public class PlayerPanel : Gtk.Box {
         if (new_dice.length == 0) {
             remove_non_rolloff_flying ();
             pending_skipped = new int[0];
-            pending_fly = new int[0];
+            remove_non_rolloff_pending_fly ();
             pending_unfly = new int[0];
             previous_turn_dice = new TurnDie[0];
             for (var i = 0; i < skipped_cross_started_us.length; i++) {
@@ -1023,7 +1025,7 @@ public class PlayerPanel : Gtk.Box {
         if (previous_turn_dice.length == 0 || previous_turn_dice.length != new_dice.length) {
             previous_turn_dice = TurnDie.clone_array (new_dice);
             pending_skipped = new int[0];
-            pending_fly = new int[0];
+            remove_non_rolloff_pending_fly ();
             pending_unfly = new int[0];
             return;
         }
@@ -1105,6 +1107,16 @@ public class PlayerPanel : Gtk.Box {
         flying = r;
     }
 
+    private void remove_non_rolloff_pending_fly () {
+        var r = new int[0];
+        foreach (var p in pending_fly) {
+            if (p >= 100) {
+                r += p;
+            }
+        }
+        pending_fly = r;
+    }
+
     private void animate_rolloff_dice_to_log (DiceRoll dice) {
         int[] values = { dice.die1, dice.die2 };
         for (var idx = 0; idx < 2; idx++) {
@@ -1116,8 +1128,12 @@ public class PlayerPanel : Gtk.Box {
             if (idx == 0) {
                 start_flying (fly_id, val, true, false);
             } else {
+                add_pending_fly (fly_id);
                 Timeout.add (80, () => {
-                    start_flying (fly_id, val, true, false);
+                    remove_pending_fly (fly_id);
+                    if (session.rolloff_animation_id != 0) {
+                        start_flying (fly_id, val, true, false);
+                    }
                     return Source.REMOVE;
                 });
             }
@@ -1290,6 +1306,12 @@ public class PlayerPanel : Gtk.Box {
         var r = new FlyingDie[0];
         var removed = false;
         foreach (var f in flying) {
+            if (f.to_log) {
+                Graphene.Rect real_rect;
+                if (slot_rect (f.id, false, out real_rect)) {
+                    f.to_rect = real_rect;
+                }
+            }
             var elapsed = (now - f.start_us) / 1000000.0;
             if (elapsed < f.duration + 0.05) {
                 r += f;
@@ -1326,7 +1348,7 @@ public class PlayerPanel : Gtk.Box {
                 src = dice_zone;
                 local = dice_zone.rolloff_slot_rect (idx);
             } else {
-                if (record_cells.length == 0 || !record_cells[0].record.is_rolloff) {
+                if (record_cells.length == 0 || !record_cells[0].record.is_rolloff || !record_cells[0].get_mapped ()) {
                     return false;
                 }
                 src = record_cells[0];
@@ -1427,7 +1449,7 @@ public class PlayerPanel : Gtk.Box {
             cr.rotate (tilt_deg * lift * Math.PI / 180.0);
             cr.scale (scale, scale);
             DiceDrawing.draw_soft_shadow (cr, -size / 2, -size / 2 + 1 + 7 * lift, size, size, size * 0.18,
-                                          2 + 8 * lift, 0.12 + 0.23 * lift);
+                                          2 + 8 * lift, 0.25 + 0.10 * lift);
             DiceDrawing.draw_full (cr, 0, 0, size, f.value, f.is_skipped ? 0.88 : 1.0, false);
             if (f.is_skipped) {
                 DiceDrawing.draw_red_cross (cr, 0, 0, size);

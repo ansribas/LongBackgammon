@@ -116,6 +116,48 @@ int main (string[] args) {
         }
     }
 
+    // Тест анимации перелёта кубиков розыгрыша (roll-off) в лог: защита от мигания
+    var s_rolloff = new GameSession ();
+    var panel_w = new PlayerPanel (s_rolloff, CheckerColor.WHITE);
+    s_rolloff.is_first_move_rolloff_in_progress = true;
+    s_rolloff.white_rolloff_dice = new DiceRoll (4, 6);
+    s_rolloff.rolloff_animation_id = 1;
+    s_rolloff.changed ();
+    if (!panel_w.is_flying (100)) {
+        stderr.printf ("FAIL: expected die 100 to be flying immediately\n");
+        return 1;
+    }
+    if (!panel_w.is_pending_fly (101)) {
+        stderr.printf ("FAIL: expected die 101 to be pending_fly to prevent flicker in log\n");
+        return 1;
+    }
+    if (!wait_until (() => panel_w.is_flying (101), 2.0)) {
+        stderr.printf ("FAIL: expected die 101 to transition to flying after stagger delay\n");
+        return 1;
+    }
+    if (panel_w.is_pending_fly (101)) {
+        stderr.printf ("FAIL: expected die 101 not to be pending_fly once flying\n");
+        return 1;
+    }
+
+    // Проверка центров слотов: и при roll-off, и на обычном ходу расстояние между центрами единообразно равно 53px (spacing=5)
+    double ro_x1, ro_y1, ro_x2, ro_y2;
+    panel_w.get_dice_slot_centers (out ro_x1, out ro_y1, out ro_x2, out ro_y2);
+    var ro_dist = ro_x2 - ro_x1;
+    if (Math.fabs (ro_dist - 53.0) > 0.01) {
+        stderr.printf ("FAIL: expected roll-off slot centers distance 53.0, got %f\n", ro_dist);
+        return 1;
+    }
+
+    s_rolloff.is_first_move_rolloff_in_progress = false;
+    double norm_x1, norm_y1, norm_x2, norm_y2;
+    panel_w.get_dice_slot_centers (out norm_x1, out norm_y1, out norm_x2, out norm_y2);
+    var norm_dist = norm_x2 - norm_x1;
+    if (Math.fabs (norm_dist - 53.0) > 0.01) {
+        stderr.printf ("FAIL: expected normal turn slot centers distance 53.0, got %f\n", norm_dist);
+        return 1;
+    }
+
     stderr.printf ("ui_test OK\n");
     return 0;
 }

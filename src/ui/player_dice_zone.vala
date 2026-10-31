@@ -99,12 +99,7 @@ public class PlayerDiceZone : Gtk.DrawingArea {
 
     /** Прямоугольник слота кубика розыгрыша первого хода (индекс 0 или 1). */
     public Graphene.Rect rolloff_slot_rect (int idx) {
-        var w = get_width ();
-        var size = 48.0;
-        var spacing = 8.0;
-        var start_x = (w - (size * 2 + spacing)) / 2.0;
-        return Graphene.Rect ().init ((float) (start_x + idx * (size + spacing)), (float) ((76 - size) / 2.0),
-                                      (float) size, (float) size);
+        return top_slot_rect (idx, 2);
     }
 
     private void draw_cb (Gtk.DrawingArea area, Cairo.Context cr, int width, int height) {
@@ -172,7 +167,7 @@ public class PlayerDiceZone : Gtk.DrawingArea {
 
     private void draw_rolling_pair (Cairo.Context cr, int width, int height) {
         var size = 48.0;
-        var spacing = 8.0;
+        var spacing = 5.0;
         var start_x = (width - (size * 2 + spacing)) / 2.0;
         int[] vals = { session.rolling_dice_value1, session.rolling_dice_value2 };
         for (var i = 0; i < 2; i++) {
