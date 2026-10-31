@@ -100,6 +100,8 @@ public class GameSession : Object {
 
     // MARK: - Сигналы
     public signal void changed ();
+    /** Сигнал запуска плавной анимации очистки логов в боковых панелях игроков. */
+    public signal void clearing_logs_animated ();
 
     // MARK: - Внутренние поля
     private MoveSnapshot[] move_history;
@@ -378,6 +380,9 @@ public class GameSession : Object {
     // MARK: - Pip Count
 
     public int calculate_pip_count (CheckerColor color) {
+        if (!is_game_started || is_placing_checkers) {
+            return 360;
+        }
         var route = PlayerPath.path (color);
         var total = 0;
         for (var i = 0; i < route.length; i++) {
@@ -711,11 +716,11 @@ public class GameSession : Object {
         var start_time = GLib.get_monotonic_time () / 1000000.0;
         var step_idx = 0;
 
-        uint timer_id = 0;
-        timer_id = Timeout.add (8, () => {
+        placement_timer_id = Timeout.add (8, () => {
             if (cur_gen != gen || !is_placing_checkers) {
                 is_placing_checkers = false;
                 is_animating = false;
+                placement_timer_id = 0;
                 SoundManager.shared ().stop_placement ();
                 return Source.REMOVE;
             }
@@ -743,6 +748,7 @@ public class GameSession : Object {
             }
 
             if (step_idx >= steps.length) {
+                placement_timer_id = 0;
                 after (PlacementAnimation.COMPLETION_DELAY, () => {
                     if (cur_gen != gen) {
                         is_placing_checkers = false;
@@ -785,6 +791,13 @@ public class GameSession : Object {
                 StatsStore.shared ().record_victory (player_name (winner_color), VictoryType.OIN);
             }
             save_game_log ();
+        }
+
+        white_turn_log = new TurnRecord[0];
+        black_turn_log = new TurnRecord[0];
+
+        if (animated) {
+            clearing_logs_animated ();
         }
 
         is_animating = false;
@@ -832,6 +845,8 @@ public class GameSession : Object {
 
         SavedGameStore.shared ().clear ();
         is_game_started = false;
+
+        notify_changed ();
 
         if (animated) {
             animate_checkers_to_tray ((owned) completion);

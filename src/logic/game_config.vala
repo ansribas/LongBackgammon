@@ -233,7 +233,7 @@ public class PlacementAnimation {
     public const double SPRING_RESPONSE = 0.68;
     public const double SPRING_DAMPING = 0.85;
     public const double AUDIO_FLIGHT_DELAY = 0.430;
-    public const double COMPLETION_DELAY = 0.510;
+    public const double COMPLETION_DELAY = 0.850;
 }
 
 /** Настройки скорости движения фишек и анимаций. */

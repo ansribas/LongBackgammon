@@ -397,6 +397,7 @@ public class Window : Adw.ApplicationWindow {
         if (session.showing_game_over_result) {
             session.set_showing_game_over_result (false);
             last_game_over_result = false;
+            session.force_new_game (false, false);
         }
     }
 
@@ -451,10 +452,13 @@ public class Window : Adw.ApplicationWindow {
                 v.confirmed.connect (() => {
                     show_confirm_new_game = false;
                     sync_overlays ();
-                    session.force_new_game (true, true, () => {
-                        can_close_new_game = true;
-                        is_new_game_presented = true;
-                        sync_overlays ();
+                    Timeout.add (180, () => {
+                        session.force_new_game (true, true, () => {
+                            can_close_new_game = true;
+                            is_new_game_presented = true;
+                            sync_overlays ();
+                        });
+                        return Source.REMOVE;
                     });
                 });
                 v.cancelled.connect (() => {
@@ -545,16 +549,10 @@ public class Window : Adw.ApplicationWindow {
         case "gameover":
             var v = new GameOverView (session);
             v.new_game_requested.connect (() => {
-                session.set_showing_game_over_result (false);
-                last_game_over_result = false;
-                can_close_new_game = true;
-                is_new_game_presented = true;
-                sync_overlays ();
+                exit_game_over (true);
             });
             v.close_requested.connect (() => {
-                session.set_showing_game_over_result (false);
-                last_game_over_result = false;
-                sync_overlays ();
+                exit_game_over (false);
             });
             return v;
         case "stats":
@@ -569,7 +567,10 @@ public class Window : Adw.ApplicationWindow {
             v.start_requested.connect (() => {
                 is_new_game_presented = false;
                 sync_overlays ();
-                session.new_game ();
+                Timeout.add (180, () => {
+                    session.new_game ();
+                    return Source.REMOVE;
+                });
             });
             v.close_requested.connect (() => {
                 is_new_game_presented = false;
@@ -579,14 +580,30 @@ public class Window : Adw.ApplicationWindow {
         }
     }
 
+    private void exit_game_over (bool open_new_game) {
+        session.set_showing_game_over_result (false);
+        last_game_over_result = false;
+        sync_overlays ();
+        Timeout.add (180, () => {
+            session.force_new_game (false, true, () => {
+                if (open_new_game) {
+                    can_close_new_game = true;
+                    is_new_game_presented = true;
+                    sync_overlays ();
+                }
+            });
+            return Source.REMOVE;
+        });
+    }
+
     /** Клик мимо всплывающего окна (прозрачная подложка ContentView). */
     private void on_backdrop_clicked () {
         is_settings_presented = false;
         is_rules_presented = false;
         is_stats_presented = false;
         if (session.showing_game_over_result) {
-            session.set_showing_game_over_result (false);
-            last_game_over_result = false;
+            exit_game_over (false);
+            return;
         }
         if (can_close_new_game) {
             is_new_game_presented = false;
@@ -705,6 +722,10 @@ public class Window : Adw.ApplicationWindow {
 
     public void request_new_game () {
         if (modal_blocks ()) {
+            return;
+        }
+        if (session.showing_game_over_result) {
+            exit_game_over (true);
             return;
         }
         // Подтверждение, если игра начата и не окончена (включая розыгрыш первого хода)

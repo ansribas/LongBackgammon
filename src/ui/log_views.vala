@@ -273,6 +273,18 @@ public class LogCellView : Gtk.DrawingArea {
     public bool is_active_cell;
     private bool hovered = false;
 
+    public double clearing_opacity = 1.0;
+    public double clearing_offset_y = 0.0;
+    public double clearing_scale = 1.0;
+
+    public void set_clearing_fx (double opacity, double offset_y, double scale) {
+        clearing_opacity = opacity;
+        clearing_offset_y = offset_y;
+        clearing_scale = scale;
+        this.opacity = opacity;
+        queue_draw ();
+    }
+
     private const double DIE = 40;
     private const double CARD_W = 98;
 
@@ -351,6 +363,9 @@ public class LogCellView : Gtk.DrawingArea {
     }
 
     private void on_hover (bool on) {
+        if (on && clearing_opacity < 0.99) {
+            return;
+        }
         hovered = on;
         var id = record_id ();
         if (id < 0) {
@@ -387,6 +402,24 @@ public class LogCellView : Gtk.DrawingArea {
     }
 
     private void draw_cb (Gtk.DrawingArea area, Cairo.Context cr, int width, int height) {
+        if (clearing_opacity <= 0.001) {
+            return;
+        }
+        cr.save ();
+        if (clearing_offset_y != 0.0 || clearing_scale != 1.0) {
+            var cx = width / 2.0;
+            var cy = height / 2.0;
+            cr.translate (cx, cy + clearing_offset_y);
+            cr.scale (clearing_scale, clearing_scale);
+            cr.translate (-cx, -cy);
+        }
+
+        draw_content (cr, width, height);
+
+        cr.restore ();
+    }
+
+    private void draw_content (Cairo.Context cr, int width, int height) {
         var highlighted = record_id () >= 0 && session.highlighted_log_id == record_id ();
         if (!is_active_cell && record.is_rolloff) {
             draw_rolloff (cr, highlighted);

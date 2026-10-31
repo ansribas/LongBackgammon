@@ -40,9 +40,9 @@ public class PanelStyle {
             ".lb-orange { color: #ff9500; }" +
             ".lb-log-scroller scrollbar { min-width: 0; min-height: 0; padding: 0; margin: 0; border: none; opacity: 0; }" +
             ".lb-log-scroller overshoot { opacity: 0; }" +
-            ".lb-progress, .lb-progress trough, .lb-progress progress { min-width: 20px; }" +
+            ".lb-progress, .lb-progress trough { min-width: 20px; }" +
             ".lb-progress trough { min-height: 4px; border-radius: 2px; }" +
-            ".lb-progress progress { min-height: 4px; border-radius: 2px; background-color: #34c759; }" +
+            ".lb-progress progress { min-width: 0; min-height: 4px; border-radius: 2px; background-color: #34c759; }" +
             ".lb-tooltip { background-color: alpha(var(--window-bg-color, @window_bg_color), 0.85);" +
             "  border-radius: 8px; padding: 6px 10px; box-shadow: 0 5px 10px alpha(black, 0.2);" +
             "  font-size: 11px; font-weight: bold; }\n");
@@ -246,6 +246,13 @@ public class PlayerPanel : Gtk.Box {
     private string log_signature = "";
     private int last_log_count = -1;
 
+    // Анимация плавного растворения/истаивания лога при очистке
+    private LogCellView[] clearing_cells = new LogCellView[0];
+    private Gtk.Revealer? clearing_active_revealer = null;
+    private int64 clear_anim_start_us = 0;
+    private uint clear_anim_tick_id = 0;
+    private bool is_clearing_log = false;
+
     // Плавная анимация подсветки активного игрока при смене хода
     private uint turn_tick_id = 0;
     private double current_highlight = 0.0;
@@ -381,6 +388,7 @@ public class PlayerPanel : Gtk.Box {
         add_controller (bg_click);
 
         session.changed.connect (on_session_changed);
+        session.clearing_logs_animated.connect (start_log_clearing_animation);
         SettingsStore.shared ().changed.connect (() => {
             var cur_side = SettingsStore.shared ().board_side;
             if (cur_side != last_board_side) {
@@ -689,6 +697,14 @@ public class PlayerPanel : Gtk.Box {
     }
 
     private void rebuild_log_if_needed () {
+        if (is_clearing_log) {
+            if (my_log ().length > 0) {
+                finish_log_clearing ();
+            } else {
+                return;
+            }
+        }
+
         var sig = compute_signature ();
         if (sig == log_signature) {
             return;
@@ -743,7 +759,10 @@ public class PlayerPanel : Gtk.Box {
     }
 
     private void update_footer () {
-        if (session.is_first_move_rolloff_in_progress) {
+        if (is_clearing_log) {
+            return;
+        }
+        if (session.is_first_move_rolloff_in_progress || !session.is_game_started) {
             footer.visible = false;
             return;
         }
@@ -758,7 +777,121 @@ public class PlayerPanel : Gtk.Box {
         footer.label = Localization.badge_turn_number (turn_number);
     }
 
+    /** Запуск плавной каскадной анимации растворения записей лога при очистке. */
+    public void start_log_clearing_animation () {
+        if (is_clearing_log) {
+            finish_log_clearing ();
+        }
+        var cells = all_cells ();
+        if (cells.length == 0) {
+            update_footer ();
+            return;
+        }
+
+        // Скрываем активную подсказку
+        var st = LogTooltipState.shared ();
+        if (st.hovered_side == (int) color) {
+            st.hovered_side = -1;
+            st.changed ();
+        }
+
+        is_clearing_log = true;
+        clearing_cells = cells;
+        clearing_active_revealer = active_cell_revealer;
+
+        active_cell = null;
+        active_cell_revealer = null;
+        record_cells = new LogCellView[0];
+        log_signature = "";
+        last_log_count = 0;
+
+        clear_anim_start_us = 0;
+        if (clear_anim_tick_id == 0) {
+            clear_anim_tick_id = add_tick_callback (on_clear_anim_tick);
+        }
+    }
+
+    private bool on_clear_anim_tick (Gtk.Widget widget, Gdk.FrameClock clock) {
+        var ft = clock.get_frame_time ();
+        var now = ft > 0 ? ft : GLib.get_monotonic_time ();
+        if (clear_anim_start_us == 0) {
+            clear_anim_start_us = now;
+            return GLib.Source.CONTINUE;
+        }
+
+        var count = clearing_cells.length;
+        if (count == 0) {
+            finish_log_clearing ();
+            return GLib.Source.REMOVE;
+        }
+
+        var elapsed = (now - clear_anim_start_us) / 1000000.0;
+        const double CELL_DURATION = 0.56;
+        var step_delay = double.min (0.060, 0.700 / double.max (1, count));
+        var total_duration = (count - 1) * step_delay + CELL_DURATION;
+
+        for (var i = 0; i < count; i++) {
+            var cell = clearing_cells[i];
+            var start = i * step_delay;
+            if (elapsed < start) {
+                cell.set_clearing_fx (1.0, 0.0, 1.0);
+            } else {
+                var t = double.min (1.0, (elapsed - start) / CELL_DURATION);
+                var ease = UiKit.ease_out (t);
+                var opacity = double.max (0.0, 1.0 - ease);
+                var offset_y = -ease * 18.0;
+                var scale = 1.0 - ease * 0.05;
+                cell.set_clearing_fx (opacity, offset_y, scale);
+            }
+        }
+
+        if (footer.visible) {
+            var f_t = double.min (1.0, elapsed / 0.50);
+            footer.opacity = double.max (0.0, 1.0 - UiKit.ease_out (f_t));
+        }
+
+        if (elapsed >= total_duration) {
+            finish_log_clearing ();
+            return GLib.Source.REMOVE;
+        }
+
+        return GLib.Source.CONTINUE;
+    }
+
+    private void finish_log_clearing () {
+        if (clear_anim_tick_id != 0) {
+            remove_tick_callback (clear_anim_tick_id);
+            clear_anim_tick_id = 0;
+        }
+        if (clearing_active_revealer != null) {
+            if (clearing_active_revealer.get_parent () == log_list) {
+                log_list.remove (clearing_active_revealer);
+            }
+            clearing_active_revealer = null;
+        }
+        foreach (var c in clearing_cells) {
+            if (c.get_parent () == log_list) {
+                log_list.remove (c);
+            }
+        }
+        clearing_cells = new LogCellView[0];
+        is_clearing_log = false;
+        footer.opacity = 1.0;
+        footer.visible = false;
+        var adj = log_scroller.get_vadjustment ();
+        adj.value = adj.lower;
+    }
+
     private void handle_dice_state_change () {
+        if (!session.is_game_started) {
+            flying = new FlyingDie[0];
+            flown_rolloff_ids = new int[0];
+            pending_skipped = new int[0];
+            pending_fly = new int[0];
+            pending_unfly = new int[0];
+            previous_turn_dice = new TurnDie[0];
+            return;
+        }
         var new_dice = session.current_turn_dice;
         if (session.current_player != color) {
             previous_turn_dice = TurnDie.clone_array (new_dice);
@@ -1189,6 +1322,11 @@ public class PlayerPanel : Gtk.Box {
             }
             cr.restore ();
         }
+    }
+
+    public override void dispose () {
+        finish_log_clearing ();
+        base.dispose ();
     }
 }
 

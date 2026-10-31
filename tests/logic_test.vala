@@ -645,10 +645,16 @@ public class LogicTestSuite {
     fng_session.is_game_started = true;
     fng_session.board = GameBoard.initial_long ();
     fng_session.current_player = CheckerColor.WHITE;
+    fng_session.white_turn_log = new TurnRecord[] { new TurnRecord.with_dice (1, new DiceRoll (3, 4)) };
+    fng_session.black_turn_log = new TurnRecord[] { new TurnRecord.with_dice (1, new DiceRoll (5, 6)) };
     fng_session.force_new_game (false, false);
     assert_false (fng_session.is_game_started, "force_new_game resets is_game_started");
     assert_equal_int (fng_session.board.borne_off_count (CheckerColor.WHITE), 15, "all 15 white in tray on reset");
     assert_equal_int (fng_session.board.borne_off_count (CheckerColor.BLACK), 15, "all 15 black in tray on reset");
+    assert_equal_int (fng_session.white_turn_log.length, 0, "white_turn_log cleared on reset");
+    assert_equal_int (fng_session.black_turn_log.length, 0, "black_turn_log cleared on reset");
+    assert_equal_int (fng_session.calculate_pip_count (CheckerColor.WHITE), 360, "pips 360 when game not started");
+    assert_true (fng_session.progress_percentage (CheckerColor.WHITE) == 0.0, "progress 0% when game not started");
 
     SoundManager.shared ().play_board_side_switch_animation ();
     SoundManager.shared ().play_panels_dock_in_place ();

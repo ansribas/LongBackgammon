@@ -100,6 +100,22 @@ int main (string[] args) {
     }
     SettingsStore.shared ().set_board_side (orig_side);
 
+    // Тест прогресс-бара: при fraction = 0 полоса заполнения должна быть нулевой ширины
+    PanelStyle.ensure_css ();
+    var pb = new Gtk.ProgressBar ();
+    pb.add_css_class ("lb-progress");
+    pb.set_size_request (60, -1);
+    pb.set_fraction (0.0);
+    pb.allocate (60, 4, -1, null);
+    var trough = pb.get_first_child ();
+    if (trough != null) {
+        var prog = trough.get_first_child ();
+        if (prog != null && prog.get_width () != 0) {
+            stderr.printf ("FAIL: expected progress bar width 0 at fraction 0.0, got %d\n", prog.get_width ());
+            return 1;
+        }
+    }
+
     stderr.printf ("ui_test OK\n");
     return 0;
 }

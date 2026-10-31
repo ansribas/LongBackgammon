@@ -465,7 +465,7 @@ public class BoardView : Gtk.DrawingArea {
             return true;
         }
 
-        if (session.board.is_in_tray ()) {
+        if (session.board.is_in_tray () && !session.is_placing_checkers) {
             cur_pos = copy_positions (targets);
             prev_pos = copy_positions (targets);
             active_moves.remove_all ();
