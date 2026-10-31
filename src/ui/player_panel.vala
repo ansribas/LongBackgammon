@@ -712,7 +712,11 @@ public class PlayerPanel : Gtk.Box {
             }
         }
         if (is_restoring_log) {
-            finish_log_restoring ();
+            if (my_log ().length == 0) {
+                finish_log_restoring ();
+            } else {
+                return;
+            }
         }
 
         var sig = compute_signature ();
@@ -910,12 +914,19 @@ public class PlayerPanel : Gtk.Box {
         restoring_cells = cells;
         restore_anim_start_us = 0;
 
+        if (active_cell_revealer != null) {
+            active_cell_revealer.reveal_child = true;
+        }
+
         foreach (var c in cells) {
             c.set_clearing_fx (0.0, -18.0, 0.95);
         }
         if (footer.visible) {
             footer.opacity = 0.0;
         }
+
+        var adj = log_scroller.get_vadjustment ();
+        adj.value = adj.lower;
 
         if (restore_anim_tick_id == 0) {
             restore_anim_tick_id = add_tick_callback (on_restore_anim_tick);
