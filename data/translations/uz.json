@@ -129,7 +129,7 @@
   "statusSkippedDice": " (otkazildi {dice})",
   "statusMoveBlockedByOpponent": "Katak raqib tomonidan band qilingan",
   "statusHeadLimitReached": "Boshdan bitta yurishda faqat bitta tosh olinadi!",
-  "statusDoubleDoubled": "Qosha!\nOchkolar ikki baravar oshdi",
+  "statusDoubleDoubled": "Qo‘sha!\nOchkolar ikki baravar",
   "statusComputerMoving": "SI oynayapti",
   "gameOverMovesStat": "Tashlangan zarlar soni",
   "gameOverDoublesStat": "Tushgan qoshalar",

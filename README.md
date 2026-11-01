@@ -41,7 +41,7 @@ Classic Long Backgammon (Russian Nardi / Длинные нарды) for GNOME/Li
   * Move trajectory preview arrows when hovering over game log rows.
   * Undo functionality, real-time game log, and automatic game state preservation.
 * **Themes & Customization**:
-  * Board and checker themes: **Classic**, **Wood**, and **Marble**.
+  * Board and checker themes: **Wood** and **Marble**.
   * Custom mouse cursor displaying current dice values.
   * Settings: 14 interface languages, adjustable animation speed, sound effects, and score/pip display modes.
   * Comprehensive match statistics and win rate tracking.
@@ -167,7 +167,6 @@ meson test -C build -v
 | Roll Dice / New Game | Click on board or <kbd>Space</kbd> |
 | Select Checker | Left mouse click |
 | Move Checker | Click on highlighted point or Drag & Drop |
-| Smart Move (highest die) | Double click checker |
 | Bear Off Checker | Click on the bearing-off tray (right side of board) |
 | Preview Move Trajectory | Hover cursor over a move history row |
 | Game Rules | <kbd>F1</kbd> |

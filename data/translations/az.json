@@ -128,7 +128,7 @@
   "statusRollOffResult": "{player} birinci başlayır!",
   "statusSkippedDice": " (oynanmadı {dice})",
   "statusMoveBlockedByOpponent": "Xana rəqib tərəfindən tutulub",
-  "statusHeadLimitReached": "Başdan bir gedişdə yalnız bir daş götürülə bilər!",
+  "statusHeadLimitReached": "Başdan gedişdə yalnız bir daş götürülür!",
   "statusDoubleDoubled": "Qoşa!\nXallar ikiqat artırılır",
   "statusComputerMoving": "Süni İntellekt oynayır",
   "gameOverMovesStat": "Ümumi zər atışları",

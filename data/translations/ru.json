@@ -128,7 +128,7 @@
   "statusRollOffResult": "{player} ходит первый!",
   "statusSkippedDice": " (пропущено {dice})",
   "statusMoveBlockedByOpponent": "Пункт занят противником",
-  "statusHeadLimitReached": "С головы можно снять только одну фишку в ход!",
+  "statusHeadLimitReached": "С головы — только одна фишка в ход!",
   "statusDoubleDoubled": "Дубль!\nОчки удваиваются!",
   "statusComputerMoving": "ИИ ходит",
   "gameOverMovesStat": "Сделано бросков",
