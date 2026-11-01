@@ -1,19 +1,77 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <interface>
-  <object class="AdwShortcutsDialog" id="shortcuts_dialog">
+  <object class="GtkShortcutsWindow" id="shortcuts_dialog">
+    <property name="modal">True</property>
     <child>
-      <object class="AdwShortcutsSection">
-        <property name="title" translatable="yes">Shortcuts</property>
+      <object class="GtkShortcutsSection">
+        <property name="visible">True</property>
+        <property name="section-name">shortcuts</property>
         <child>
-          <object class="AdwShortcutsItem">
-            <property name="title" translatable="yes" context="shortcut window">Show Shortcuts</property>
-            <property name="action-name">app.shortcuts</property>
+          <object class="GtkShortcutsGroup" id="grp_game">
+            <property name="visible">True</property>
+            <property name="title" translatable="yes">Game</property>
+            <child>
+              <object class="GtkShortcutsShortcut" id="sc_new_game">
+                <property name="visible">True</property>
+                <property name="title" translatable="yes">New Game</property>
+                <property name="action-name">app.new-game</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkShortcutsShortcut" id="sc_undo">
+                <property name="visible">True</property>
+                <property name="title" translatable="yes">Undo Move</property>
+                <property name="action-name">app.undo</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkShortcutsShortcut" id="sc_stats">
+                <property name="visible">True</property>
+                <property name="title" translatable="yes">Statistics</property>
+                <property name="action-name">app.stats</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkShortcutsShortcut" id="sc_rules">
+                <property name="visible">True</property>
+                <property name="title" translatable="yes">Game Rules</property>
+                <property name="action-name">app.rules</property>
+              </object>
+            </child>
           </object>
         </child>
         <child>
-          <object class="AdwShortcutsItem">
-            <property name="title" translatable="yes" context="shortcut window">Quit</property>
-            <property name="action-name">app.quit</property>
+          <object class="GtkShortcutsGroup" id="grp_general">
+            <property name="visible">True</property>
+            <property name="title" translatable="yes">General</property>
+            <child>
+              <object class="GtkShortcutsShortcut" id="sc_settings">
+                <property name="visible">True</property>
+                <property name="title" translatable="yes">Preferences</property>
+                <property name="action-name">app.settings</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkShortcutsShortcut" id="sc_shortcuts">
+                <property name="visible">True</property>
+                <property name="title" translatable="yes">Keyboard Shortcuts</property>
+                <property name="action-name">app.shortcuts</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkShortcutsShortcut" id="sc_fullscreen">
+                <property name="visible">True</property>
+                <property name="title" translatable="yes">Toggle Full Screen</property>
+                <property name="action-name">app.fullscreen</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkShortcutsShortcut" id="sc_quit">
+                <property name="visible">True</property>
+                <property name="title" translatable="yes">Quit</property>
+                <property name="action-name">app.quit</property>
+              </object>
+            </child>
           </object>
         </child>
       </object>

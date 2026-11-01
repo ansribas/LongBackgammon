@@ -1,6 +1,7 @@
 {
   "languageName": "Türkçe",
   "appMenuAbout": "Hakkında",
+  "donateLink": "Yazarı destekle (Ko-fi)",
   "windowTitle": "Uzun Tavla",
   "settingsMenu": "Ayarlar",
   "menuEdit": "Düzenle",
@@ -51,6 +52,9 @@
   "infoSectionTitle": "Bilgi",
   "menuHelp": "Yardım",
   "rulesMenuItem": "Oyun Kuralları",
+  "menuShortcuts": "Klavye Kısayolları",
+  "shortcutsSectionGame": "Oyun",
+  "shortcutsSectionGeneral": "Genel",
   "rulesTitle": "Uzun Tavla Kuralları",
   "rulesGoalTitle": "Oyunun Amacı",
   "rulesGoalText": "Tüm 15 pulunuzu tahta etrafında dolaştırıp rakibinizden önce toplamaktır.",

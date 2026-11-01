@@ -1,6 +1,7 @@
 {
   "languageName": "Italiano",
   "appMenuAbout": "Informazioni",
+  "donateLink": "Sostieni l'autore (Ko-fi)",
   "windowTitle": "Backgammon lungo",
   "settingsMenu": "Impostazioni",
   "menuEdit": "Modifica",
@@ -51,6 +52,9 @@
   "infoSectionTitle": "Informazioni",
   "menuHelp": "Aiuto",
   "rulesMenuItem": "Regole del gioco",
+  "menuShortcuts": "Scorciatoie da tastiera",
+  "shortcutsSectionGame": "Partita",
+  "shortcutsSectionGeneral": "Generale",
   "rulesTitle": "Regole del Backgammon lungo",
   "rulesGoalTitle": "Obiettivo del gioco",
   "rulesGoalText": "Spostare tutte le 15 pedine lungo la tavola e portarle fuori prima dell'avversario.",

@@ -116,18 +116,13 @@ public class GameLayout : Gtk.Widget {
     }
 }
 
-/** Кнопка заголовка окна (TitleBarButton): квадрат 22×22 со скруглением 5. */
+/** Кнопка панели заголовка (HeaderBar button) в соответствии с GNOME HIG. */
 public class TitleBarButton : Gtk.Button {
-    private SFIcon icon;
-
-    public TitleBarButton (string glyph, string tooltip) {
+    public TitleBarButton (string icon_name_or_glyph, string tooltip) {
+        Object (icon_name: map_glyph (icon_name_or_glyph), tooltip_text: tooltip, valign: Gtk.Align.CENTER);
         UiKit.ensure_css ();
+        add_css_class ("flat");
         add_css_class ("lb-tb-btn");
-        icon = new SFIcon (glyph, 12);
-        set_child (icon);
-        tooltip_text = tooltip;
-        valign = Gtk.Align.CENTER;
-        focus_on_click = false;
     }
 
     public void set_active_state (bool active) {
@@ -139,7 +134,22 @@ public class TitleBarButton : Gtk.Button {
     }
 
     public void set_glyph (string g) {
-        icon.set_glyph (g);
+        icon_name = map_glyph (g);
+    }
+
+    private static string map_glyph (string g) {
+        switch (g) {
+            case "speaker.wave.2.fill":
+                return "audio-volume-high-symbolic";
+            case "speaker.slash.fill":
+                return "audio-volume-muted-symbolic";
+            case "gearshape.fill":
+                return "preferences-system-symbolic";
+            case "chart.bar.fill":
+                return "view-list-ordered-symbolic";
+            default:
+                return g;
+        }
     }
 }
 
@@ -195,8 +205,9 @@ public class Window : Adw.ApplicationWindow {
         session.changed.connect (on_session_changed);
         SettingsStore.shared ().changed.connect (on_settings_changed);
 
-        // Сохраняем незавершённую игру при закрытии окна (saveOnClose)
+        // Сохраняем незавершённую игру и размер окна при закрытии (saveOnClose)
         close_request.connect (() => {
+            save_window_state ();
             session.save_on_close ();
             return false;
         });
@@ -215,51 +226,72 @@ public class Window : Adw.ApplicationWindow {
         });
     }
 
-    /** Стартовый размер: высота = 4/5 высоты экрана, ширина = высота доски + панели. */
+    /** Стартовый размер: восстанавливаем сохранённый или вычисляем 4/5 высоты экрана. */
     private void apply_default_size () {
-        var h = 720;
-        var display = Gdk.Display.get_default ();
-        if (display != null) {
-            var monitors = display.get_monitors ();
-            if (monitors.get_n_items () > 0) {
-                var mon = (Gdk.Monitor) monitors.get_item (0);
-                var geo = mon.get_geometry ();
-                h = (int) (geo.height * 0.8);
+        var s = SettingsStore.shared ();
+        if (s.window_width >= GameConfig.MIN_WINDOW_WIDTH && s.window_height >= GameConfig.MIN_WINDOW_HEIGHT) {
+            default_width = s.window_width;
+            default_height = s.window_height;
+        } else {
+            var h = 720;
+            var display = Gdk.Display.get_default ();
+            if (display != null) {
+                var monitors = display.get_monitors ();
+                if (monitors.get_n_items () > 0) {
+                    var mon = (Gdk.Monitor) monitors.get_item (0);
+                    var geo = mon.get_geometry ();
+                    h = (int) (geo.height * 0.8);
+                }
+            }
+            h = int.max (h, GameConfig.MIN_WINDOW_HEIGHT);
+            var header_h = 47;
+            var w = (h - header_h) + GameConfig.CONTROL_PANEL_WIDTH;
+            default_width = int.max (w, GameConfig.MIN_WINDOW_WIDTH);
+            default_height = h;
+        }
+        if (s.window_maximized) {
+            maximized = true;
+        }
+    }
+
+    private void save_window_state () {
+        var s = SettingsStore.shared ();
+        s.set_window_maximized (maximized);
+        if (!maximized) {
+            var w = get_width ();
+            var h = get_height ();
+            if (w >= GameConfig.MIN_WINDOW_WIDTH && h >= GameConfig.MIN_WINDOW_HEIGHT) {
+                s.set_window_size (w, h);
             }
         }
-        h = int.max (h, GameConfig.MIN_WINDOW_HEIGHT);
-        var header_h = 47;
-        var w = (h - header_h) + GameConfig.CONTROL_PANEL_WIDTH;
-        default_width = int.max (w, GameConfig.MIN_WINDOW_WIDTH);
-        default_height = h;
     }
 
     private void build_ui () {
         var header = new Adw.HeaderBar ();
 
-        // Главное меню приложения
-        menu_btn = new Gtk.MenuButton ();
-        menu_btn.icon_name = "open-menu-symbolic";
-        menu_btn.primary = true;
-        menu_btn.menu_model = build_menu ();
-        header.pack_start (menu_btn);
-
-        // Панель действий справа: Настройки, Звук, Статистика
-        settings_btn = new TitleBarButton ("gearshape.fill", Localization.settings_menu ());
+        // Панель действий слева: Настройки, Звук, Статистика (без нарушений HIG)
+        settings_btn = new TitleBarButton ("preferences-system-symbolic", Localization.settings_menu ());
         settings_btn.clicked.connect (show_settings);
-        header.pack_end (settings_btn);
+        header.pack_start (settings_btn);
 
-        sound_btn = new TitleBarButton ("speaker.wave.2.fill", "");
+        sound_btn = new TitleBarButton (SettingsStore.shared ().is_sound_enabled ? "audio-volume-high-symbolic" : "audio-volume-muted-symbolic", "");
         sound_btn.clicked.connect (() => {
             var s = SettingsStore.shared ();
             s.set_is_sound_enabled (!s.is_sound_enabled);
         });
-        header.pack_end (sound_btn);
+        header.pack_start (sound_btn);
 
-        stats_btn = new TitleBarButton ("chart.bar.fill", Localization.stats_menu ());
+        stats_btn = new TitleBarButton ("view-list-ordered-symbolic", Localization.stats_menu ());
         stats_btn.clicked.connect (show_stats);
-        header.pack_end (stats_btn);
+        header.pack_start (stats_btn);
         update_sound_button ();
+
+        // Главное меню приложения справа (перед системными кнопками управления окном)
+        menu_btn = new Gtk.MenuButton ();
+        menu_btn.icon_name = "open-menu-symbolic";
+        menu_btn.primary = true;
+        menu_btn.menu_model = build_menu ();
+        header.pack_end (menu_btn);
 
         black_panel_view = new PlayerPanel (session, CheckerColor.BLACK);
         board_view = new BoardView (session);
@@ -340,6 +372,7 @@ public class Window : Adw.ApplicationWindow {
         menu.append_section (null, s3);
         var s4 = new GLib.Menu ();
         s4.append (Localization.rules_menu_item (), "app.rules");
+        s4.append (Localization.menu_shortcuts (), "app.shortcuts");
         s4.append (Localization.app_menu_about (), "app.about");
         s4.append (Localization.menu_quit (), "app.quit");
         menu.append_section (null, s4);

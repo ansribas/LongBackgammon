@@ -1,6 +1,7 @@
 {
   "languageName": "Հայերեն",
   "appMenuAbout": "Ծրագրի մասին",
+  "donateLink": "Աջակցել հեղինակին (Ko-fi)",
   "windowTitle": "Երկար նարդի",
   "settingsMenu": "Կարգավորումներ",
   "menuEdit": "Խմբագրել",
@@ -51,6 +52,9 @@
   "infoSectionTitle": "Տեղեկություն",
   "menuHelp": "Օգնություն",
   "rulesMenuItem": "Խաղի կանոնները",
+  "menuShortcuts": "Ստեղնաշարի դյուրանցումներ",
+  "shortcutsSectionGame": "Խաղ",
+  "shortcutsSectionGeneral": "Ընդհանուր",
   "rulesTitle": "Երկար նարդու կանոնները",
   "rulesGoalTitle": "Խաղի նպատակը",
   "rulesGoalText": "Ձեր բոլոր 15 քարերը տեղափոխել տախտակի վրայով և դուրս բերել մրցակցից առաջ:",

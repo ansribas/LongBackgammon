@@ -1,5 +1,115 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <schemalist gettext-domain="longbackgammon">
-	<schema id="io.github.ansribas.LongBackgammon" path="/io/github/ansribas/LongBackgammon/">
-	</schema>
+  <schema id="io.github.ansribas.LongBackgammon" path="/io/github/ansribas/LongBackgammon/">
+    <key name="language" type="s">
+      <default>''</default>
+      <summary>Language code</summary>
+      <description>Interface language code (e.g. 'ru', 'en') or empty string for system locale.</description>
+    </key>
+    <key name="opponent" type="s">
+      <default>'computer'</default>
+      <summary>Game opponent mode</summary>
+      <description>Opponent type: 'computer' or 'human'.</description>
+    </key>
+    <key name="ai-difficulty" type="s">
+      <default>'master'</default>
+      <summary>AI difficulty level</summary>
+      <description>Difficulty level: 'master' or 'standard'.</description>
+    </key>
+    <key name="game-speed" type="s">
+      <default>'slow'</default>
+      <summary>Game animation speed</summary>
+      <description>Game speed: 'slow' or 'fast'.</description>
+    </key>
+    <key name="board-theme" type="s">
+      <default>'marble'</default>
+      <summary>Board visual theme</summary>
+      <description>Theme style: 'marble' or 'wood'.</description>
+    </key>
+    <key name="movement-type" type="s">
+      <default>'arc'</default>
+      <summary>Checker movement trajectory</summary>
+      <description>Movement type: 'arc' or 'straight'.</description>
+    </key>
+    <key name="use-board-dice-animation" type="b">
+      <default>true</default>
+      <summary>3D board dice animation</summary>
+      <description>Whether to animate dice roll directly on the board.</description>
+    </key>
+    <key name="show-path-computer" type="b">
+      <default>true</default>
+      <summary>Show AI movement path</summary>
+      <description>Display trajectory arrows for computer moves.</description>
+    </key>
+    <key name="show-path-player" type="b">
+      <default>true</default>
+      <summary>Show player movement path</summary>
+      <description>Display trajectory arrows for player moves.</description>
+    </key>
+    <key name="highlight-log-paths" type="b">
+      <default>true</default>
+      <summary>Highlight moves in log</summary>
+      <description>Highlight board paths when hovering or selecting turns in log.</description>
+    </key>
+    <key name="show-cell-indices" type="b">
+      <default>false</default>
+      <summary>Show cell index numbers</summary>
+      <description>Display 1-24 numbering on board points.</description>
+    </key>
+    <key name="enable-debug-export" type="b">
+      <default>false</default>
+      <summary>Enable debug log export</summary>
+      <description>Export detailed game state debug logs.</description>
+    </key>
+    <key name="score-display-mode" type="s">
+      <default>'progress'</default>
+      <summary>Score display mode</summary>
+      <description>Score display format: 'progress' or 'score'.</description>
+    </key>
+    <key name="is-sound-enabled" type="b">
+      <default>true</default>
+      <summary>Sound effects enabled</summary>
+      <description>Whether sound effects are played.</description>
+    </key>
+    <key name="is-first-move-rolloff-enabled" type="b">
+      <default>true</default>
+      <summary>Rolloff for first move enabled</summary>
+      <description>Whether players roll dice to determine who moves first.</description>
+    </key>
+    <key name="board-side" type="s">
+      <default>'right'</default>
+      <summary>Board orientation side</summary>
+      <description>Side where head checkers start: 'right' or 'left'.</description>
+    </key>
+    <key name="is-drag-and-drop-enabled" type="b">
+      <default>true</default>
+      <summary>Drag and drop enabled</summary>
+      <description>Allow moving checkers via drag and drop.</description>
+    </key>
+    <key name="white-player-name" type="s">
+      <default>''</default>
+      <summary>White player name</summary>
+      <description>Custom name for the white checker player.</description>
+    </key>
+    <key name="black-player-name" type="s">
+      <default>''</default>
+      <summary>Black player name</summary>
+      <description>Custom name for the black checker player.</description>
+    </key>
+    <key name="window-width" type="i">
+      <default>800</default>
+      <summary>Window width</summary>
+      <description>Saved main window width in pixels.</description>
+    </key>
+    <key name="window-height" type="i">
+      <default>600</default>
+      <summary>Window height</summary>
+      <description>Saved main window height in pixels.</description>
+    </key>
+    <key name="window-maximized" type="b">
+      <default>false</default>
+      <summary>Window maximized</summary>
+      <description>Whether the main window was maximized.</description>
+    </key>
+  </schema>
 </schemalist>

@@ -9,20 +9,38 @@
 
 namespace Longbackgammon {
 
-/** Палитра акцентных цветов интерфейса. */
+/** Палитра цветов интерфейса в соответствии с GNOME HIG Palette.
+ * https://developer.gnome.org/hig/reference/palette.html
+ */
+namespace AdwColors {
+    public const string BLUE = "#3584e4";    // GNOME Blue 3 (Default Accent)
+    public const string GREEN = "#33d17a";   // GNOME Green 3 (Success)
+    public const string YELLOW = "#f6d32d";  // GNOME Yellow 3 (Warning / Stars)
+    public const string ORANGE = "#ff7800";  // GNOME Orange 3
+    public const string RED = "#e01b24";     // GNOME Red 3 (Destructive / Error)
+    public const string PURPLE = "#9141ac";  // GNOME Purple 3
+    public const string BROWN = "#986a44";   // GNOME Brown 3
+    public const string TEAL = "#2aa1b3";    // GNOME Teal 3
+    public const string CYAN = "#3584e4";    // GNOME Blue 3
+    public const string PINK = "#c061cb";    // GNOME Purple 2
+    public const string INDIGO = "#613583";  // GNOME Purple 5
+    public const string GRAY = "#77767b";    // GNOME Dark 1
+}
+
+/** Псевдоним для обратной совместимости. */
 namespace MacColors {
-    public const string BLUE = "#007aff";
-    public const string PINK = "#ff2d55";
-    public const string GREEN = "#34c759";
-    public const string RED = "#ff3b30";
-    public const string PURPLE = "#af52de";
-    public const string CYAN = "#32ade6";
-    public const string GRAY = "#8e8e93";
-    public const string ORANGE = "#ff9500";
-    public const string TEAL = "#30b0c7";
-    public const string YELLOW = "#ffcc00";
-    public const string BROWN = "#a2845e";
-    public const string INDIGO = "#5856d6";
+    public const string BLUE = AdwColors.BLUE;
+    public const string PINK = AdwColors.PINK;
+    public const string GREEN = AdwColors.GREEN;
+    public const string RED = AdwColors.RED;
+    public const string PURPLE = AdwColors.PURPLE;
+    public const string CYAN = AdwColors.CYAN;
+    public const string GRAY = AdwColors.GRAY;
+    public const string ORANGE = AdwColors.ORANGE;
+    public const string TEAL = AdwColors.TEAL;
+    public const string YELLOW = AdwColors.YELLOW;
+    public const string BROWN = AdwColors.BROWN;
+    public const string INDIGO = AdwColors.INDIGO;
 }
 
 public class UiKit {
@@ -39,52 +57,52 @@ public class UiKit {
             // Карточка всплывающего окна: радиус 18, тень, тонкая рамка
             ".lb-popup { background-color: var(--window-bg-color, @window_bg_color); border-radius: 18px;" +
             "  box-shadow: 0 10px 20px alpha(black, 0.5); border: 1px solid alpha(currentColor, 0.1); }" +
-            ".lb-popup.lb-flash { box-shadow: inset 0 0 0 3px #ff3b30, 0 10px 20px alpha(black, 0.5);" +
+            ".lb-popup.lb-flash { box-shadow: inset 0 0 0 3px @destructive_color, 0 10px 20px alpha(black, 0.5);" +
             "  transition: box-shadow 150ms ease-in-out; }" +
             ".lb-popup-rules { border-radius: 16px; border: none; box-shadow: 0 15px 30px alpha(black, 0.4); }" +
             ".lb-popup-stats { box-shadow: 0 10px 20px alpha(black, 0.3); }" +
             ".lb-popup-gameover { border-radius: 24px; border: none; box-shadow: 0 15px 30px alpha(black, 0.4); }" +
             ".lb-popup-header { padding: 12px 14px; }" +
-            // Типографика интерфейса
-            ".lb-title { font-size: 24px; font-weight: bold; }" +
-            ".lb-title2 { font-size: 18px; font-weight: bold; }" +
-            ".lb-title3 { font-size: 16px; }" +
-            ".lb-headline { font-size: 14px; font-weight: bold; }" +
-            ".lb-body { font-size: 14px; }" +
-            ".lb-subheadline { font-size: 12px; }" +
-            ".lb-caption { font-size: 11px; }" +
-            ".lb-caption-bold { font-size: 11px; font-weight: bold; }" +
-            ".lb-caption2-bold { font-size: 10px; font-weight: bold; }" +
-            ".lb-mono-bold { font-family: monospace; font-weight: bold; font-size: 14px; }" +
-            ".lb-mono-title3 { font-family: monospace; font-weight: bold; font-size: 17px; }" +
-            ".lb-secondary { color: alpha(currentColor, 0.55); }" +
+            // Типографика интерфейса по стандарту GNOME HIG (относительные единицы rem)
+            ".lb-title { font-size: 1.5rem; font-weight: 800; }" +
+            ".lb-title2 { font-size: 1.25rem; font-weight: 700; }" +
+            ".lb-title3 { font-size: 1.05rem; font-weight: 600; }" +
+            ".lb-headline { font-size: 0.95rem; font-weight: 700; }" +
+            ".lb-body { font-size: 0.95rem; }" +
+            ".lb-subheadline { font-size: 0.85rem; }" +
+            ".lb-caption { font-size: 0.75rem; }" +
+            ".lb-caption-bold { font-size: 0.75rem; font-weight: 700; }" +
+            ".lb-caption2-bold { font-size: 0.7rem; font-weight: 700; }" +
+            ".lb-mono-bold { font-family: monospace; font-weight: bold; font-size: 0.95rem; }" +
+            ".lb-mono-title3 { font-family: monospace; font-weight: bold; font-size: 1.1rem; }" +
+            ".lb-secondary { color: alpha(currentColor, 0.6); }" +
             ".lb-accent { color: @accent_color; }" +
-            ".lb-red { color: #ff3b30; }" +
-            ".lb-orange { color: #ff9500; }" +
-            ".lb-green { color: #34c759; }" +
+            ".lb-red { color: @destructive_color; }" +
+            ".lb-orange { color: @warning_color; }" +
+            ".lb-green { color: @success_color; }" +
             // Секция настроек (SettingsSection) и строки
             ".lb-section { background-color: alpha(var(--view-bg-color, @view_bg_color), 0.6); border-radius: 10px;" +
             "  border: 1px solid alpha(currentColor, 0.07); }" +
-            ".lb-row { padding: 8px 12px; min-height: 28px; }" +
+            ".lb-row { padding: 8px 12px; min-height: 32px; }" +
             ".lb-row-sep { margin-left: 44px; }" +
-            // Кнопки
-            ".lb-btn { border-radius: 10px; padding: 8px 40px; font-size: 14px; font-weight: bold; color: white;" +
-            "  box-shadow: none; border: none; background-image: none; }" +
+            // Кнопки по стандартам GNOME HIG
+            ".lb-btn { border-radius: 10px; padding: 8px 36px; min-height: 36px; font-size: 0.95rem; font-weight: bold; color: white;" +
+            "  box-shadow: none; border: none; background-image: none; transition: all 150ms ease-in-out; }" +
             ".lb-btn:hover { filter: brightness(1.08); }" +
             ".lb-btn:active { filter: brightness(0.92); }" +
             ".lb-btn:disabled { color: alpha(white, 0.8); }" +
-            ".lb-btn-blue { background-color: #007aff; }" +
-            ".lb-btn-gray { background-color: #8e8e93; }" +
-            ".lb-btn-red { background-color: #ff3b30; }" +
-            ".lb-btn-red80 { background-color: alpha(#ff3b30, 0.8); }" +
+            ".lb-btn-blue { background-color: @accent_bg_color; color: @accent_fg_color; }" +
+            ".lb-btn-gray { background-color: alpha(currentColor, 0.15); color: currentColor; }" +
+            ".lb-btn-red { background-color: @destructive_bg_color; color: @destructive_fg_color; }" +
+            ".lb-btn-red80 { background-color: alpha(@destructive_bg_color, 0.85); color: @destructive_fg_color; }" +
             ".lb-btn-wide { padding: 12px 0; border-radius: 12px; }" +
             ".lb-btn-mid { padding: 10px 0; border-radius: 10px; }" +
             ".lb-btn-narrow { padding: 8px 24px; }" +
             ".lb-plain { background: none; border: none; box-shadow: none; padding: 0; min-width: 0; min-height: 0; }" +
             ".lb-plain:hover { filter: brightness(1.15); }" +
             // Сегментный переключатель (Picker .segmented)
-            ".lb-seg > button { padding: 1px 6px; min-height: 22px; font-size: 12px; }" +
-            ".lb-entry { min-height: 26px; font-size: 13px; }" +
+            ".lb-seg > button { padding: 3px 8px; min-height: 28px; font-size: 0.85rem; }" +
+            ".lb-entry { min-height: 32px; font-size: 0.95rem; }" +
             // Карточка правила (RuleSection)
             ".lb-rule-card { padding: 16px; border-radius: 14px; background-color: alpha(currentColor, 0.04);" +
             "  border: 1px solid alpha(currentColor, 0.08); }" +
@@ -98,21 +116,21 @@ public class UiKit {
             ".lb-stats-list { background: transparent; }" +
             ".lb-stats-list > row { padding: 4px 10px; border-radius: 6px; margin: 1px 8px; }" +
             // Экран победы
-            ".lb-go-name { font-size: 26px; font-weight: bold; }" +
-            ".lb-go-total { font-size: 20px; font-weight: bold; }" +
-            ".lb-go-plus { font-size: 32px; font-weight: bold; }" +
-            ".lb-go-info { font-size: 9px; font-weight: bold; color: alpha(currentColor, 0.38); }" +
-            ".lb-go-capsule { padding: 6px 12px; border-radius: 999px; font-size: 11px; font-weight: bold; }" +
-            ".lb-go-capsule.orange { background-color: alpha(#ff9500, 0.12); color: #ff9500; }" +
-            ".lb-go-capsule.red { background-color: alpha(#ff3b30, 0.12); color: #ff3b30; }" +
-            ".lb-go-btn { padding: 13px 0; border-radius: 12px; font-size: 14px; font-weight: bold; color: white;" +
+            ".lb-go-name { font-size: 1.6rem; font-weight: bold; }" +
+            ".lb-go-total { font-size: 1.25rem; font-weight: bold; }" +
+            ".lb-go-plus { font-size: 2rem; font-weight: bold; }" +
+            ".lb-go-info { font-size: 0.7rem; font-weight: bold; color: alpha(currentColor, 0.45); }" +
+            ".lb-go-capsule { padding: 6px 12px; border-radius: 999px; font-size: 0.75rem; font-weight: bold; }" +
+            ".lb-go-capsule.orange { background-color: alpha(@accent_color, 0.15); color: @accent_color; }" +
+            ".lb-go-capsule.red { background-color: alpha(@destructive_color, 0.15); color: @destructive_color; }" +
+            ".lb-go-btn { padding: 13px 0; border-radius: 12px; font-size: 0.95rem; min-height: 38px; font-weight: bold; color: white;" +
             "  border: none; transition: all 250ms ease-out; }" +
-            ".lb-go-btn.orange { background-image: linear-gradient(135deg, #ff9500, alpha(#ff9500, 0.85));" +
-            "  box-shadow: 0 3px 6px alpha(#ff9500, 0.2); }" +
-            ".lb-go-btn.orange:hover { box-shadow: 0 5px 10px alpha(#ff9500, 0.35); transform: scale(1.015); }" +
-            ".lb-go-btn.red { background-image: linear-gradient(135deg, #ff3b30, alpha(#ff3b30, 0.85));" +
-            "  box-shadow: 0 3px 6px alpha(#ff3b30, 0.2); }" +
-            ".lb-go-btn.red:hover { box-shadow: 0 5px 10px alpha(#ff3b30, 0.35); transform: scale(1.015); }" +
+            ".lb-go-btn.orange { background-color: @accent_bg_color; color: @accent_fg_color;" +
+            "  box-shadow: 0 3px 6px alpha(black, 0.2); }" +
+            ".lb-go-btn.orange:hover { box-shadow: 0 5px 10px alpha(black, 0.35); transform: scale(1.015); }" +
+            ".lb-go-btn.red { background-color: @destructive_bg_color; color: @destructive_fg_color;" +
+            "  box-shadow: 0 3px 6px alpha(black, 0.2); }" +
+            ".lb-go-btn.red:hover { box-shadow: 0 5px 10px alpha(black, 0.35); transform: scale(1.015); }" +
             ".lb-go-close { padding: 8px; min-width: 0; min-height: 0; border-radius: 999px; border: none;" +
             "  box-shadow: none; background-color: alpha(currentColor, 0.06); }" +
             ".lb-go-close:hover { background-color: alpha(currentColor, 0.12); }" +
@@ -126,12 +144,8 @@ public class UiKit {
             "  background-color: alpha(currentColor, 0.16); }" +
             "windowcontrols > button.close:active > image, windowcontrols > button.close:active > .lb-gnome-close-icon {" +
             "  background-color: alpha(currentColor, 0.3); }" +
-            // Кнопки заголовка окна (TitleBarButton)
-            ".lb-tb-btn { min-width: 22px; min-height: 22px; padding: 0; border-radius: 5px; box-shadow: none;" +
-            "  background-image: none; background-color: alpha(var(--view-bg-color, @view_bg_color), 0.5);" +
-            "  border: 1px solid alpha(currentColor, 0.15); }" +
-            ".lb-tb-btn:hover { background-color: alpha(currentColor, 0.08); }" +
-            ".lb-tb-btn.active { background-color: alpha(@accent_bg_color, 0.35); border-color: @accent_bg_color; }"
+            // Кнопки заголовка окна (TitleBarButton) в соответствии с GNOME HIG
+            ".lb-tb-btn.active { background-color: alpha(@accent_bg_color, 0.25); color: @accent_color; }"
         );
         var display = Gdk.Display.get_default ();
         if (display != null) {

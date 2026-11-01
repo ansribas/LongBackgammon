@@ -1,6 +1,7 @@
 {
   "languageName": "Español",
   "appMenuAbout": "Acerca de",
+  "donateLink": "Apoyar al autor (Ko-fi)",
   "windowTitle": "Backgammon largo",
   "settingsMenu": "Ajustes",
   "menuEdit": "Edición",
@@ -51,6 +52,9 @@
   "infoSectionTitle": "Información",
   "menuHelp": "Ayuda",
   "rulesMenuItem": "Reglas del juego",
+  "menuShortcuts": "Atajos del teclado",
+  "shortcutsSectionGame": "Partida",
+  "shortcutsSectionGeneral": "General",
   "rulesTitle": "Reglas de Backgammon largo",
   "rulesGoalTitle": "Objetivo del juego",
   "rulesGoalText": "Llevar las 15 fichas a lo largo del tablero y sacarlas antes que el oponente.",

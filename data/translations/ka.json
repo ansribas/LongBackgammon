@@ -1,6 +1,7 @@
 {
   "languageName": "ქართული",
   "appMenuAbout": "პროგრამის შესახებ",
+  "donateLink": "ავტორის მხარდაჭერა (Ko-fi)",
   "windowTitle": "გრძელი ნარდი",
   "settingsMenu": "პარამეტრები",
   "menuEdit": "რედაქტირება",
@@ -51,6 +52,9 @@
   "infoSectionTitle": "ინფორმაცია",
   "menuHelp": "დახმარება",
   "rulesMenuItem": "თამაშის წესები",
+  "menuShortcuts": "კლავიატურის მალსახმობები",
+  "shortcutsSectionGame": "თამაში",
+  "shortcutsSectionGeneral": "ზოგადი",
   "rulesTitle": "გრძელი ნარდის წესები",
   "rulesGoalTitle": "თამაშის მიზანი",
   "rulesGoalText": "ყველა 15 ქვის დაფაზე შემოტარება და მოწინააღმდეგეზე ადრე გაყვანა.",

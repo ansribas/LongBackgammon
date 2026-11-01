@@ -1,6 +1,7 @@
 {
   "languageName": "Türkmençe",
   "appMenuAbout": "Programma barada",
+  "donateLink": "Awtory goldamak (Ko-fi)",
   "windowTitle": "Uzyn nardy",
   "settingsMenu": "Sazlamalar",
   "menuEdit": "Düzetmek",
@@ -51,6 +52,9 @@
   "infoSectionTitle": "Maglumat",
   "menuHelp": "Kömek",
   "rulesMenuItem": "Oýun düzgünleri",
+  "menuShortcuts": "Klawiatura gysga ýollary",
+  "shortcutsSectionGame": "Oýun",
+  "shortcutsSectionGeneral": "Umumy",
   "rulesTitle": "Uzyn nardy düzgünleri",
   "rulesGoalTitle": "Oýnuň maksady",
   "rulesGoalText": "Bütin 15 daşy tagtanyň daşyndan aýlap, garşydaşdan öňürti çykarmak.",

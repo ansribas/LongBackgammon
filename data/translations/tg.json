@@ -1,6 +1,7 @@
 {
   "languageName": "Тоҷикӣ",
   "appMenuAbout": "Дар бораи барнома",
+  "donateLink": "Дастгирии муаллиф (Ko-fi)",
   "windowTitle": "Нарди дароз",
   "settingsMenu": "Танзимот",
   "menuEdit": "Таҳрир",
@@ -51,6 +52,9 @@
   "infoSectionTitle": "Маълумот",
   "menuHelp": "Роҳнамо",
   "rulesMenuItem": "Қоидаҳои бозӣ",
+  "menuShortcuts": "Миёнбурҳои клавиатура",
+  "shortcutsSectionGame": "Бозӣ",
+  "shortcutsSectionGeneral": "Умумӣ",
   "rulesTitle": "Қоидаҳои Нарди дароз",
   "rulesGoalTitle": "Мақсади бозӣ",
   "rulesGoalText": "Ҳамаи 15 мӯҳраи худро дар гирди тахта гузаронида, пеш аз ҳариф баровардан.",

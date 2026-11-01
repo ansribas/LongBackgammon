@@ -1,5 +1,7 @@
 # tests/meson.build
 
+test_env = ['GSETTINGS_SCHEMA_DIR=' + meson.project_build_root() / 'data']
+
 # 1. Регрессионный тест правил и алгоритмов логики
 logic_test = executable('longbackgammon-logic-test',
   longbackgammon_logic_sources + files('logic_test.vala'),
@@ -7,7 +9,7 @@ logic_test = executable('longbackgammon-logic-test',
   include_directories: config_inc,
   link_args: ['-lm'],
 )
-test('logic-test', logic_test, workdir: meson.project_source_root())
+test('logic-test', logic_test, workdir: meson.project_source_root(), env: test_env)
 
 # 2. Тест игровой сессии: полные партии, ходы ИИ и лог ходов
 session_test = executable('longbackgammon-session-test',
@@ -16,7 +18,7 @@ session_test = executable('longbackgammon-session-test',
   include_directories: config_inc,
   link_args: ['-lm'],
 )
-test('session-test', session_test, workdir: meson.project_source_root(), timeout: 120)
+test('session-test', session_test, workdir: meson.project_source_root(), timeout: 120, env: test_env)
 
 # 3. UI-тест интерактивности доски (BoardView)
 ui_test = executable('longbackgammon-ui-test',
@@ -29,7 +31,7 @@ ui_test = executable('longbackgammon-ui-test',
 display_present = run_command('sh', '-c', 'test -n "$DISPLAY" || test -n "$WAYLAND_DISPLAY"', check: false).returncode() == 0
 xvfb_run = find_program('xvfb-run', required: false)
 if display_present
-  test('ui-test', ui_test, workdir: meson.project_source_root(), is_parallel: false, timeout: 60)
+  test('ui-test', ui_test, workdir: meson.project_source_root(), is_parallel: false, timeout: 60, env: test_env)
 elif xvfb_run.found()
-  test('ui-test', xvfb_run, args: ['-a', ui_test], workdir: meson.project_source_root(), timeout: 60)
+  test('ui-test', xvfb_run, args: ['-a', ui_test], workdir: meson.project_source_root(), timeout: 60, env: test_env)
 endif

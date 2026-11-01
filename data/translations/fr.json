@@ -1,6 +1,7 @@
 {
   "languageName": "Français",
   "appMenuAbout": "À propos",
+  "donateLink": "Soutenir l'auteur (Ko-fi)",
   "windowTitle": "Backgammon long",
   "settingsMenu": "Paramètres",
   "menuEdit": "Édition",
@@ -51,6 +52,9 @@
   "infoSectionTitle": "Informations",
   "menuHelp": "Aide",
   "rulesMenuItem": "Règles du jeu",
+  "menuShortcuts": "Raccourcis clavier",
+  "shortcutsSectionGame": "Partie",
+  "shortcutsSectionGeneral": "Général",
   "rulesTitle": "Règles du Backgammon long",
   "rulesGoalTitle": "But du jeu",
   "rulesGoalText": "Déplacer vos 15 pions sur le plateau et les sortir avant votre adversaire.",

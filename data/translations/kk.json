@@ -1,6 +1,7 @@
 {
   "languageName": "Қазақша",
   "appMenuAbout": "Бағдарлама туралы",
+  "donateLink": "Авторды қолдау (Ko-fi)",
   "windowTitle": "Ұзын нарды",
   "settingsMenu": "Баптаулар",
   "menuEdit": "Өңдеу",
@@ -51,6 +52,9 @@
   "infoSectionTitle": "Ақпарат",
   "menuHelp": "Анықтама",
   "rulesMenuItem": "Ойын ережелері",
+  "menuShortcuts": "Пернетақта жарлықтары",
+  "shortcutsSectionGame": "Ойын",
+  "shortcutsSectionGeneral": "Жалпы",
   "rulesTitle": "Ұзын нарды ережелері",
   "rulesGoalTitle": "Ойын мақсаты",
   "rulesGoalText": "Барлық 15 тасыңызды тақта бойымен өткізіп, қарсыластан бұрын шығарып алу.",

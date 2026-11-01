@@ -1,6 +1,7 @@
 {
   "languageName": "Azərbaycan",
   "appMenuAbout": "Haqqında",
+  "donateLink": "Müəllifi dəstəklə (Ko-fi)",
   "windowTitle": "Uzun Nərd",
   "settingsMenu": "Tənzimləmələr",
   "menuEdit": "Düzəliş",
@@ -51,6 +52,9 @@
   "infoSectionTitle": "Məlumat",
   "menuHelp": "Kömək",
   "rulesMenuItem": "Oyun Qaydaları",
+  "menuShortcuts": "Klaviatura qısayolları",
+  "shortcutsSectionGame": "Oyun",
+  "shortcutsSectionGeneral": "Ümumi",
   "rulesTitle": "Uzun Nərd Qaydaları",
   "rulesGoalTitle": "Oyunun Məqsədi",
   "rulesGoalText": "Bütün 15 daşı lövhə boyunca hərəkət etdirərək rəqibdən əvvəl yığmaqdır.",

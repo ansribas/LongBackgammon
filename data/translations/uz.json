@@ -1,6 +1,7 @@
 {
   "languageName": "Oʻzbekcha",
   "appMenuAbout": "Dastur haqida",
+  "donateLink": "Muallifni qo'llab-quvvatlash (Ko-fi)",
   "windowTitle": "Uzun narda",
   "settingsMenu": "Sozlamalar",
   "menuEdit": "Tahrirlash",
@@ -51,6 +52,9 @@
   "infoSectionTitle": "Maʼlumot",
   "menuHelp": "Yordam",
   "rulesMenuItem": "Oyin qoidalari",
+  "menuShortcuts": "Klaviatura yorliqlari",
+  "shortcutsSectionGame": "O'yin",
+  "shortcutsSectionGeneral": "Umumiy",
   "rulesTitle": "Uzun narda qoidalari",
   "rulesGoalTitle": "Oyin maqsadi",
   "rulesGoalText": "Barcha 15 ta toshingizni taxta boylab otkazib, raqibdan oldin chiqarib olish.",

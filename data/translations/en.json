@@ -1,6 +1,7 @@
 {
   "languageName": "English",
   "appMenuAbout": "About",
+  "donateLink": "Donate (Ko-fi)",
   "windowTitle": "Long Backgammon",
   "settingsMenu": "Settings",
   "menuEdit": "Edit",
@@ -51,6 +52,9 @@
   "infoSectionTitle": "Information",
   "menuHelp": "Help",
   "rulesMenuItem": "Game Rules",
+  "menuShortcuts": "Keyboard Shortcuts",
+  "shortcutsSectionGame": "Game",
+  "shortcutsSectionGeneral": "General",
   "rulesTitle": "Long Backgammon Rules",
   "rulesGoalTitle": "Goal of the Game",
   "rulesGoalText": "Move all 15 of your checkers across the board and bear them off before your opponent.",

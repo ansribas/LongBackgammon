@@ -1,6 +1,7 @@
 {
   "languageName": "Deutsch",
   "appMenuAbout": "Über",
+  "donateLink": "Spenden (Ko-fi)",
   "windowTitle": "Langes Backgammon",
   "settingsMenu": "Einstellungen",
   "menuEdit": "Bearbeiten",
@@ -51,6 +52,9 @@
   "infoSectionTitle": "Informationen",
   "menuHelp": "Hilfe",
   "rulesMenuItem": "Spielregeln",
+  "menuShortcuts": "Tastenkombinationen",
+  "shortcutsSectionGame": "Spiel",
+  "shortcutsSectionGeneral": "Allgemein",
   "rulesTitle": "Regeln für Langes Backgammon",
   "rulesGoalTitle": "Ziel des Spiels",
   "rulesGoalText": "Bringen Sie alle 15 Spielsteine über das Spielbrett und tragen Sie sie vor dem Gegner ab.",

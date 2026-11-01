@@ -27,25 +27,25 @@ public class PanelStyle {
             "  border: 1px solid alpha(currentColor, 0.12); box-shadow: 0 4px 10px alpha(black, 0.12); }" +
             ".lb-card-dice { border: none; }" +
             ".lb-header-strip { background-color: alpha(currentColor, 0.06); border-bottom: 1px solid alpha(currentColor, 0.08); transition: background-color 250ms ease-in-out, border-color 250ms ease-in-out; }" +
-            ".lb-header-strip-active { background-color: alpha(#ff9500, 0.12); border-bottom: 1px solid alpha(#ff9500, 0.25); transition: background-color 250ms ease-in-out, border-color 250ms ease-in-out; }" +
+            ".lb-header-strip-active { background-color: alpha(@accent_color, 0.15); border-bottom: 1px solid alpha(@accent_color, 0.35); transition: background-color 250ms ease-in-out, border-color 250ms ease-in-out; }" +
             ".lb-card-padded { padding: 8px 6px; }" +
             ".lb-card-hover { filter: brightness(105%); }" +
             ".lb-status-strip { background-color: alpha(currentColor, 0.08); }" +
-            ".lb-subheadline-bold { font-size: 12px; font-weight: bold; transition: color 250ms ease-in-out; }" +
-            ".lb-caption-bold { font-size: 11px; font-weight: bold; }" +
-            ".lb-caption2-bold { font-size: 10px; font-weight: bold; }" +
-            ".lb-title3-bold { font-size: 16px; font-weight: bold; font-feature-settings: \"tnum\"; }" +
-            ".lb-secondary { color: alpha(currentColor, 0.55); }" +
-            ".lb-tertiary { color: alpha(currentColor, 0.30); }" +
-            ".lb-orange { color: #ff9500; }" +
+            ".lb-subheadline-bold { font-size: 0.85rem; font-weight: bold; transition: color 250ms ease-in-out; }" +
+            ".lb-caption-bold { font-size: 0.75rem; font-weight: bold; }" +
+            ".lb-caption2-bold { font-size: 0.7rem; font-weight: bold; }" +
+            ".lb-title3-bold { font-size: 1.05rem; font-weight: bold; font-feature-settings: \"tnum\"; }" +
+            ".lb-secondary { color: alpha(currentColor, 0.6); }" +
+            ".lb-tertiary { color: alpha(currentColor, 0.35); }" +
+            ".lb-orange { color: @warning_color; }" +
             ".lb-log-scroller scrollbar { min-width: 0; min-height: 0; padding: 0; margin: 0; border: none; opacity: 0; }" +
             ".lb-log-scroller overshoot { opacity: 0; }" +
             ".lb-progress, .lb-progress trough { min-width: 20px; }" +
             ".lb-progress trough { min-height: 4px; border-radius: 2px; }" +
-            ".lb-progress progress { min-width: 0; min-height: 4px; border-radius: 2px; background-color: #34c759; }" +
+            ".lb-progress progress { min-width: 0; min-height: 4px; border-radius: 2px; background-color: @success_color; }" +
             ".lb-tooltip { background-color: alpha(var(--window-bg-color, @window_bg_color), 0.85);" +
             "  border-radius: 8px; padding: 6px 10px; box-shadow: 0 5px 10px alpha(black, 0.2);" +
-            "  font-size: 11px; font-weight: bold; }\n");
+            "  font-size: 0.75rem; font-weight: bold; }\n");
         var display = Gdk.Display.get_default ();
         if (display != null) {
             add_style_provider (display, css, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION + 1);
@@ -665,11 +665,8 @@ public class PlayerPanel : Gtk.Box {
         }
 
         rebuild_log_if_needed ();
-        if (active_cell != null) {
-            active_cell.queue_draw ();
-        }
-        if (record_cells.length > 0) {
-            record_cells[0].queue_draw ();
+        foreach (var c in all_cells ()) {
+            c.queue_draw ();
         }
         update_footer ();
 

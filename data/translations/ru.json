@@ -1,6 +1,7 @@
 {
   "languageName": "Русский",
   "appMenuAbout": "О программе",
+  "donateLink": "Поддержать автора (Ko-fi)",
   "windowTitle": "Длинные нарды",
   "settingsMenu": "Настройки",
   "menuEdit": "Правка",
@@ -51,6 +52,9 @@
   "infoSectionTitle": "Информация",
   "menuHelp": "Справка",
   "rulesMenuItem": "Правила игры",
+  "menuShortcuts": "Комбинации клавиш",
+  "shortcutsSectionGame": "Партия",
+  "shortcutsSectionGeneral": "Общие",
   "rulesTitle": "Правила игры Длинные нарды",
   "rulesGoalTitle": "Цель игры",
   "rulesGoalText": "Перевести все 15 своих фишек по доске и выбросить их за борт раньше соперника.",

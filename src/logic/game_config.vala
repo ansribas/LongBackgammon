@@ -333,7 +333,6 @@ public abstract class GameConfig {
     public const string LOG_FILE_NAME = "game_logs.json";
     public const string STATS_FILE_NAME = "player_stats.json";
     public const string SAVED_GAME_FILE_NAME = "saved_game.json";
-    public const string SETTINGS_FILE_NAME = "settings.conf";
 }
 
 /** Словарь приложения. Динамически загружает строки из JSON-файлов переводов через LocalizationManager. */
@@ -354,6 +353,7 @@ public class Localization {
 
     // MARK: - Меню и заголовки
     public static string app_menu_about ()        { return tr ("appMenuAbout"); }
+    public static string donate_link ()           { return tr ("donateLink"); }
     public static string window_title ()          { return tr ("windowTitle"); }
     public static string settings_menu ()         { return tr ("settingsMenu"); }
     public static string menu_edit ()             { return tr ("menuEdit"); }
@@ -364,6 +364,9 @@ public class Localization {
     public static string menu_fullscreen ()       { return tr ("menuFullScreen"); }
     public static string menu_undo ()             { return tr ("menuUndo"); }
     public static string rules_menu_item ()       { return tr ("rulesMenuItem"); }
+    public static string menu_shortcuts ()        { return tr ("menuShortcuts"); }
+    public static string shortcuts_section_game ()    { return tr ("shortcutsSectionGame"); }
+    public static string shortcuts_section_general () { return tr ("shortcutsSectionGeneral"); }
     public static string stats_menu ()            { return tr ("statsMenu"); }
     public static string new_game_header ()       { return tr ("newGameHeader"); }
     public static string button_new_game ()       { return tr ("buttonNewGame"); }

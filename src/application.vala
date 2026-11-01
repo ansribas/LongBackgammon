@@ -27,6 +27,7 @@ public class Application : Adw.Application {
             { "settings", this.on_settings_action },
             { "stats", this.on_stats_action },
             { "rules", this.on_rules_action },
+            { "shortcuts", this.on_shortcuts_action },
             { "undo", this.on_undo_action },
             { "fullscreen", this.on_fullscreen_action },
             { "about", this.on_about_action },
@@ -43,7 +44,8 @@ public class Application : Adw.Application {
         set_accels_for_action ("app.settings", { "<control>comma" });
         set_accels_for_action ("app.stats", { "<control><alt>s" });
         set_accels_for_action ("app.fullscreen", { "F11", "<control><super>f" });
-        set_accels_for_action ("app.rules", { "<control>question", "F1" });
+        set_accels_for_action ("app.shortcuts", { "<control>question" });
+        set_accels_for_action ("app.rules", { "F1" });
     }
 
     public override void startup () {
@@ -61,125 +63,6 @@ public class Application : Adw.Application {
         }
 
         Gtk.Window.set_default_icon_name ("io.github.ansribas.LongBackgammon");
-
-        ensure_user_desktop_integration ();
-    }
-
-    private void ensure_user_desktop_integration () {
-        try {
-            var home = Environment.get_home_dir ();
-            var apps_dir = GLib.Path.build_filename (home, ".local", "share", "applications");
-            var bin_dir = GLib.Path.build_filename (home, ".local", "bin");
-            var hicolor_dir = GLib.Path.build_filename (home, ".local", "share", "icons", "hicolor");
-
-            DirUtils.create_with_parents (apps_dir, 0755);
-            DirUtils.create_with_parents (bin_dir, 0755);
-
-            try {
-                var exe = FileUtils.read_link ("/proc/self/exe");
-                var bin_target = GLib.Path.build_filename (bin_dir, "longbackgammon");
-                if (exe != "") {
-                    string? current_link = null;
-                    try {
-                        current_link = FileUtils.read_link (bin_target);
-                    } catch (Error e) {
-                    }
-                    if (current_link != exe) {
-                        FileUtils.unlink (bin_target);
-                        File.new_for_path (bin_target).make_symbolic_link (exe);
-                    }
-                }
-            } catch (Error e) {
-            }
-
-            bool icons_changed = false;
-            var index_theme = GLib.Path.build_filename (hicolor_dir, "index.theme");
-            if (!FileUtils.test (index_theme, FileTest.EXISTS)) {
-                var sys_index = "/usr/share/icons/hicolor/index.theme";
-                if (FileUtils.test (sys_index, FileTest.EXISTS)) {
-                    DirUtils.create_with_parents (hicolor_dir, 0755);
-                    File.new_for_path (sys_index).copy (File.new_for_path (index_theme), FileCopyFlags.NONE);
-                    icons_changed = true;
-                }
-            }
-
-            // Список иконок для установки: scalable, symbolic и растровые PNG всех размеров
-            string[] icon_subpaths = {
-                "scalable/apps/io.github.ansribas.LongBackgammon.svg",
-                "symbolic/apps/io.github.ansribas.LongBackgammon-symbolic.svg",
-                "16x16/apps/io.github.ansribas.LongBackgammon.png",
-                "24x24/apps/io.github.ansribas.LongBackgammon.png",
-                "32x32/apps/io.github.ansribas.LongBackgammon.png",
-                "48x48/apps/io.github.ansribas.LongBackgammon.png",
-                "64x64/apps/io.github.ansribas.LongBackgammon.png",
-                "128x128/apps/io.github.ansribas.LongBackgammon.png",
-                "256x256/apps/io.github.ansribas.LongBackgammon.png",
-                "512x512/apps/io.github.ansribas.LongBackgammon.png"
-            };
-
-            foreach (var icon_rel in icon_subpaths) {
-                var target_path = GLib.Path.build_filename (hicolor_dir, icon_rel);
-                if (FileUtils.test (target_path, FileTest.EXISTS)) {
-                    continue;
-                }
-                var target_parent = GLib.Path.get_dirname (target_path);
-                DirUtils.create_with_parents (target_parent, 0755);
-
-                var src_icon = StoragePaths.find_asset_path ("icons", "hicolor/" + icon_rel);
-                if (src_icon == "") {
-                    src_icon = GLib.Path.build_filename (Environment.get_current_dir (), "data", "icons", "hicolor", icon_rel);
-                }
-                if (FileUtils.test (src_icon, FileTest.EXISTS)) {
-                    File.new_for_path (src_icon).copy (File.new_for_path (target_path), FileCopyFlags.OVERWRITE);
-                    icons_changed = true;
-                }
-            }
-
-            bool desktop_changed = false;
-            var target_desktop = GLib.Path.build_filename (apps_dir, "io.github.ansribas.LongBackgammon.desktop");
-            var desktop_content = "[Desktop Entry]\n" +
-                                  "Name=LongBackgammon\n" +
-                                  "Name[ru]=Длинные нарды\n" +
-                                  "Comment=Classic Long Backgammon Board Game\n" +
-                                  "Comment[ru]=Классическая настольная игра Длинные нарды\n" +
-                                  "Exec=longbackgammon\n" +
-                                  "Icon=io.github.ansribas.LongBackgammon\n" +
-                                  "Terminal=false\n" +
-                                  "Type=Application\n" +
-                                  "Categories=Game;BoardGame;\n" +
-                                  "Keywords=GTK;Backgammon;Game;\n" +
-                                  "StartupNotify=true\n" +
-                                  "StartupWMClass=io.github.ansribas.LongBackgammon\n";
-            string? existing_desktop = null;
-            if (FileUtils.test (target_desktop, FileTest.EXISTS)) {
-                try {
-                    FileUtils.get_contents (target_desktop, out existing_desktop);
-                } catch (Error e) {
-                }
-            }
-            if (existing_desktop != desktop_content) {
-                FileUtils.set_contents (target_desktop, desktop_content);
-                desktop_changed = true;
-            }
-
-            // Обновляем кэш иконок и базу .desktop файлов только при реальных изменениях
-            if (icons_changed) {
-                try {
-                    Process.spawn_command_line_async ("gtk4-update-icon-cache -q -t -f " + hicolor_dir);
-                } catch (Error e) {
-                    try {
-                        Process.spawn_command_line_async ("gtk-update-icon-cache -q -t -f " + hicolor_dir);
-                    } catch (Error e2) {}
-                }
-            }
-            if (desktop_changed) {
-                try {
-                    Process.spawn_command_line_async ("update-desktop-database -q " + apps_dir);
-                } catch (Error e) {}
-            }
-        } catch (Error e) {
-            // Игнорируем ошибки при фоновом создании
-        }
     }
 
     public override void activate () {
@@ -232,6 +115,62 @@ public class Application : Adw.Application {
         quit ();
     }
 
+    private void on_shortcuts_action () {
+        var win = current_window ();
+        var lang_code = SettingsStore.shared ().language.to_raw ();
+        GLib.Environment.set_variable ("LANGUAGE", lang_code, true);
+        GLib.Intl.setlocale (GLib.LocaleCategory.MESSAGES, "");
+
+        var builder = new Gtk.Builder.from_resource ("/io/github/ansribas/LongBackgammon/shortcuts-dialog.ui");
+        var dialog = builder.get_object ("shortcuts_dialog") as Gtk.ShortcutsWindow;
+        if (dialog != null) {
+            var grp_game = builder.get_object ("grp_game") as Gtk.ShortcutsGroup;
+            if (grp_game != null) {
+                grp_game.title = Localization.shortcuts_section_game ();
+            }
+            var grp_general = builder.get_object ("grp_general") as Gtk.ShortcutsGroup;
+            if (grp_general != null) {
+                grp_general.title = Localization.shortcuts_section_general ();
+            }
+
+            var sc_new_game = builder.get_object ("sc_new_game") as Gtk.ShortcutsShortcut;
+            if (sc_new_game != null) {
+                sc_new_game.title = Localization.button_new_game ();
+            }
+            var sc_undo = builder.get_object ("sc_undo") as Gtk.ShortcutsShortcut;
+            if (sc_undo != null) {
+                sc_undo.title = Localization.menu_undo ();
+            }
+            var sc_stats = builder.get_object ("sc_stats") as Gtk.ShortcutsShortcut;
+            if (sc_stats != null) {
+                sc_stats.title = Localization.stats_menu ();
+            }
+            var sc_rules = builder.get_object ("sc_rules") as Gtk.ShortcutsShortcut;
+            if (sc_rules != null) {
+                sc_rules.title = Localization.rules_menu_item ();
+            }
+            var sc_settings = builder.get_object ("sc_settings") as Gtk.ShortcutsShortcut;
+            if (sc_settings != null) {
+                sc_settings.title = Localization.settings_menu ();
+            }
+            var sc_shortcuts = builder.get_object ("sc_shortcuts") as Gtk.ShortcutsShortcut;
+            if (sc_shortcuts != null) {
+                sc_shortcuts.title = Localization.menu_shortcuts ();
+            }
+            var sc_fullscreen = builder.get_object ("sc_fullscreen") as Gtk.ShortcutsShortcut;
+            if (sc_fullscreen != null) {
+                sc_fullscreen.title = Localization.menu_fullscreen ();
+            }
+            var sc_quit = builder.get_object ("sc_quit") as Gtk.ShortcutsShortcut;
+            if (sc_quit != null) {
+                sc_quit.title = Localization.menu_quit ();
+            }
+
+            dialog.set_transient_for (win);
+            dialog.present ();
+        }
+    }
+
     private void on_about_action () {
         var win = current_window ();
         var lang_code = SettingsStore.shared ().language.to_raw ();
@@ -245,13 +184,14 @@ public class Application : Adw.Application {
             application_icon = "io.github.ansribas.LongBackgammon",
             developer_name = "Aleksey Svetlov",
             translator_credits = (credits != "translator-credits") ? credits : null,
-            version = "1.0",
+            version = Config.PACKAGE_VERSION,
             developers = developers,
             copyright = "© 2026 Aleksey Svetlov",
             license_type = Gtk.License.GPL_3_0,
             website = "https://github.com/ansribas/LongBackgammon",
             issue_url = "https://github.com/ansribas/LongBackgammon/issues",
         };
+        about.add_link (Localization.donate_link (), "https://ko-fi.com/ansribas");
         about.present (win);
     }
 }

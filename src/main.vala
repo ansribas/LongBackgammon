@@ -35,6 +35,13 @@ int main (string[] args) {
     GLib.Intl.bind_textdomain_codeset (Config.GETTEXT_PACKAGE, "UTF-8");
     GLib.Intl.textdomain (Config.GETTEXT_PACKAGE);
 
+    if (GLib.Environment.get_variable ("GSETTINGS_SCHEMA_DIR") == null) {
+        var uninstalled_schema_dir = GLib.Path.build_filename (Config.SOURCE_DATA_DIR, "..", "build", "data");
+        if (GLib.FileUtils.test (GLib.Path.build_filename (uninstalled_schema_dir, "gschemas.compiled"), GLib.FileTest.EXISTS)) {
+            GLib.Environment.set_variable ("GSETTINGS_SCHEMA_DIR", uninstalled_schema_dir, false);
+        }
+    }
+
     var app = new Longbackgammon.Application ();
     return app.run (args);
 }

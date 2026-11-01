@@ -530,16 +530,16 @@ public class LogCellView : Gtk.DrawingArea {
         cr.save ();
         if (is_winner) {
             var g = new Cairo.Pattern.linear (x, y, x + CARD_W, y + h);
-            g.add_color_stop_rgba (0, 1.0, 0.584, 0.0, 0.65);
-            g.add_color_stop_rgba (1, 1.0, 0.8, 0.0, 0.40);
+            g.add_color_stop_rgba (0, 1.0, 0.584, 0.0, highlighted ? 0.90 : 0.65);
+            g.add_color_stop_rgba (1, 1.0, 0.8, 0.0, highlighted ? 0.60 : 0.40);
             cr.set_source (g);
             cr.set_line_width (1.2);
         } else if (is_tie) {
-            PanelStyle.set_fg (cr, this, 0.19);
+            PanelStyle.set_fg (cr, this, highlighted ? 0.35 : 0.19);
             cr.set_line_width (1);
             cr.set_dash ({ 4.0, 3.0 }, 0);
         } else {
-            PanelStyle.set_fg (cr, this, 0.10);
+            PanelStyle.set_fg (cr, this, highlighted ? 0.25 : 0.10);
             cr.set_line_width (1);
         }
         cr.stroke ();
