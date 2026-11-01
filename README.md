@@ -89,6 +89,7 @@ Classic Long Backgammon (Russian Nardi / Длинные нарды) for GNOME/Li
 │   │   └── ui_kit.vala            # Animation utilities (Bezier, spring physics), colors & styles
 │   ├── application.vala           # Adw.Application subclass (GActions, shortcuts)
 │   ├── main.vala                  # Application entry point
+│   ├── shortcuts-dialog.ui        # Keyboard shortcuts window UI definition
 │   └── window.vala                # Main application window (Adw.ApplicationWindow)
 ├── tests/             # Automated test suite
 │   ├── logic_test.vala   # Core rule validation & AI decision tests
@@ -139,7 +140,7 @@ sudo ninja -C build install
 
 The repository includes a ready-to-use Flatpak manifest:
 1. Open the project directory in **GNOME Builder**.
-2. Allow Builder to download the GNOME 48 Flatpak SDK runtime.
+2. Allow Builder to download the GNOME 51 Flatpak SDK runtime.
 3. Click **Run** (or press `Ctrl+F5`).
 
 ---
@@ -169,21 +170,31 @@ meson test -C build -v
 | Smart Move (highest die) | Double click checker |
 | Bear Off Checker | Click on the bearing-off tray (right side of board) |
 | Preview Move Trajectory | Hover cursor over a move history row |
+| Game Rules | <kbd>F1</kbd> |
 | Undo Move | <kbd>Ctrl</kbd> + <kbd>Z</kbd> |
 | New Game | <kbd>Ctrl</kbd> + <kbd>N</kbd> |
 | Preferences | <kbd>Ctrl</kbd> + <kbd>,</kbd> |
-| Statistics | Statistics button in menu or headerbar |
+| Statistics | <kbd>Ctrl</kbd> + <kbd>Alt</kbd> + <kbd>S</kbd> |
 | Keyboard Shortcuts | <kbd>Ctrl</kbd> + <kbd>?</kbd> |
+| Toggle Full Screen | <kbd>F11</kbd> |
+| Quit | <kbd>Ctrl</kbd> + <kbd>Q</kbd> |
 
 ---
 
 ## Data Storage
 
-User configuration and session state are stored in `~/.local/share/longbackgammon/`:
-* `settings.ini` — Player preferences (AI level, language, visual themes).
-* `stats.ini` — Cumulative wins, losses, and victory types.
-* `saved_game.ini` — Serialized state of any active, unfinished match.
-* `game_logs.ini` — Archive of completed matches.
+Application configuration and match records follow standard GNOME guidelines:
+* **Settings**: Managed via **GSettings** (`io.github.ansribas.LongBackgammon` schema).
+* **Game Data**: Stored in `~/.local/share/longbackgammon/`:
+  * `stats.ini` — Cumulative wins, losses, and victory types.
+  * `saved_game.ini` — Serialized state of any active, unfinished match.
+  * `game_logs.ini` — Archive of completed matches.
+
+---
+
+## Support & Donation
+
+If you enjoy playing Long Backgammon, you can support the development on **[Ko-fi](https://ko-fi.com/ansribas)**.
 
 ---
 
