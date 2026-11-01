@@ -26,8 +26,8 @@ public class PanelStyle {
             ".lb-card { background-color: var(--popover-bg-color, @popover_bg_color); border-radius: 12px;" +
             "  border: 1px solid alpha(currentColor, 0.12); box-shadow: 0 4px 10px alpha(black, 0.12); }" +
             ".lb-card-dice { border: none; }" +
-            ".lb-header-strip { background-color: alpha(currentColor, 0.06); border-bottom: 1px solid alpha(currentColor, 0.08); transition: background-color 250ms ease-in-out, border-color 250ms ease-in-out; }" +
-            ".lb-header-strip-active { background-color: alpha(@accent_color, 0.15); border-bottom: 1px solid alpha(@accent_color, 0.35); transition: background-color 250ms ease-in-out, border-color 250ms ease-in-out; }" +
+            ".lb-header-strip { min-height: 36px; background-color: alpha(currentColor, 0.06); border-bottom: 1px solid alpha(currentColor, 0.08); transition: background-color 250ms ease-in-out, border-color 250ms ease-in-out; }" +
+            ".lb-header-strip-active { min-height: 36px; background-color: alpha(@accent_color, 0.15); border-bottom: 1px solid alpha(@accent_color, 0.35); transition: background-color 250ms ease-in-out, border-color 250ms ease-in-out; }" +
             ".lb-card-padded { padding: 8px 6px; }" +
             ".lb-card-hover { filter: brightness(105%); }" +
             ".lb-status-strip { background-color: alpha(currentColor, 0.08); }" +
@@ -316,12 +316,17 @@ public class PlayerPanel : Gtk.Box {
 
         header_box = new Gtk.Box (Gtk.Orientation.VERTICAL, 0);
         header_box.add_css_class ("lb-header-strip");
+        header_box.set_size_request (-1, 36);
 
         name_label = new Gtk.Label ("");
         name_label.add_css_class ("lb-subheadline-bold");
         name_label.add_css_class ("lb-secondary");
-        name_label.margin_top = 8;
-        name_label.margin_bottom = 8;
+        name_label.valign = Gtk.Align.CENTER;
+        name_label.halign = Gtk.Align.CENTER;
+        name_label.yalign = 0.5f;
+        name_label.xalign = 0.5f;
+        name_label.vexpand = true;
+        name_label.hexpand = true;
         name_label.margin_start = 8;
         name_label.margin_end = 8;
         name_label.ellipsize = Pango.EllipsizeMode.END;
