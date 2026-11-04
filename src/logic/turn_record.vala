@@ -70,6 +70,8 @@ public class TurnRecord : Object {
     public bool is_rolloff_winner = false;
     public CheckerColor? rolloff_winner = null;
     public TurnDie[] dice = new TurnDie[0];
+    /** Итог партии для финальной строки лога: true — победа, false — поражение, null — обычная запись. */
+    public bool? game_result_is_win = null;
 
     /** Глубокая копия (для снимков отмены хода). */
     public TurnRecord clone () {
@@ -86,6 +88,7 @@ public class TurnRecord : Object {
         r.is_rolloff_winner = is_rolloff_winner;
         r.rolloff_winner = rolloff_winner;
         r.dice = TurnDie.clone_array (dice);
+        r.game_result_is_win = game_result_is_win;
         r.id = id;   // Сохраняем оригинальный идентификатор записи для связки с UI
         return r;
     }
@@ -97,6 +100,9 @@ public class TurnRecord : Object {
 
     /** Динамически локализованная строка хода для всплывающей подсказки. */
     public string formatted_message (CheckerColor color, GameSession session) {
+        if (game_result_is_win != null) {
+            return game_result_is_win ? Localization.log_result_win () : Localization.log_result_loss ();
+        }
         if (is_rolloff) {
             CheckerColor? winner = rolloff_winner != null ? rolloff_winner : (is_rolloff_winner ? (CheckerColor?) color : null);
             if (winner != null) {
@@ -110,6 +116,12 @@ public class TurnRecord : Object {
 
     /** Текстовое представление шагов записи для экспорта лога (локализованное или на английском). */
     public string export_moves_string (CheckerColor color, GameSession session, bool force_english = false) {
+        if (game_result_is_win != null) {
+            if (force_english) {
+                return game_result_is_win ? "Victory" : "Defeat";
+            }
+            return game_result_is_win ? Localization.log_result_win () : Localization.log_result_loss ();
+        }
         if (is_rolloff) {
             CheckerColor? winner = rolloff_winner != null ? rolloff_winner : (is_rolloff_winner ? (CheckerColor?) color : null);
             if (winner != null) {

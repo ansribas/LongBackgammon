@@ -60,10 +60,6 @@ install_data(
 
 # Изображения доски и фишек (темы оформления: «Дерево» и «Мрамор»)
 install_data(
-  'images/board.png',
-  'images/white.png',
-  'images/black.png',
-  'images/dicecursor.png',
   'images/marble_board.png',
   'images/marble_white.png',
   'images/marble_black.png',

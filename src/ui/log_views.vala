@@ -325,10 +325,13 @@ public class LogCellView : Gtk.DrawingArea {
         if (is_active_cell) {
             return session.current_turn_dice.length > 2;
         }
-        return !record.is_rolloff && record.dice_roll.is_double;
+        return !record.is_rolloff && record.game_result_is_win == null && record.dice_roll.is_double;
     }
 
     public double compute_height () {
+        if (!is_active_cell && record != null && record.game_result_is_win != null) {
+            return 34.0;
+        }
         if (!is_active_cell && record.is_rolloff) {
             return 2 + 4 + 11 + 3 + DIE + 4 + 2;
         }
@@ -421,6 +424,10 @@ public class LogCellView : Gtk.DrawingArea {
 
     private void draw_content (Cairo.Context cr, int width, int height) {
         var highlighted = record_id () >= 0 && session.highlighted_log_id == record_id ();
+        if (!is_active_cell && record != null && record.game_result_is_win != null) {
+            draw_game_result (cr, highlighted);
+            return;
+        }
         if (!is_active_cell && record.is_rolloff) {
             draw_rolloff (cr, highlighted);
             return;
@@ -583,6 +590,58 @@ public class LogCellView : Gtk.DrawingArea {
             DiceDrawing.draw (cr, r.get_x () + DIE / 2, r.get_y () + DIE / 2, DIE,
                               idx == 0 ? record.dice_roll.die1 : record.dice_roll.die2);
         }
+    }
+
+    private void draw_game_result (Cairo.Context cr, bool highlighted) {
+        var is_win = record.game_result_is_win;
+        var text = is_win ? Localization.log_result_win () : Localization.log_result_loss ();
+        var x = card_x ();
+        var y = 2.0;
+        var h = get_height () - 4.0;
+
+        DiceDrawing.rounded_rect (cr, x + 0.5, y + 0.5, CARD_W - 1, h - 1, 6);
+        if (is_win) {
+            cr.set_source_rgba (1.0, 0.584, 0.0, highlighted ? 0.20 : 0.12);
+        } else {
+            PanelStyle.set_fg (cr, this, highlighted ? 0.20 : 0.12);
+        }
+        cr.fill_preserve ();
+        if (is_win) {
+            cr.set_source_rgba (1.0, 0.584, 0.0, 0.45);
+        } else {
+            PanelStyle.set_fg (cr, this, 0.45);
+        }
+        cr.set_line_width (1);
+        cr.stroke ();
+
+        var icon_s = 10.0;
+        var spacing = 4.0;
+        var tw = PanelStyle.text_width (this, text, 11.0, 700, 0.0);
+        var total_w = icon_s + spacing + tw;
+        var sx = x + (CARD_W - total_w) / 2.0;
+        var cy = y + h / 2.0;
+
+        if (is_win) {
+            cr.set_source_rgba (1.0, 0.584, 0.0, 1.0);
+            PanelStyle.draw_trophy (cr, sx + icon_s / 2.0, cy, icon_s);
+            cr.set_source_rgba (1.0, 0.584, 0.0, 1.0);
+        } else {
+            PanelStyle.set_fg (cr, this, 0.70);
+            PanelStyle.draw_flag (cr, sx + icon_s / 2.0, cy, icon_s);
+            PanelStyle.set_fg (cr, this, 0.70);
+        }
+
+        var layout = create_pango_layout (text);
+        var fd = new Pango.FontDescription ();
+        fd.set_family ("Sans");
+        fd.set_absolute_size (11.0 * Pango.SCALE);
+        fd.set_weight (Pango.Weight.BOLD);
+        layout.set_font_description (fd);
+        int l_tw, l_th;
+        layout.get_pixel_size (out l_tw, out l_th);
+        var text_cx = sx + icon_s + spacing + tw / 2.0;
+        cr.move_to (text_cx - l_tw / 2.0, cy - l_th / 2.0);
+        Pango.cairo_show_layout (cr, layout);
     }
 }
 

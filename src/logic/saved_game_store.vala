@@ -271,6 +271,9 @@ public class SavedGameStore : Object {
         if (r.rolloff_winner != null) {
             kf.set_string (group, prefix + "_rolloff_winner_color", r.rolloff_winner.to_string ());
         }
+        if (r.game_result_is_win != null) {
+            kf.set_boolean (group, prefix + "_game_result_is_win", r.game_result_is_win);
+        }
         kf.set_string_list (group, prefix + "_strings", r.move_strings);
         kf.set_string (group, prefix + "_dice", encode_dice (r.dice));
 
@@ -303,6 +306,9 @@ public class SavedGameStore : Object {
             }
             if (kf.has_key (group, prefix + "_rolloff_winner_color")) {
                 record.rolloff_winner = CheckerColor.from_string (kf.get_string (group, prefix + "_rolloff_winner_color"));
+            }
+            if (kf.has_key (group, prefix + "_game_result_is_win")) {
+                record.game_result_is_win = kf.get_boolean (group, prefix + "_game_result_is_win");
             }
             record.move_strings = kf.get_string_list (group, prefix + "_strings");
             if (kf.has_key (group, prefix + "_dice")) {

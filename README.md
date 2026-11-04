@@ -48,152 +48,75 @@ Classic Long Backgammon (Russian Nardi / Длинные нарды) for GNOME/Li
 
 ---
 
-## Project Structure
+## Installation
 
-```text
-.
-├── data/              # Application assets & metadata
-│   ├── icons/         # FreeDesktop hicolor icons (SVG & PNG)
-│   ├── images/        # High-res board textures, checkers, and cursors
-│   ├── sounds/        # Audio effects (WAV)
-│   ├── translations/  # In-game localization files (JSON, 14 languages)
-│   └── io.github.ansribas.LongBackgammon.* # Desktop entry, AppStream metainfo, GSettings schema
-├── po/                # Gettext translations for system UI and metadata
-├── src/               # Application source code (Vala)
-│   ├── logic/         # Game engine (pure models & business logic)
-│   │   ├── models.vala            # Enums, point coordinates, move structures
-│   │   ├── game_board.vala        # Board state, point stacks, bearing-off trays
-│   │   ├── move_validator.vala    # Rule validator & legal move generation
-│   │   ├── game_session.vala      # Match state machine, turn orchestration
-│   │   ├── computer_ai.vala       # Standard heuristic AI
-│   │   ├── advanced_ai.vala       # Grandmaster AI (prime building, risk analysis)
-│   │   ├── settings_store.vala    # Preferences & player profile persistence
-│   │   ├── stats_store.vala       # Match results & outcome statistics
-│   │   ├── saved_game_store.vala  # Unfinished game serialization & restore
-│   │   ├── game_log_store.vala    # Move history and game log storage
-│   │   ├── sound_manager.vala     # Sound playback engine (GStreamer / Canberra)
-│   │   └── localization_manager.vala # In-app JSON multi-language manager
-│   ├── ui/            # User interface (GTK4 / Libadwaita)
-│   │   ├── board_view.vala        # Board canvas & checker animation rendering (Cairo)
-│   │   ├── dice_overlay.vala      # Fullscreen 3D dice physics and landing animation
-│   │   ├── player_panel.vala      # Player panels (avatars, status, turn timers)
-│   │   ├── player_dice_zone.vala  # Dice slot container and fly-in animation layer
-│   │   ├── player_score_block.vala# Score display and turn progress indicator
-│   │   ├── log_views.vala         # Game log view & trajectory hover tooltips
-│   │   ├── popup_view.vala        # Modal dialog base overlay container
-│   │   ├── settings_view.vala     # Settings modal (themes, speed, audio, language)
-│   │   ├── rules_view.vala        # Interactive rules guide dialog
-│   │   ├── statistics_view.vala   # Detailed player statistics modal
-│   │   ├── new_game_dialogs.vala  # New game setup, confirm, and resume dialogs
-│   │   ├── game_over_view.vala    # Victory/defeat screen with animated particle celebration
-│   │   └── ui_kit.vala            # Animation utilities (Bezier, spring physics), colors & styles
-│   ├── application.vala           # Adw.Application subclass (GActions, shortcuts)
-│   ├── main.vala                  # Application entry point
-│   ├── shortcuts-dialog.ui        # Keyboard shortcuts window UI definition
-│   └── window.vala                # Main application window (Adw.ApplicationWindow)
-├── tests/             # Automated test suite
-│   ├── logic_test.vala   # Core rule validation & AI decision tests
-│   ├── session_test.vala # Asynchronous game session & turn progression tests
-│   └── ui_test.vala      # Interactive board UI component test
-├── io.github.ansribas.LongBackgammon.json # Flatpak manifest for GNOME Builder
-└── meson.build        # Meson build system configuration
-```
+Pre-built packages for Linux are available on the **[Releases](https://github.com/ansribas/LongBackgammon/releases)** page.
 
----
-
-## Building and Running
-
-### 1. Install Dependencies
-
-* **Fedora / RHEL**:
-  ```bash
-  sudo dnf install meson ninja-build vala gtk4-devel libadwaita-devel
-  ```
-
-* **Ubuntu / Debian**:
-  ```bash
-  sudo apt install meson ninja-build valac libgtk-4-dev libadwaita-1-dev
-  ```
-
-* **Arch Linux**:
-  ```bash
-  sudo pacman -S meson ninja vala gtk4 libadwaita
-  ```
-
-### 2. Build from Source
-
+### Flatpak (.flatpak) — Recommended
+Universal bundle compatible with any modern Linux distribution:
 ```bash
-# Configure the build directory
-meson setup build
-
-# Compile
-ninja -C build
-
-# Run directly without installing
-./build/src/longbackgammon
-
-# Install system-wide (optional)
-sudo ninja -C build install
+flatpak install io.github.ansribas.LongBackgammon.flatpak
 ```
-
-### 3. Build with GNOME Builder / Flatpak
-
-The repository includes a ready-to-use Flatpak manifest:
-1. Open the project directory in **GNOME Builder**.
-2. Allow Builder to download the GNOME 51 Flatpak SDK runtime.
-3. Click **Run** (or press `Ctrl+F5`).
-
----
-
-## Testing
-
-The project includes 6 automated test suites (rule verification, AI moves, UI components, and metadata validation):
-
+Run:
 ```bash
-meson test -C build
+flatpak run io.github.ansribas.LongBackgammon
 ```
 
-To run tests with verbose logging:
+### AppImage (.AppImage)
+Standalone portable executable that requires no installation:
+1. Download `LongBackgammon-*-x86_64.AppImage` from Releases.
+2. Make it executable:
+   ```bash
+   chmod +x LongBackgammon-*-x86_64.AppImage
+   ```
+3. Launch via double-click in your file manager or from terminal:
+   ```bash
+   ./LongBackgammon-*-x86_64.AppImage
+   ```
+
+### Debian / Ubuntu (.deb)
+Native package for Debian, Ubuntu, Linux Mint, and derivatives:
 ```bash
-meson test -C build -v
+sudo apt install ./longbackgammon_*_amd64.deb
 ```
 
 ---
 
-## Controls and Shortcuts
+## Building from Source
 
-| Action | Input |
-|---|---|
-| Roll Dice / New Game | Click on board or <kbd>Space</kbd> |
-| Select Checker | Left mouse click |
-| Move Checker | Click on highlighted point or Drag & Drop |
-| Bear Off Checker | Click on the bearing-off tray (right side of board) |
-| Preview Move Trajectory | Hover cursor over a move history row |
-| Game Rules | <kbd>F1</kbd> |
-| Undo Move | <kbd>Ctrl</kbd> + <kbd>Z</kbd> |
-| New Game | <kbd>Ctrl</kbd> + <kbd>N</kbd> |
-| Preferences | <kbd>Ctrl</kbd> + <kbd>,</kbd> |
-| Statistics | <kbd>Ctrl</kbd> + <kbd>Alt</kbd> + <kbd>S</kbd> |
-| Keyboard Shortcuts | <kbd>Ctrl</kbd> + <kbd>?</kbd> |
-| Toggle Full Screen | <kbd>F11</kbd> |
-| Quit | <kbd>Ctrl</kbd> + <kbd>Q</kbd> |
+To compile the game manually from source:
+
+1. **Dependencies**:
+   * **Fedora / RHEL**:
+     ```bash
+     sudo dnf install meson ninja-build vala gtk4-devel libadwaita-devel
+     ```
+   * **Ubuntu / Debian**:
+     ```bash
+     sudo apt install meson ninja-build valac libgtk-4-dev libadwaita-1-dev
+     ```
+   * **Arch Linux**:
+     ```bash
+     sudo pacman -S meson ninja vala gtk4 libadwaita
+     ```
+
+2. **Build and Run**:
+   ```bash
+   meson setup build
+   ninja -C build
+   ./build/src/longbackgammon
+   ```
+
+3. **Install system-wide (optional)**:
+   ```bash
+   sudo ninja -C build install
+   ```
 
 ---
 
-## Data Storage
+## Support the Project
 
-Application configuration and match records follow standard GNOME guidelines:
-* **Settings**: Managed via **GSettings** (`io.github.ansribas.LongBackgammon` schema).
-* **Game Data**: Stored in `~/.local/share/longbackgammon/`:
-  * `stats.ini` — Cumulative wins, losses, and victory types.
-  * `saved_game.ini` — Serialized state of any active, unfinished match.
-  * `game_logs.ini` — Archive of completed matches.
-
----
-
-## Support & Donation
-
-If you enjoy playing Long Backgammon, you can support the development on **[Ko-fi](https://ko-fi.com/ansribas)**.
+If you enjoy Long Backgammon, you can support development on **[Ko-fi](https://ko-fi.com/ansribas)**.
 
 ---
 

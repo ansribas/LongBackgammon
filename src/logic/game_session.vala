@@ -591,7 +591,7 @@ public class GameSession : Object {
     private int non_rolloff_count (TurnRecord[] log) {
         var n = 0;
         foreach (var r in log) {
-            if (!r.is_rolloff) {
+            if (!r.is_rolloff && r.game_result_is_win == null) {
                 n++;
             }
         }
@@ -1392,6 +1392,21 @@ public class GameSession : Object {
         }
         current_turn_record = null;
         current_turn_dice = new TurnDie[0];
+
+        // Добавляем в лог обоих игроков строку о победе/поражении (одновременно с экраном победы)
+        var winner_color = current_player;
+        var win_record = new TurnRecord.with_dice (0, new DiceRoll (1, 1));
+        win_record.game_result_is_win = true;
+        var loss_record = new TurnRecord.with_dice (0, new DiceRoll (1, 1));
+        loss_record.game_result_is_win = false;
+
+        if (winner_color == CheckerColor.WHITE) {
+            insert_log_record (CheckerColor.WHITE, win_record);
+            insert_log_record (CheckerColor.BLACK, loss_record);
+        } else {
+            insert_log_record (CheckerColor.BLACK, win_record);
+            insert_log_record (CheckerColor.WHITE, loss_record);
+        }
 
         // Сохраняем полный лог партии после добавления победного хода в историю
         save_game_log ();

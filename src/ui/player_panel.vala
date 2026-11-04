@@ -27,7 +27,7 @@ public class PanelStyle {
             "  border: 1px solid alpha(currentColor, 0.12); box-shadow: 0 4px 10px alpha(black, 0.12); }" +
             ".lb-card-dice { border: none; }" +
             ".lb-header-strip { min-height: 36px; background-color: alpha(currentColor, 0.06); border-bottom: 1px solid alpha(currentColor, 0.08); transition: background-color 250ms ease-in-out, border-color 250ms ease-in-out; }" +
-            ".lb-header-strip-active { min-height: 36px; background-color: alpha(@accent_color, 0.15); border-bottom: 1px solid alpha(@accent_color, 0.35); transition: background-color 250ms ease-in-out, border-color 250ms ease-in-out; }" +
+            ".lb-header-strip-active { min-height: 36px; background-color: alpha(#ff9500, 0.12); border-bottom: 1px solid alpha(#ff9500, 0.25); transition: background-color 250ms ease-in-out, border-color 250ms ease-in-out; }" +
             ".lb-card-padded { padding: 8px 6px; }" +
             ".lb-card-hover { filter: brightness(105%); }" +
             ".lb-status-strip { background-color: alpha(currentColor, 0.08); }" +
@@ -37,7 +37,7 @@ public class PanelStyle {
             ".lb-title3-bold { font-size: 1.05rem; font-weight: bold; font-feature-settings: \"tnum\"; }" +
             ".lb-secondary { color: alpha(currentColor, 0.6); }" +
             ".lb-tertiary { color: alpha(currentColor, 0.35); }" +
-            ".lb-orange { color: @warning_color; }" +
+            ".lb-orange { color: #ff9500; }" +
             ".lb-log-scroller scrollbar { min-width: 0; min-height: 0; padding: 0; margin: 0; border: none; opacity: 0; }" +
             ".lb-log-scroller overshoot { opacity: 0; }" +
             ".lb-progress, .lb-progress trough { min-width: 20px; }" +
@@ -213,6 +213,60 @@ public class PanelStyle {
         cr.close_path ();
         cr.fill ();
         cr.rectangle (x + w * 0.12, y + h * 0.9, w * 0.76, h * 0.12);
+        cr.fill ();
+    }
+
+    /** Иконка кубка для победы. */
+    public static void draw_trophy (Cairo.Context cr, double cx, double cy, double s) {
+        var w = s * 0.95;
+        var h = s * 0.95;
+        var top = cy - h / 2.0;
+
+        // Ручки кубка
+        cr.save ();
+        cr.set_line_width (s * 0.12);
+        cr.new_sub_path ();
+        cr.arc (cx - w * 0.24, top + h * 0.24, w * 0.22, -Math.PI / 2, Math.PI / 2);
+        cr.stroke ();
+        cr.new_sub_path ();
+        cr.arc (cx + w * 0.24, top + h * 0.24, w * 0.22, -Math.PI / 2, Math.PI / 2);
+        cr.stroke ();
+        cr.restore ();
+
+        // Чаша
+        cr.move_to (cx - w * 0.35, top);
+        cr.line_to (cx + w * 0.35, top);
+        cr.line_to (cx + w * 0.30, top + h * 0.26);
+        cr.curve_to (cx + w * 0.25, top + h * 0.50, cx + w * 0.12, top + h * 0.54, cx + w * 0.09, top + h * 0.60);
+        cr.line_to (cx + w * 0.09, top + h * 0.74);
+        cr.line_to (cx - w * 0.09, top + h * 0.74);
+        cr.line_to (cx - w * 0.09, top + h * 0.60);
+        cr.curve_to (cx - w * 0.12, top + h * 0.54, cx - w * 0.25, top + h * 0.50, cx - w * 0.30, top + h * 0.26);
+        cr.close_path ();
+        cr.fill ();
+
+        // Подставка
+        DiceDrawing.rounded_rect (cr, cx - w * 0.30, top + h * 0.74, w * 0.60, h * 0.20, 1.5);
+        cr.fill ();
+    }
+
+    /** Иконка флага для поражения. */
+    public static void draw_flag (Cairo.Context cr, double cx, double cy, double s) {
+        var w = s * 0.90;
+        var h = s * 0.95;
+        var left = cx - w / 2.0;
+        var top = cy - h / 2.0;
+
+        // Древко
+        cr.rectangle (left, top, w * 0.14, h);
+        cr.fill ();
+
+        // Полотнище флага
+        cr.move_to (left + w * 0.14, top + h * 0.05);
+        cr.curve_to (left + w * 0.45, top - h * 0.03, left + w * 0.65, top + h * 0.12, left + w, top + h * 0.06);
+        cr.line_to (left + w, top + h * 0.52);
+        cr.curve_to (left + w * 0.65, top + h * 0.58, left + w * 0.45, top + h * 0.43, left + w * 0.14, top + h * 0.50);
+        cr.close_path ();
         cr.fill ();
     }
 }
@@ -787,7 +841,7 @@ public class PlayerPanel : Gtk.Box {
         footer.visible = true;
         var completed = 0;
         foreach (var r in my_log ()) {
-            if (!r.is_rolloff) {
+            if (!r.is_rolloff && r.game_result_is_win == null) {
                 completed++;
             }
         }

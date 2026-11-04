@@ -242,11 +242,20 @@ int main (string[] args) {
         stdout.printf ("FAIL: white_burned_dice_sum expected 6, got %d\n", win_test.white_burned_dice_sum);
         return 1;
     }
-    if (win_test.white_turn_log.length < 2) {
-        stdout.printf ("FAIL: winning turn record not added to white log\n");
+    if (win_test.white_turn_log.length < 3) {
+        stdout.printf ("FAIL: winning turn record or result entry not added to white log\n");
         return 1;
     }
-    var last_rec = win_test.white_turn_log[0];
+    var result_rec = win_test.white_turn_log[0];
+    if (result_rec.game_result_is_win != true) {
+        stdout.printf ("FAIL: expected win result entry at top of white log\n");
+        return 1;
+    }
+    if (win_test.black_turn_log.length < 1 || win_test.black_turn_log[0].game_result_is_win != false) {
+        stdout.printf ("FAIL: expected defeat result entry at top of black log\n");
+        return 1;
+    }
+    var last_rec = win_test.white_turn_log[1];
     if (last_rec.turn_number != 42) {
         stdout.printf ("FAIL: expected winning turn 42, got %d\n", last_rec.turn_number);
         return 1;

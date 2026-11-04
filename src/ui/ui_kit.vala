@@ -78,7 +78,7 @@ public class UiKit {
             ".lb-secondary { color: alpha(currentColor, 0.6); }" +
             ".lb-accent { color: @accent_color; }" +
             ".lb-red { color: @destructive_color; }" +
-            ".lb-orange { color: @warning_color; }" +
+            ".lb-orange { color: #ff9500; }" +
             ".lb-green { color: @success_color; }" +
             // Секция настроек (SettingsSection) и строки
             ".lb-section { background-color: alpha(var(--view-bg-color, @view_bg_color), 0.6); border-radius: 10px;" +

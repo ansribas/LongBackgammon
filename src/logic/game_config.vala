@@ -492,6 +492,8 @@ public class Localization {
     public static string victory_oin ()           { return tr ("victoryOin"); }
     public static string victory_white ()         { return tr ("victoryWhite"); }
     public static string victory_black ()         { return tr ("victoryBlack"); }
+    public static string log_result_win ()        { return tr ("logResultWin"); }
+    public static string log_result_loss ()       { return tr ("logResultLoss"); }
 
     // MARK: - Подтверждение новой игры
     public static string confirm_new_game_title () { return tr ("confirmNewGameTitle"); }

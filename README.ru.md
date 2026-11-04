@@ -46,146 +46,69 @@
 
 ---
 
-## Структура проекта
+## Установка
 
-```text
-.
-├── data/              # Ресурсы приложения
-│   ├── icons/         # Иконки приложения (FreeDesktop hicolor: SVG и PNG)
-│   ├── images/        # Текстуры доски, фишек и курсоров (PNG)
-│   ├── sounds/        # Звуковые эффекты (WAV)
-│   ├── translations/  # Файлы локализации интерфейса (JSON, 14 языков)
-│   └── io.github.ansribas.LongBackgammon.* # Desktop-файл, AppStream AppData, GSettings
-├── po/                # Gettext-переводы системных метаданных
-├── src/               # Исходный код приложения (Vala)
-│   ├── logic/         # Ядро игры (модели данных и бизнес-логика)
-│   │   ├── models.vala            # Перечисления и структуры (цвета, кости, ходы, геометрия)
-│   │   ├── game_board.vala        # Состояние доски (лунки, стеки фишек, вынос в трей)
-│   │   ├── move_validator.vala    # Валидатор ходов по официальным правилам длинных нард
-│   │   ├── game_session.vala      # Управление игровым процессом и пошаговой сессией
-│   │   ├── computer_ai.vala       # Базовый искусственный интеллект (жадный/эвристический)
-│   │   ├── advanced_ai.vala       # Продвинутый ИИ уровня «Гроссмейстер» (анализ рисков и праймов)
-│   │   ├── settings_store.vala    # Хранилище настроек партии и параметров игры
-│   │   ├── stats_store.vala       # Хранение статистики побед, поражений и исходов (Оин/Марс)
-│   │   ├── saved_game_store.vala  # Сериализация и восстановление незавершённой партии
-│   │   ├── game_log_store.vala    # Хранение истории ходов и архива партий
-│   │   ├── sound_manager.vala     # Звуковой движок (GStreamer / libcanberra)
-│   │   └── localization_manager.vala # Менеджер мультиязычной локализации строк
-│   ├── ui/            # Графический интерфейс на GTK4 / Libadwaita
-│   │   ├── board_view.vala        # Отрисовка доски и анимация перемещения фишек (Cairo)
-│   │   ├── dice_overlay.vala      # Полноэкранный 3D-слой броска кубиков с физикой
-│   │   ├── player_panel.vala      # Боковые панели игроков (аватары, статус, таймер)
-│   │   ├── player_dice_zone.vala  # Анимационный слой и перелёт кубиков в слоты панели
-│   │   ├── player_score_block.vala# Блок набранных очков и индикатор таймера хода
-│   │   ├── log_views.vala         # Виджеты лога ходов с предпросмотром траектории (тултипы)
-│   │   ├── popup_view.vala        # Базовый класс модальных всплывающих карточек
-│   │   ├── settings_view.vala     # Диалог настроек игры, тем и скорости анимации
-│   │   ├── rules_view.vala        # Диалог с подробными правилами длинных нард
-│   │   ├── statistics_view.vala   # Диалог детальной игровой статистики
-│   │   ├── new_game_dialogs.vala  # Диалоги создания партии, подтверждения и восстановления
-│   │   ├── game_over_view.vala    # Экран окончания партии с анимированными эффектами
-│   │   └── ui_kit.vala            # Утилиты анимаций (Безье, затухания), цвета и стили
-│   ├── application.vala           # Класс приложения Adw.Application (GAction, шорткаты)
-│   ├── main.vala                  # Точка входа в программу
-│   ├── shortcuts-dialog.ui        # Разметка окна списка горячих клавиш (GTK)
-│   └── window.vala                # Главное окно (Adw.ApplicationWindow, адаптивный стек)
-├── tests/             # Набор автоматических тестов
-│   ├── logic_test.vala   # Тесты правил нард, валидатора и логики ИИ
-│   ├── session_test.vala # Тесты пошаговой сессии, ходов ИИ и генерации лога
-│   └── ui_test.vala      # Интерактивный UI-тест доски (BoardView)
-├── io.github.ansribas.LongBackgammon.json # Flatpak-манифест для сборки и GNOME Builder
-└── meson.build        # Конфигурация системы сборки Meson
-```
+Готовые пакеты для Linux доступны на странице **[Релизы (Releases)](https://github.com/ansribas/LongBackgammon/releases)**.
 
----
-
-## Сборка и запуск
-
-### 1. Установка зависимостей
-
-* **Fedora / RHEL**:
-  ```bash
-  sudo dnf install meson ninja-build vala gtk4-devel libadwaita-devel
-  ```
-
-* **Ubuntu / Debian**:
-  ```bash
-  sudo apt install meson ninja-build valac libgtk-4-dev libadwaita-1-dev
-  ```
-
-* **Arch Linux**:
-  ```bash
-  sudo pacman -S meson ninja vala gtk4 libadwaita
-  ```
-
-### 2. Сборка из исходников
-
+### Flatpak (.flatpak) — Рекомендуемый способ
+Универсальный пакет, работающий в любом дистрибутиве Linux:
 ```bash
-# Настройка каталога сборки
-meson setup build
-
-# Компиляция
-ninja -C build
-
-# Запуск без установки
-./build/src/longbackgammon
-
-# Установка в систему (опционально)
-sudo ninja -C build install
+flatpak install io.github.ansribas.LongBackgammon.flatpak
 ```
-
-### 3. Сборка и запуск в GNOME Builder / Flatpak
-
-Проект полностью готов для сборки в среде **GNOME Builder**:
-1. Откройте папку проекта в GNOME Builder.
-2. Дождитесь автоматической загрузки Flatpak SDK (GNOME 51).
-3. Нажмите кнопку **Запустить** (или сочетание клавиш `Ctrl+F5`).
-
----
-
-## Тестирование
-
-Проект включает 6 автоматических тестов (модульные тесты правил, партии ИИ, UI-тесты и валидация метаданных):
-
+Запуск:
 ```bash
-meson test -C build
+flatpak run io.github.ansribas.LongBackgammon
 ```
 
-Для запуска тестов с подробным выводом:
+### AppImage (.AppImage)
+Не требует установки — портативный файл:
+1. Скачайте `LongBackgammon-*-x86_64.AppImage` со страницы релизов.
+2. Сделайте файл исполняемым:
+   ```bash
+   chmod +x LongBackgammon-*-x86_64.AppImage
+   ```
+3. Запустите двойным кликом в файловом менеджере или командой:
+   ```bash
+   ./LongBackgammon-*-x86_64.AppImage
+   ```
+
+### Debian / Ubuntu (.deb)
+Пакет для Debian, Ubuntu, Linux Mint и производных:
 ```bash
-meson test -C build -v
+sudo apt install ./longbackgammon_*_amd64.deb
 ```
 
 ---
 
-## Управление и горячие клавиши
+## Сборка из исходников
 
-| Действие | Управление |
-|---|---|
-| Бросить кубики / Новая партия | Клик по доске или пробел |
-| Выбрать фишку | Клик левой кнопкой мыши |
-| Ход фишкой | Клик по подсвеченному пункту или перетаскивание (Drag & Drop) |
-| Снять фишку с доски (вынос) | Клик по зоне выноса (справа от поля) |
-| Просмотр траектории хода | Наведение курсора на строку в истории ходов |
-| Правила игры | <kbd>F1</kbd> |
-| Отмена хода | <kbd>Ctrl</kbd> + <kbd>Z</kbd> |
-| Новая игра | <kbd>Ctrl</kbd> + <kbd>N</kbd> |
-| Настройки | <kbd>Ctrl</kbd> + <kbd>,</kbd> |
-| Статистика | <kbd>Ctrl</kbd> + <kbd>Alt</kbd> + <kbd>S</kbd> |
-| Горячие клавиши | <kbd>Ctrl</kbd> + <kbd>?</kbd> |
-| Полный экран | <kbd>F11</kbd> |
-| Выход | <kbd>Ctrl</kbd> + <kbd>Q</kbd> |
+Если вы хотите собрать игру вручную:
 
----
+1. **Зависимости**:
+   * **Fedora / RHEL**:
+     ```bash
+     sudo dnf install meson ninja-build vala gtk4-devel libadwaita-devel
+     ```
+   * **Ubuntu / Debian**:
+     ```bash
+     sudo apt install meson ninja-build valac libgtk-4-dev libadwaita-1-dev
+     ```
+   * **Arch Linux**:
+     ```bash
+     sudo pacman -S meson ninja vala gtk4 libadwaita
+     ```
 
-## Хранение данных
+2. **Сборка и запуск**:
+   ```bash
+   meson setup build
+   ninja -C build
+   ./build/src/longbackgammon
+   ```
 
-Параметры приложения и состояние сессий соответствуют стандартам среды GNOME:
-* **Настройки**: сохраняются через системную службу **GSettings** (схема `io.github.ansribas.LongBackgammon`).
-* **Игровые данные**: сохраняются в каталоге `~/.local/share/longbackgammon/`:
-  * `stats.ini` — статистика побед, поражений и типов исходов;
-  * `saved_game.ini` — состояние незавершённой партии;
-  * `game_logs.ini` — архив завершённых партий.
+3. **Установка в систему (опционально)**:
+   ```bash
+   sudo ninja -C build install
+   ```
 
 ---
 
