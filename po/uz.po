@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: longbackgammon\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-26 13:00+0200\n"
+"POT-Creation-Date: 2026-11-01 20:48+0200\n"
 "PO-Revision-Date: 2026-10-26 09:00+0200\n"
 "Last-Translator: Aleksey Svetlov <ansribas>\n"
 "Language-Team: Uzbek <uz@li.org>\n"
@@ -31,33 +31,231 @@ msgstr "Klassik uzun narda stol o'yini"
 msgid "GTK;Backgammon;Game;"
 msgstr ""
 
-#: data/io.github.ansribas.LongBackgammon.metainfo.xml.in:11
 msgid ""
 "Long Backgammon is a popular variant of backgammon played with fifteen "
 "checkers on a standard board. Players compete to move all their checkers "
 "into the home board and bear them off first, following strict strategic "
 "rules and smart positioning."
 msgstr ""
+"Uzun nard — standart taxtada o‘n beshta dona bilan o‘ynaladigan nardning "
+"mashhur turi. O‘yinchilar qat’iy strategik qoidalarga amal qilib va oqilona "
+"joylashtirib, barcha donalarini birinchi bo‘lib o‘z uyiga olib kelish va "
+"taxtadan chiqarish uchun bellashadi."
 
 #: data/io.github.ansribas.LongBackgammon.metainfo.xml.in:19
 msgid "Aleksey Svetlov"
 msgstr ""
 
-#: data/io.github.ansribas.LongBackgammon.metainfo.xml.in:29
-#, fuzzy
-msgid "Long Backgammon gameplay"
-msgstr "Uzun narda"
+msgid "Classic match and gameplay"
+msgstr "Klassik o‘yin va o‘yin jarayoni"
 
-#: data/io.github.ansribas.LongBackgammon.metainfo.xml.in:33
-msgid "Classic board game and checkers"
+msgid "Game settings, visual themes, and audio preferences"
+msgstr "O‘yin sozlamalari, vizual mavzular va ovoz sozlamalari"
+
+msgid "Interactive rules guide and match scoring"
+msgstr "Interaktiv qoidalar qo‘llanmasi va o‘yin hisobi"
+
+msgid ""
+"GNOME Human Interface Guidelines alignment: standard Libadwaita header bar "
+"button sizing and symbolic icons, primary menu placed next to window "
+"controls, system GSettings integration, GNOME HIG color palette, relative "
+"typography scale for accessibility, interactive Keyboard Shortcuts window "
+"(Ctrl+?), and donation link support."
 msgstr ""
+"GNOME HIG standartlariga moslashtirish: Libadwaita sarlavha paneli "
+"tugmalarining standart o‘lchamlari va ramziy piktogrammalar, asosiy "
+"menyuning oyna tugmalari yonida joylashuvi, GSettings integratsiyasi, GNOME "
+"HIG ranglar palitrasi, qulaylik uchun nisbiy shrift o‘lchami, klaviatura "
+"yorliqlarining interaktiv oynasi (Ctrl+?) va xayriya havolasi qo‘llovi."
 
-#: data/io.github.ansribas.LongBackgammon.metainfo.xml.in:37
-msgid "Match session in progress"
+msgid ""
+"Configurable board side selection (Left / Right) with smooth transitions, "
+"animated checker collection into trays, panel docking sound effects, hidden "
+"stats reset trigger, and rolloff flow enhancements."
 msgstr ""
+"Taxta tomonini tanlash (chap / o‘ng) silliq o‘tishlar bilan, donalarni "
+"laganlarga animatsiyali yig‘ish, panellarni biriktirish ovoz effektlari, "
+"statistikani yashirin tozalash va donalarni chiqarish jarayonidagi "
+"yaxshilanishlar."
 
-#: data/io.github.ansribas.LongBackgammon.metainfo.xml.in:61
 msgid "Initial release of Long Backgammon for Linux."
+msgstr "Long Backgammon’ning Linux uchun birinchi chiqarilishi."
+
+#: data/io.github.ansribas.LongBackgammon.gschema.xml:6
+msgid "Language code"
+msgstr ""
+
+#: data/io.github.ansribas.LongBackgammon.gschema.xml:7
+msgid ""
+"Interface language code (e.g. 'ru', 'en') or empty string for system locale."
+msgstr ""
+
+#: data/io.github.ansribas.LongBackgammon.gschema.xml:11
+msgid "Game opponent mode"
+msgstr ""
+
+#: data/io.github.ansribas.LongBackgammon.gschema.xml:12
+msgid "Opponent type: 'computer' or 'human'."
+msgstr ""
+
+#: data/io.github.ansribas.LongBackgammon.gschema.xml:16
+msgid "AI difficulty level"
+msgstr ""
+
+#: data/io.github.ansribas.LongBackgammon.gschema.xml:17
+msgid "Difficulty level: 'master' or 'standard'."
+msgstr ""
+
+#: data/io.github.ansribas.LongBackgammon.gschema.xml:21
+msgid "Game animation speed"
+msgstr ""
+
+#: data/io.github.ansribas.LongBackgammon.gschema.xml:22
+msgid "Game speed: 'slow' or 'fast'."
+msgstr ""
+
+#: data/io.github.ansribas.LongBackgammon.gschema.xml:26
+msgid "Board visual theme"
+msgstr ""
+
+#: data/io.github.ansribas.LongBackgammon.gschema.xml:27
+msgid "Theme style: 'marble' or 'wood'."
+msgstr ""
+
+#: data/io.github.ansribas.LongBackgammon.gschema.xml:31
+msgid "Checker movement trajectory"
+msgstr ""
+
+#: data/io.github.ansribas.LongBackgammon.gschema.xml:32
+msgid "Movement type: 'arc' or 'straight'."
+msgstr ""
+
+#: data/io.github.ansribas.LongBackgammon.gschema.xml:36
+msgid "3D board dice animation"
+msgstr ""
+
+#: data/io.github.ansribas.LongBackgammon.gschema.xml:37
+msgid "Whether to animate dice roll directly on the board."
+msgstr ""
+
+#: data/io.github.ansribas.LongBackgammon.gschema.xml:41
+msgid "Show AI movement path"
+msgstr ""
+
+#: data/io.github.ansribas.LongBackgammon.gschema.xml:42
+msgid "Display trajectory arrows for computer moves."
+msgstr ""
+
+#: data/io.github.ansribas.LongBackgammon.gschema.xml:46
+msgid "Show player movement path"
+msgstr ""
+
+#: data/io.github.ansribas.LongBackgammon.gschema.xml:47
+msgid "Display trajectory arrows for player moves."
+msgstr ""
+
+#: data/io.github.ansribas.LongBackgammon.gschema.xml:51
+msgid "Highlight moves in log"
+msgstr ""
+
+#: data/io.github.ansribas.LongBackgammon.gschema.xml:52
+msgid "Highlight board paths when hovering or selecting turns in log."
+msgstr ""
+
+#: data/io.github.ansribas.LongBackgammon.gschema.xml:56
+msgid "Show cell index numbers"
+msgstr ""
+
+#: data/io.github.ansribas.LongBackgammon.gschema.xml:57
+msgid "Display 1-24 numbering on board points."
+msgstr ""
+
+#: data/io.github.ansribas.LongBackgammon.gschema.xml:61
+msgid "Enable debug log export"
+msgstr ""
+
+#: data/io.github.ansribas.LongBackgammon.gschema.xml:62
+msgid "Export detailed game state debug logs."
+msgstr ""
+
+#: data/io.github.ansribas.LongBackgammon.gschema.xml:66
+msgid "Score display mode"
+msgstr ""
+
+#: data/io.github.ansribas.LongBackgammon.gschema.xml:67
+msgid "Score display format: 'progress' or 'score'."
+msgstr ""
+
+#: data/io.github.ansribas.LongBackgammon.gschema.xml:71
+msgid "Sound effects enabled"
+msgstr ""
+
+#: data/io.github.ansribas.LongBackgammon.gschema.xml:72
+msgid "Whether sound effects are played."
+msgstr ""
+
+#: data/io.github.ansribas.LongBackgammon.gschema.xml:76
+msgid "Rolloff for first move enabled"
+msgstr ""
+
+#: data/io.github.ansribas.LongBackgammon.gschema.xml:77
+msgid "Whether players roll dice to determine who moves first."
+msgstr ""
+
+#: data/io.github.ansribas.LongBackgammon.gschema.xml:81
+msgid "Board orientation side"
+msgstr ""
+
+#: data/io.github.ansribas.LongBackgammon.gschema.xml:82
+msgid "Side where head checkers start: 'right' or 'left'."
+msgstr ""
+
+#: data/io.github.ansribas.LongBackgammon.gschema.xml:86
+msgid "Drag and drop enabled"
+msgstr ""
+
+#: data/io.github.ansribas.LongBackgammon.gschema.xml:87
+msgid "Allow moving checkers via drag and drop."
+msgstr ""
+
+#: data/io.github.ansribas.LongBackgammon.gschema.xml:91
+msgid "White player name"
+msgstr ""
+
+#: data/io.github.ansribas.LongBackgammon.gschema.xml:92
+msgid "Custom name for the white checker player."
+msgstr ""
+
+#: data/io.github.ansribas.LongBackgammon.gschema.xml:96
+msgid "Black player name"
+msgstr ""
+
+#: data/io.github.ansribas.LongBackgammon.gschema.xml:97
+msgid "Custom name for the black checker player."
+msgstr ""
+
+#: data/io.github.ansribas.LongBackgammon.gschema.xml:101
+msgid "Window width"
+msgstr ""
+
+#: data/io.github.ansribas.LongBackgammon.gschema.xml:102
+msgid "Saved main window width in pixels."
+msgstr ""
+
+#: data/io.github.ansribas.LongBackgammon.gschema.xml:106
+msgid "Window height"
+msgstr ""
+
+#: data/io.github.ansribas.LongBackgammon.gschema.xml:107
+msgid "Saved main window height in pixels."
+msgstr ""
+
+#: data/io.github.ansribas.LongBackgammon.gschema.xml:111
+msgid "Window maximized"
+msgstr ""
+
+#: data/io.github.ansribas.LongBackgammon.gschema.xml:112
+msgid "Whether the main window was maximized."
 msgstr ""
 
 #: src/window.ui:6
@@ -83,6 +281,10 @@ msgstr "_Klaviatura tugmalari"
 #: src/window.ui:45
 msgid "_About LongBackgammon"
 msgstr "Uzun narda _haqida"
+
+#, fuzzy
+#~ msgid "Long Backgammon gameplay"
+#~ msgstr "Uzun narda"
 
 #~ msgid "GTK;Backgammon;Нарды;Tavla;Nərd;"
 #~ msgstr "GTK;Backgammon;Narda;O'yin;"
