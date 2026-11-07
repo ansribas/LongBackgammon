@@ -1,15 +1,28 @@
 /* game_over_view.vala
  *
- * Экран завершения игры: объявление победителя, тип исхода (Оин, Марс, Домашний марс),
- * начисление очков в общую статистику и детальная сводка по броскам и ходам.
+ * Экран завершения игры: имя игрока и его счёт, тип исхода (Оин, Марс, Домашний марс) или поражение,
+ * таблица статистики партии с пошаговым подсчётом, звёзды за победу (или списание за поражение),
+ * которые по очереди влетают в бейдж общего счёта, и праздничный салют при Марсе/Домашнем марсе.
+ *
+ * Последовательность появления:
+ * 1. Имя игрока и счёт + анимированная иконка результата
+ * 2. Тип победы / плашка поражения
+ * 3. Ожидание окончания победного трека (или звука поражения)
+ * 4. Таблица статистики партии с подсчётом чисел
+ * 5. Звёзды (1-2-3 в зависимости от типа победы) по очереди под таблицей
+ * 6. Полёт звёзд в общий счёт игрока (зачисление или списание)
+ * 7. Салют (только Марс / Домашний марс)
+ * 8. Кнопка «Закрыть» появляется последней
  *
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
 namespace Longbackgammon {
 
+public delegate void TweenFn (double progress);
+
 /**
- * Подпрыгивающий и покачивающийся эмодзи кубка/праздника (🏆/🎉)
+ * Подпрыгивающий и покачивающийся эмодзи результата партии
  * с плавной синусоидальной анимацией масштабирования и вертикального смещения.
  */
 public class BouncingEmoji : Gtk.DrawingArea {
@@ -31,6 +44,14 @@ public class BouncingEmoji : Gtk.DrawingArea {
             queue_draw ();
             return GLib.Source.CONTINUE;
         });
+    }
+
+    public override void dispose () {
+        if (tick != 0) {
+            remove_tick_callback (tick);
+            tick = 0;
+        }
+        base.dispose ();
     }
 
     private static double ping_pong (double t, double period) {
@@ -63,9 +84,9 @@ public class BouncingEmoji : Gtk.DrawingArea {
         var fc = get_frame_clock ();
         var now = (fc != null && fc.get_frame_time () > 0) ? fc.get_frame_time () : GLib.get_monotonic_time ();
         var t = (now - t0) / 1000000.0;
-        // Масштаб 0.8 ↔ 1.05 с периодом 0.6 с, смещение 10 ↔ −4 с периодом 1.5 с
-        var sc = 0.8 + 0.25 * PanelStyle.ease_in_out (ping_pong (t, 0.6));
-        var dy = 10 - 14 * PanelStyle.ease_in_out (ping_pong (t, 1.5));
+        // Масштаб 0.85 ↔ 1.08 с периодом 0.6 с, смещение 6 ↔ −4 с периодом 1.5 с
+        var sc = 0.85 + 0.23 * PanelStyle.ease_in_out (ping_pong (t, 0.6));
+        var dy = 6 - 10 * PanelStyle.ease_in_out (ping_pong (t, 1.5));
         ensure_emoji_surface (area);
         cr.translate (w / 2.0, h / 2.0 + dy);
         cr.scale (sc, sc);
@@ -76,64 +97,293 @@ public class BouncingEmoji : Gtk.DrawingArea {
     }
 }
 
-/**
- * Карточка набранных очков («+1 / +2 / +3») с пульсирующей подсветкой контура.
- */
-public class GainedPointsCard : Gtk.Box {
-    public double pulse = 0.0;
+/** Рисование объёмной звезды: золотой при победе, кораллово-красной при поражении. */
+public class StarArt : Object {
+    public static void draw_star (Cairo.Context cr, double cx, double cy, double radius, bool defeat, double alpha = 1.0) {
+        if (radius <= 0.1) {
+            return;
+        }
+        // Мягкая тень под звездой
+        star_path (cr, cx, cy + 1.5, radius);
+        cr.set_source_rgba (0, 0, 0, 0.28 * alpha);
+        cr.fill ();
 
-    public GainedPointsCard () {
-        Object (orientation: Gtk.Orientation.VERTICAL, spacing: 2);
+        star_path (cr, cx, cy, radius);
+        var lg = new Cairo.Pattern.linear (0, cy - radius, 0, cy + radius);
+        if (defeat) {
+            lg.add_color_stop_rgba (0.0, 1.0, 0.45, 0.45, alpha);
+            lg.add_color_stop_rgba (0.5, 0.95, 0.22, 0.22, alpha);
+            lg.add_color_stop_rgba (1.0, 0.80, 0.10, 0.10, alpha);
+        } else {
+            lg.add_color_stop_rgba (0.0, 1.0, 0.94, 0.40, alpha);
+            lg.add_color_stop_rgba (0.5, 1.0, 0.72, 0.10, alpha);
+            lg.add_color_stop_rgba (1.0, 0.95, 0.50, 0.05, alpha);
+        }
+        cr.set_source (lg);
+        cr.fill ();
     }
 
-    public override void snapshot (Gtk.Snapshot snapshot) {
-        var w = get_width ();
-        var h = get_height ();
-        Graphene.Rect r = { { 0, 0 }, { w, h } };
-        var cr = snapshot.append_cairo (r);
-        var c = get_color ();
-        var rad = 14.0;
-        cr.new_sub_path ();
-        cr.arc (w - rad, rad, rad, -Math.PI / 2, 0);
-        cr.arc (w - rad, h - rad, rad, 0, Math.PI / 2);
-        cr.arc (rad, h - rad, rad, Math.PI / 2, Math.PI);
-        cr.arc (rad, rad, rad, Math.PI, 3 * Math.PI / 2);
+    public static void draw_halo (Cairo.Context cr, double cx, double cy, double radius, bool defeat, double alpha = 1.0) {
+        if (radius <= 0.1) {
+            return;
+        }
+        var rg = new Cairo.Pattern.radial (cx, cy, 2, cx, cy, radius);
+        if (defeat) {
+            rg.add_color_stop_rgba (0.0, 1.0, 0.2, 0.2, 0.45 * alpha);
+            rg.add_color_stop_rgba (0.5, 1.0, 0.58, 0.0, 0.15 * alpha);
+        } else {
+            rg.add_color_stop_rgba (0.0, 1.0, 0.92, 0.2, 0.45 * alpha);
+            rg.add_color_stop_rgba (0.5, 1.0, 0.58, 0.0, 0.15 * alpha);
+        }
+        rg.add_color_stop_rgba (1.0, 1.0, 0.58, 0.0, 0.0);
+        cr.set_source (rg);
+        cr.arc (cx, cy, radius, 0, 2 * Math.PI);
+        cr.fill ();
+    }
+
+    private static void star_path (Cairo.Context cr, double cx, double cy, double radius) {
+        cr.new_path ();
+        for (var i = 0; i < 10; i++) {
+            var a = -Math.PI / 2 + i * Math.PI / 5;
+            var r = (i % 2 == 0) ? radius : radius * 0.42;
+            var x = cx + r * Math.cos (a);
+            var y = cy + 0.03 * radius + r * Math.sin (a);
+            if (i == 0) {
+                cr.move_to (x, y);
+            } else {
+                cr.line_to (x, y);
+            }
+        }
         cr.close_path ();
-        cr.set_source_rgba (c.red, c.green, c.blue, 0.04 + 0.08 * pulse);
-        cr.fill_preserve ();
-        cr.set_source_rgba (c.red, c.green, c.blue, 0.08 + 0.12 * pulse);
-        cr.set_line_width (1);
-        cr.stroke ();
-        base.snapshot (snapshot);
+        cr.set_line_join (Cairo.LineJoin.ROUND);
+    }
+}
+
+/** Звезда-награда под таблицей: пружинное появление (pop 0 → 1) с ореолом. */
+public class RewardStar : Gtk.DrawingArea {
+    public double pop = 0.0;
+    public bool hidden = false;
+    private bool defeat;
+    private double base_radius;
+
+    public RewardStar (bool defeat, int total) {
+        this.defeat = defeat;
+        base_radius = (total == 1) ? 21.0 : 17.5;
+        content_width = 52;
+        content_height = 52;
+        can_target = false;
+        set_draw_func (draw);
+    }
+
+    public void set_pop (double value) {
+        pop = value;
+        queue_draw ();
+    }
+
+    public void set_hidden (bool value) {
+        hidden = value;
+        queue_draw ();
+    }
+
+    private void draw (Gtk.DrawingArea area, Cairo.Context cr, int w, int h) {
+        if (hidden || pop <= 0.001) {
+            return;
+        }
+        var cx = w / 2.0;
+        var cy = h / 2.0;
+        StarArt.draw_halo (cr, cx, cy, 26.0 * pop, defeat);
+        StarArt.draw_star (cr, cx, cy, base_radius * pop, defeat);
     }
 }
 
 /**
- * Модальное окно победы с каскадным таймлайном анимаций:
- * появление победителя -> пульсация начисленных очков -> анимация суммарного счёта -> появление таблицы ходов.
+ * Прозрачный слой поверх окна результата: рисует летящую звезду по дуге
+ * и кольцевые вспышки (появление звезды под таблицей, попадание в бейдж счёта).
+ */
+public class StarFlightLayer : Gtk.DrawingArea {
+    private struct Burst {
+        double x;
+        double y;
+        int64 t0;
+        bool big;
+    }
+
+    private bool flying = false;
+    private double progress = 0.0;
+    private double sx = 0;
+    private double sy = 0;
+    private double tx = 0;
+    private double ty = 0;
+    private bool defeat;
+    private Burst[] bursts = new Burst[0];
+    private uint tick = 0;
+
+    public StarFlightLayer (bool defeat) {
+        this.defeat = defeat;
+        can_target = false;
+        hexpand = true;
+        vexpand = true;
+        set_draw_func (draw);
+    }
+
+    public override void dispose () {
+        if (tick != 0) {
+            remove_tick_callback (tick);
+            tick = 0;
+        }
+        base.dispose ();
+    }
+
+    public void begin_flight (double sx, double sy, double tx, double ty) {
+        this.sx = sx;
+        this.sy = sy;
+        this.tx = tx;
+        this.ty = ty;
+        progress = 0.0;
+        flying = true;
+        ensure_tick ();
+        queue_draw ();
+    }
+
+    public void set_progress (double p) {
+        progress = p;
+        queue_draw ();
+    }
+
+    public void end_flight () {
+        flying = false;
+        queue_draw ();
+    }
+
+    /** Кольцевая вспышка: big — при появлении звезды, иначе — при попадании в бейдж. */
+    public void add_burst (double x, double y, bool big) {
+        var b = Burst ();
+        b.x = x;
+        b.y = y;
+        b.t0 = GLib.get_monotonic_time ();
+        b.big = big;
+        bursts += b;
+        ensure_tick ();
+        queue_draw ();
+    }
+
+    private void ensure_tick () {
+        if (tick != 0) {
+            return;
+        }
+        tick = add_tick_callback (() => {
+            var now = GLib.get_monotonic_time ();
+            var keep = new Burst[0];
+            foreach (var b in bursts) {
+                var dur = b.big ? 0.48 : 0.36;
+                if ((now - b.t0) / 1000000.0 < dur) {
+                    keep += b;
+                }
+            }
+            bursts = keep;
+            queue_draw ();
+            if (!flying && bursts.length == 0) {
+                tick = 0;
+                return GLib.Source.REMOVE;
+            }
+            return GLib.Source.CONTINUE;
+        });
+    }
+
+    private void draw (Gtk.DrawingArea area, Cairo.Context cr, int w, int h) {
+        var now = GLib.get_monotonic_time ();
+        foreach (var b in bursts) {
+            var dur = b.big ? 0.48 : 0.36;
+            var p = UiKit.ease_out (double.min (1.0, ((now - b.t0) / 1000000.0) / dur));
+            var alpha = 1.0 - p;
+            var ring_r = (b.big ? 22.0 : 13.0) * (b.big ? 0.2 + 2.0 * p : 0.4 + 2.2 * p);
+            if (defeat) {
+                cr.set_source_rgba (1.0, 0.25, 0.25, alpha);
+            } else {
+                cr.set_source_rgba (1.0, 0.72, 0.12, alpha);
+            }
+            cr.set_line_width (2.5);
+            cr.arc (b.x, b.y, ring_r, 0, 2 * Math.PI);
+            cr.stroke ();
+
+            var glow_r = (b.big ? 27.0 : 16.0) * (b.big ? 0.1 + 1.8 * p : 0.2 + 1.6 * p);
+            var rg = new Cairo.Pattern.radial (b.x, b.y, 1, b.x, b.y, double.max (2.0, glow_r));
+            rg.add_color_stop_rgba (0.0, 1, 1, 1, 0.95 * alpha);
+            if (defeat) {
+                rg.add_color_stop_rgba (0.5, 1.0, 0.2, 0.2, 0.8 * alpha);
+            } else {
+                rg.add_color_stop_rgba (0.5, 1.0, 0.92, 0.2, 0.75 * alpha);
+            }
+            rg.add_color_stop_rgba (1.0, 1.0, 0.58, 0.0, 0.0);
+            cr.set_source (rg);
+            cr.arc (b.x, b.y, double.max (2.0, glow_r), 0, 2 * Math.PI);
+            cr.fill ();
+        }
+
+        if (flying) {
+            var t = progress;
+            // Квадратичная кривая Безье с изгибом дуги в сторону целевой звезды
+            var mid_x = (sx + tx) / 2.0;
+            var mid_y = (sy + ty) / 2.0;
+            var dir = (tx >= w / 2.0) ? 1.0 : -1.0;
+            var ctl_x = mid_x + dir * 50.0;
+            var ctl_y = mid_y - 15.0;
+            var omt = 1.0 - t;
+            var x = omt * omt * sx + 2.0 * omt * t * ctl_x + t * t * tx;
+            var y = omt * omt * sy + 2.0 * omt * t * ctl_y + t * t * ty;
+            var scale = double.max (0.01, 1.0 - t * 0.42);
+            var alpha = (t > 0.9) ? double.max (0.0, 1.0 - (t - 0.9) / 0.1) : 1.0;
+            StarArt.draw_halo (cr, x, y, 24.0 * scale, defeat, alpha * 1.8);
+            StarArt.draw_star (cr, x, y, 19.0 * scale, defeat, alpha);
+        }
+    }
+}
+
+/**
+ * Модальное окно результата партии. Закрывается только кнопкой «Закрыть».
  */
 public class GameOverView : Gtk.Box {
     public signal void new_game_requested ();
     public signal void close_requested ();
+    /** Запрос запуска салюта (рисуется окном поверх всего интерфейса). */
+    public signal void salute_requested ();
 
     private GameSession session;
     private CheckerColor winner;
-    private bool is_red;
+    private CheckerColor loser;
+    private CheckerColor primary_color;
+    private VictoryType victory_type;
+    private bool is_defeat;
+    private bool is_right_side_white;
+    private bool is_winner_left;
     private int score_points;
-    private bool is_computer;
+    private int start_points;
     private int final_total;
-    private int64 t0;
-    private uint tick_id = 0;
+    private int displayed_total;
+    private bool cancelled = false;
+    private bool started = false;
+    private Flasher flasher;
 
-    private FxBin winner_fx;
-    private Gtk.Label total_label;
-    private FxBin? total_fx = null;
-    private FxBin? gained_fx = null;
-    private GainedPointsCard? gained_card = null;
+    private Gtk.Overlay ov;
+    private StarFlightLayer flight;
+    private FxBin header_fx;
+    private FxBin emoji_fx;
+    private FxBin capsule_fx;
     private FxBin table_fx;
-    private Gtk.Label[] stat_labels = new Gtk.Label[0];
-    private int[] stat_values = new int[0];
-    private ulong layout_handler = 0;
+    private FxBin table_head_fx;
+    private FxBin badge_fx;
+    private FxBin btn_fx;
+    private Gtk.Box badge_box;
+    private Gtk.Label total_label;
+    private SFIcon? badge_star = null;
+    private FxBin[] row_fx = new FxBin[0];
+    private Gtk.Label[] left_labels = new Gtk.Label[0];
+    private Gtk.Label[] right_labels = new Gtk.Label[0];
+    private Gtk.Widget[] left_cells = new Gtk.Widget[0];
+    private Gtk.Widget[] right_cells = new Gtk.Widget[0];
+    private int[] left_targets = new int[0];
+    private int[] right_targets = new int[0];
+    private RewardStar[] stars = new RewardStar[0];
 
     public GameOverView (GameSession session) {
         Object (orientation: Gtk.Orientation.VERTICAL, spacing: 0);
@@ -143,296 +393,532 @@ public class GameOverView : Gtk.Box {
         add_css_class ("lb-popup");
         add_css_class ("lb-popup-gameover");
         overflow = Gtk.Overflow.HIDDEN;
+        flasher = new Flasher (this);
 
         winner = session.board.is_winner (CheckerColor.WHITE) ? CheckerColor.WHITE : CheckerColor.BLACK;
-        var loser = winner.opposite ();
-        var loser_off = session.board.borne_off_count (loser);
-        var all_home = MoveValidator.are_all_checkers_in_home (session.board, loser);
-        var is_home_mars = loser_off == 0 && all_home;
-        var is_mars = loser_off == 0 && !all_home;
-        is_red = is_mars || is_home_mars;
-        score_points = is_home_mars ? 3 : (is_mars ? 2 : 1);
-        var victory_title = is_home_mars ? Localization.victory_home_mars ()
-                          : (is_mars ? Localization.victory_mars () : Localization.victory_oin ());
-        is_computer = session.is_computer_player (winner);
-        var wname = session.player_name (winner);
-        var st = StatsStore.shared ().player_stats.lookup (wname);
+        loser = winner.opposite ();
+        is_defeat = session.is_computer_player (winner);
+        primary_color = is_defeat ? loser : winner;
+        victory_type = session.board.victory_type (loser);
+        score_points = is_defeat ? 1 : victory_type.points ();
+        is_right_side_white = (SettingsStore.shared ().board_side == BoardSide.RIGHT);
+        var left_color = is_right_side_white ? CheckerColor.BLACK : CheckerColor.WHITE;
+        is_winner_left = (winner == left_color);
+
+        // Счёт игрока: при поражении очки уже списаны перед показом окна
+        var primary_name = session.player_name (primary_color);
+        var st = StatsStore.shared ().player_stats.lookup (primary_name);
         final_total = st != null ? st.total_points : 0;
-        var color_class = is_red ? "red" : "orange";
-
-        // Кнопка закрытия в верхнем углу (слева или справа согласно настройкам GNOME)
-        var close_controls = new WindowControlsBox ();
-        var close = new XCloseButton ();
-        close.clicked.connect (() => { close_requested (); });
-        close_controls.append (close);
-        close_controls.margin_top = 10;
-        close_controls.margin_start = 10;
-        close_controls.margin_end = 10;
-        update_game_over_close_position (close_controls);
-        var settings = Gtk.Settings.get_default ();
-        if (settings != null) {
-            layout_handler = settings.notify["gtk-decoration-layout"].connect (() => {
-                update_game_over_close_position (close_controls);
-            });
+        if (is_defeat) {
+            start_points = final_total + score_points;
+        } else {
+            start_points = int.max (0, final_total - score_points);
         }
-        append (close_controls);
+        displayed_total = start_points;
 
-        var content = new Gtk.Box (Gtk.Orientation.VERTICAL, 22);
+        var color_class = is_defeat ? "red" : "orange";
+
+        ov = new Gtk.Overlay ();
+        var content = new Gtk.Box (Gtk.Orientation.VERTICAL, 14);
         content.margin_start = 28;
         content.margin_end = 28;
+        content.margin_top = 28;
         content.margin_bottom = 28;
+        ov.set_child (content);
+        flight = new StarFlightLayer (is_defeat);
+        ov.add_overlay (flight);
+        ov.set_measure_overlay (flight, false);
+        append (ov);
 
-        var emoji = new BouncingEmoji (is_red ? "🏆" : "🎉");
-        emoji.halign = Gtk.Align.CENTER;
-        content.append (emoji);
-
-        // Имя победителя, текущий рейтинг и бейдж исхода (Оин/Марс/Домашний марс)
-        var winner_box = new Gtk.Box (Gtk.Orientation.VERTICAL, 6);
-        var name_row = new Gtk.Box (Gtk.Orientation.HORIZONTAL, 8);
+        // 1. Имя игрока и текущий счёт со звездой
+        var name_row = new Gtk.Box (Gtk.Orientation.HORIZONTAL, 10);
         name_row.halign = Gtk.Align.CENTER;
-        var name_label = UiKit.label (wname, "lb-go-name", 0.5f);
-        name_label.wrap = true;
-        name_label.lines = 2;
-        name_label.justify = Gtk.Justification.CENTER;
-        name_label.valign = Gtk.Align.BASELINE_FILL;
+        var name_label = UiKit.name_label (primary_name, "lb-go-name", 0.5f);
+        name_label.valign = Gtk.Align.CENTER;
         name_row.append (name_label);
-        total_label = UiKit.label ("", "lb-go-total");
-        if (!is_computer) {
-            var tb = new Gtk.Box (Gtk.Orientation.HORIZONTAL, 4);
-            var star = new SFIcon ("star.fill", 14, UiKit.rgba (MacColors.YELLOW));
-            star.valign = Gtk.Align.CENTER;
-            tb.append (star);
-            tb.append (total_label);
-            tb.valign = Gtk.Align.CENTER;
-            total_fx = new FxBin (tb);
-            total_fx.valign = Gtk.Align.CENTER;
-            name_row.append (total_fx);
+        total_label = UiKit.label (displayed_total.to_string (), "lb-go-total");
+        if (!session.is_computer_player (primary_color)) {
+            badge_box = new Gtk.Box (Gtk.Orientation.HORIZONTAL, 7);
+            badge_box.add_css_class ("lb-go-badge");
+            badge_star = new SFIcon ("star.fill", 22, UiKit.rgba (MacColors.YELLOW));
+            badge_star.valign = Gtk.Align.CENTER;
+            badge_box.append (badge_star);
+            total_label.valign = Gtk.Align.CENTER;
+            badge_box.append (total_label);
+            badge_fx = new FxBin (badge_box);
+            badge_fx.valign = Gtk.Align.CENTER;
+            name_row.append (badge_fx);
         }
-        winner_box.append (name_row);
+        header_fx = new FxBin (name_row);
+        header_fx.set_fx (0.85, 0.0);
+        content.append (header_fx);
+
+        // Анимированная иконка результата (настраивается в GameConfig)
+        var emoji = new BouncingEmoji (is_defeat ? GameConfig.ICON_DEFEAT : victory_type.icon ());
+        emoji.halign = Gtk.Align.CENTER;
+        emoji_fx = new FxBin (emoji);
+        emoji_fx.halign = Gtk.Align.CENTER;
+        emoji_fx.set_fx (0.85, 0.0);
+        content.append (emoji_fx);
+
+        // 2. Тип победы или плашка поражения
+        var victory_title = is_defeat ? Localization.log_result_loss () : victory_title_for (victory_type);
         var capsule = UiKit.label (victory_title, "lb-go-capsule " + color_class, 0.5f);
         capsule.halign = Gtk.Align.CENTER;
-        winner_box.append (capsule);
-        winner_fx = new FxBin (winner_box);
-        content.append (winner_fx);
+        capsule_fx = new FxBin (capsule);
+        capsule_fx.halign = Gtk.Align.CENTER;
+        capsule_fx.set_fx (0.85, 0.0);
+        content.append (capsule_fx);
 
-        // Карточка начисленных за партию очков
-        if (!is_computer) {
-            gained_card = new GainedPointsCard ();
-            gained_card.halign = Gtk.Align.CENTER;
-            var cap = UiKit.label (Localization.game_over_score_stat ().replace (":", ""), "lb-caption2-bold lb-secondary", 0.5f);
-            cap.margin_top = 8;
-            cap.margin_start = 24;
-            cap.margin_end = 24;
-            gained_card.append (cap);
-            var plus = UiKit.label ("+%d".printf (score_points), "lb-go-plus lb-" + color_class, 0.5f);
-            plus.margin_bottom = 8;
-            plus.margin_start = 24;
-            plus.margin_end = 24;
-            gained_card.append (plus);
-            gained_fx = new FxBin (gained_card);
-            gained_fx.halign = Gtk.Align.CENTER;
-            content.append (gained_fx);
-        }
-
-        // Таблица статистики матча и кнопка повтора
-        var table = new Gtk.Box (Gtk.Orientation.VERTICAL, 22);
-        var div = new Gtk.Separator (Gtk.Orientation.HORIZONTAL);
-        div.margin_start = 10;
-        div.margin_end = 10;
-        table.append (div);
-
-        var is_right_side_white = (SettingsStore.shared ().board_side == BoardSide.RIGHT);
+        // 3. Таблица статистики партии
+        var table = new Gtk.Box (Gtk.Orientation.VERTICAL, 3);
+        table.hexpand = true;
+        table.margin_start = 4;
+        table.margin_end = 4;
         var left_player_name = is_right_side_white ? session.black_player_name : session.white_player_name;
         var right_player_name = is_right_side_white ? session.white_player_name : session.black_player_name;
 
-        var head = new Gtk.Box (Gtk.Orientation.HORIZONTAL, 0);
-        head.margin_start = 12;
-        head.margin_end = 12;
-        var bl = UiKit.label (left_player_name, "lb-caption2-bold lb-secondary");
-        bl.width_request = 90;
-        bl.max_width_chars = 1;
-        bl.ellipsize = Pango.EllipsizeMode.END;
-        head.append (bl);
-        head.append (UiKit.spacer ());
-        head.append (UiKit.label (Localization.info_section_title ().up (), "lb-go-info", 0.5f));
-        head.append (UiKit.spacer ());
-        var wl = UiKit.label (right_player_name, "lb-caption2-bold lb-secondary", 1.0f);
-        wl.width_request = 90;
-        wl.max_width_chars = 1;
-        wl.ellipsize = Pango.EllipsizeMode.END;
-        head.append (wl);
-        table.append (head);
+        var head = new Gtk.Box (Gtk.Orientation.HORIZONTAL, 3);
+        var hl = UiKit.name_label (left_player_name, "lb-caption2-bold lb-secondary", 0.5f);
+        head.append (cell (hl, 90, true));
+        var ht = UiKit.label (Localization.game_over_table_title ().up (), "lb-go-info", 0.5f);
+        var htc = cell (ht, 0, true);
+        htc.hexpand = true;
+        head.append (htc);
+        var hr = UiKit.name_label (right_player_name, "lb-caption2-bold lb-secondary", 0.5f);
+        head.append (cell (hr, 90, true));
+        head.hexpand = true;
+        table_head_fx = new FxBin (head);
+        table_head_fx.hexpand = true;
+        table_head_fx.set_fx (1.0, 0.0);
+        table.append (table_head_fx);
 
-        var rows = new Gtk.Box (Gtk.Orientation.VERTICAL, 12);
-        rows.margin_start = 12;
-        rows.margin_end = 12;
-        rows.append (stat_row (
-            Localization.game_over_moves_stat (),
+        add_stat_row (table, Localization.game_over_moves_stat (),
             is_right_side_white ? session.black_moves_count : session.white_moves_count,
-            is_right_side_white ? session.white_moves_count : session.black_moves_count));
-        rows.append (stat_row (
-            Localization.game_over_doubles_stat (),
+            is_right_side_white ? session.white_moves_count : session.black_moves_count);
+        add_stat_row (table, Localization.game_over_doubles_stat (),
             is_right_side_white ? session.black_doubles_count : session.white_doubles_count,
-            is_right_side_white ? session.white_doubles_count : session.black_doubles_count));
-        rows.append (stat_row (
-            Localization.game_over_fellout_dice_stat (),
+            is_right_side_white ? session.white_doubles_count : session.black_doubles_count);
+        add_stat_row (table, Localization.game_over_fellout_dice_stat (),
             is_right_side_white ? session.black_total_dice_sum : session.white_total_dice_sum,
-            is_right_side_white ? session.white_total_dice_sum : session.black_total_dice_sum));
-        rows.append (stat_row (
-            Localization.game_over_burned_dice_stat (),
+            is_right_side_white ? session.white_total_dice_sum : session.black_total_dice_sum);
+        add_stat_row (table, Localization.game_over_burned_dice_stat (),
             is_right_side_white ? session.black_burned_dice_sum : session.white_burned_dice_sum,
-            is_right_side_white ? session.white_burned_dice_sum : session.black_burned_dice_sum));
-        table.append (rows);
+            is_right_side_white ? session.white_burned_dice_sum : session.black_burned_dice_sum);
+        table_fx = new FxBin (table);
+        table_fx.hexpand = true;
+        content.append (table_fx);
 
+        // 4. Звёзды за победу / списание за поражение
+        var stars_box = new Gtk.Box (Gtk.Orientation.HORIZONTAL, 16);
+        stars_box.halign = Gtk.Align.CENTER;
+        stars_box.height_request = 52;
+        for (var i = 0; i < score_points; i++) {
+            var star = new RewardStar (is_defeat, score_points);
+            stars += star;
+            stars_box.append (star);
+        }
+        content.append (stars_box);
+
+        // 5. Кнопка «Закрыть» (появляется последней)
         var btn = new Gtk.Button.with_label (Localization.game_over_button_new_game ());
         btn.add_css_class ("lb-go-btn");
-        btn.add_css_class (color_class);
+        btn.add_css_class ("blue");
         btn.set_cursor_from_name ("pointer");
-        btn.margin_top = 8;
+        btn.halign = Gtk.Align.CENTER;
+        btn.width_request = 160;
+        btn.margin_top = 4;
         btn.clicked.connect (() => { new_game_requested (); });
-        table.append (btn);
-        table_fx = new FxBin (table);
-        content.append (table_fx);
-        append (content);
+        btn_fx = new FxBin (btn);
+        btn_fx.halign = Gtk.Align.CENTER;
+        btn_fx.set_fx (0.95, 0.0);
+        btn_fx.can_target = false;
+        content.append (btn_fx);
 
-        t0 = GLib.get_monotonic_time ();
-        update_animation ();
-        tick_id = add_tick_callback (() => {
-            update_animation ();
-            return GLib.Source.CONTINUE;
+        map.connect (() => {
+            if (!started) {
+                started = true;
+                run_animations.begin ();
+            }
         });
+        unrealize.connect (() => { cancelled = true; });
     }
 
     public override void dispose () {
-        if (tick_id != 0) {
-            remove_tick_callback (tick_id);
-            tick_id = 0;
-        }
-        if (layout_handler != 0) {
-            var settings = Gtk.Settings.get_default ();
-            if (settings != null) {
-                settings.disconnect (layout_handler);
-            }
-            layout_handler = 0;
-        }
+        cancelled = true;
+        flasher.stop ();
         base.dispose ();
     }
 
-    private static void update_game_over_close_position (WindowControlsBox controls) {
-        var left = UiKit.is_close_button_left ();
-        controls.halign = left ? Gtk.Align.START : Gtk.Align.END;
-        if (left) {
-            controls.remove_css_class ("end");
-            controls.add_css_class ("start");
-        } else {
-            controls.remove_css_class ("start");
-            controls.add_css_class ("end");
+    /** Мигание красной рамкой при попытке открыть другое окно или клике мимо. */
+    public void flash () {
+        flasher.flash ();
+    }
+
+    private static string victory_title_for (VictoryType type) {
+        switch (type) {
+        case VictoryType.HOME_MARS: return Localization.victory_home_mars ();
+        case VictoryType.MARS: return Localization.victory_mars ();
+        default: return Localization.victory_oin ();
         }
     }
 
-    private Gtk.Widget stat_row (string title, int black_val, int white_val) {
-        var row = new Gtk.Box (Gtk.Orientation.HORIZONTAL, 0);
-        var b = UiKit.label ("0", "lb-headline");
-        b.width_request = 50;
-        row.append (b);
-        row.append (UiKit.spacer ());
-        row.append (UiKit.label (title, "lb-subheadline lb-secondary", 0.5f));
-        row.append (UiKit.spacer ());
-        var w = UiKit.label ("0", "lb-headline", 1.0f);
-        w.width_request = 50;
-        row.append (w);
-        stat_labels += b;
-        stat_values += black_val;
-        stat_labels += w;
-        stat_values += white_val;
-        return row;
-    }
+    // MARK: - Построение таблицы
 
     /**
-     * Пошаговый расчёт фаз анимации:
-     * - 0.15 c .. 0.40 c: появление плашки победителя (масштаб + прозрачность);
-     * - 0.65 c .. 1.90 c: появление и пульсация начисленных очков;
-     * - 2.10 c .. 2.60 c: пружинное увеличение итогового счёта;
-     * - table_start + 0.6 c: плавное нарастание чисел статистики в таблице.
+     * Ячейка таблицы. Боковые ячейки имеют фиксированную ширину (width > 0) и не растягиваются,
+     * средняя (width == 0) занимает всё оставшееся место.
      */
-    private void update_animation () {
-        var t = (GLib.get_monotonic_time () - t0) / 1000000.0;
-
-        // Фаза 1: появление победителя
-        var pw = UiKit.ease_out ((t - 0.15) / 0.25);
-        winner_fx.set_fx (0.9 + 0.1 * pw, pw);
-
-        double table_start;
-        if (is_computer) {
-            table_start = 0.55;
-            total_label.label = final_total.to_string ();
+    private static Gtk.Widget cell (Gtk.Widget child, int width, bool head = false) {
+        var box = new Gtk.Box (Gtk.Orientation.HORIZONTAL, 0);
+        box.add_css_class ("lb-go-cell");
+        if (head) {
+            box.add_css_class ("head");
+        }
+        box.height_request = 28;
+        box.valign = Gtk.Align.CENTER;
+        if (width > 0) {
+            box.width_request = width;
+            box.hexpand = false;
+            box.halign = Gtk.Align.FILL;
         } else {
-            table_start = 3.0;
-            // Фаза 2: карточка начисленных очков
-            var pg = UiKit.ease_out ((t - 0.65) / 0.25);
-            double pulse = 0.0;
-            if (t >= 0.65 && t < 1.65) {
-                var u = (t - 0.65) / 0.25;
-                var k = (int) Math.floor (u);
-                var f = u - k;
-                pulse = (k % 2 == 0) ? PanelStyle.ease_in_out (f) : 1 - PanelStyle.ease_in_out (f);
-            } else if (t >= 1.65 && t < 1.9) {
-                pulse = 1.0;
-            } else if (t >= 1.9) {
-                pulse = 1.0 - UiKit.ease_in ((t - 1.9) / 0.2);
-            }
-            gained_card.pulse = pulse;
-            gained_card.queue_draw ();
-            gained_fx.set_fx ((0.8 + 0.2 * pg) * (1 + 0.05 * pulse), pg);
-
-            // Фаза 3: пружинное начисление очков в счетчик игрока
-            var shown = t >= 2.1 ? final_total : int.max (0, final_total - score_points);
-            total_label.label = shown.to_string ();
-            double sc = 1.0;
-            if (t >= 2.1 && t < 2.6) {
-                sc = 1.0 + 0.4 * PanelStyle.spring (t - 2.1, 0.5, 0.6);
-            } else if (t >= 2.6) {
-                var from = 1.0 + 0.4 * PanelStyle.spring (0.5, 0.5, 0.6);
-                sc = from + (1.0 - from) * PanelStyle.spring (t - 2.6, 0.4, 0.6);
-            }
-            total_fx.set_fx (sc, 1.0);
-            if (t >= 2.1 && t < 2.6) {
-                total_label.add_css_class ("lb-green");
-            } else {
-                total_label.remove_css_class ("lb-green");
-            }
+            box.hexpand = true;
+            box.halign = Gtk.Align.FILL;
         }
-
-        // Фаза 4: появление таблицы матча со счётчиками
-        var pt = UiKit.ease_out ((t - table_start) / 0.25);
-        table_fx.set_fx (1.0, pt, 20 * (1 - pt));
-        var progress = UiKit.ease_out ((t - table_start) / 0.6);
-        for (var i = 0; i < stat_labels.length; i++) {
-            stat_labels[i].label = ((int) (stat_values[i] * progress)).to_string ();
+        var label = child as Gtk.Label;
+        if (label != null) {
+            // Текст не должен раздвигать колонки: длинное обрезается многоточием
+            label.ellipsize = Pango.EllipsizeMode.END;
+            label.max_width_chars = 1;
+            label.width_chars = 1;
         }
+        child.halign = Gtk.Align.FILL;
+        child.valign = Gtk.Align.CENTER;
+        child.hexpand = true;
+        child.margin_start = 4;
+        child.margin_end = 4;
+        box.append (child);
+        return box;
+    }
 
-        if (t > table_start + 1.0 && tick_id != 0) {
-            remove_tick_callback (tick_id);
-            tick_id = 0;
+    private void add_stat_row (Gtk.Box table, string title, int left_val, int right_val) {
+        var row = new Gtk.Box (Gtk.Orientation.HORIZONTAL, 3);
+        var ll = UiKit.label ("0", "lb-go-value", 0.5f);
+        var lc = cell (ll, 90);
+        row.append (lc);
+        var tl = UiKit.label (title, "lb-subheadline lb-secondary", 0.5f);
+        tl.ellipsize = Pango.EllipsizeMode.END;
+        var tc = cell (tl, 0);
+        tc.hexpand = true;
+        row.append (tc);
+        var rl = UiKit.label ("0", "lb-go-value", 0.5f);
+        var rc = cell (rl, 90);
+        row.append (rc);
+        row.hexpand = true;
+        var fx = new FxBin (row);
+        fx.hexpand = true;
+        fx.set_fx (1.0, 0.0, 4.0);
+        table.append (fx);
+        row_fx += fx;
+        left_labels += ll;
+        right_labels += rl;
+        left_cells += lc;
+        right_cells += rc;
+        left_targets += left_val;
+        right_targets += right_val;
+    }
+
+    // MARK: - Помощники анимации
+
+    private async void pause (double seconds) {
+        SourceFunc cb = pause.callback;
+        GLib.Timeout.add ((uint) (seconds * 1000.0), () => {
+            cb ();
+            return GLib.Source.REMOVE;
+        });
+        yield;
+    }
+
+    /** Покадровая анимация прогресса 0…1 за заданное время. */
+    private async void tween (double duration, owned TweenFn fn) {
+        var start = GLib.get_monotonic_time ();
+        SourceFunc cb = tween.callback;
+        add_tick_callback (() => {
+            if (cancelled) {
+                cb ();
+                return GLib.Source.REMOVE;
+            }
+            var p = double.min (1.0, ((GLib.get_monotonic_time () - start) / 1000000.0) / duration);
+            fn (p);
+            if (p >= 1.0) {
+                cb ();
+                return GLib.Source.REMOVE;
+            }
+            return GLib.Source.CONTINUE;
+        });
+        yield;
+    }
+
+    private async void fade_in (FxBin fx, double duration, double from_scale = 0.85) {
+        yield tween (duration, (p) => {
+            var e = UiKit.ease_out (p);
+            fx.set_fx (from_scale + (1.0 - from_scale) * e, e);
+        });
+    }
+
+    private void set_total (int value) {
+        displayed_total = value;
+        total_label.label = value.to_string ();
+    }
+
+    private void set_active_cell (Gtk.Widget cell_widget, bool active, bool winner = false) {
+        if (active) {
+            cell_widget.add_css_class ("active");
+            if (winner) {
+                cell_widget.add_css_class ("winner");
+            }
+        } else {
+            cell_widget.remove_css_class ("active");
+            cell_widget.remove_css_class ("winner");
         }
     }
+
+    /** Дискретный счётчик числа с тиками (по одному щелчку на каждое изменение). */
+    private async void count_up (int target, bool is_winner, Gtk.Label label) {
+        if (target <= 0) {
+            label.label = "0";
+            yield pause (0.08);
+            return;
+        }
+        var steps = int.min (target, 10);
+        var total_duration = double.min (0.32, double.max (0.08, steps * 0.05));
+        var step_delay = total_duration / steps;
+        var last = 0;
+        for (var step = 1; step <= steps; step++) {
+            if (cancelled) {
+                return;
+            }
+            var val = (int) Math.round ((double) target * step / steps);
+            if (val != last) {
+                last = val;
+                label.label = val.to_string ();
+                SoundManager.shared ().play_tally_tick (is_winner);
+            }
+            yield pause (step_delay);
+        }
+        label.label = target.to_string ();
+    }
+
+    private void star_center (Gtk.Widget w, out double x, out double y) {
+        Graphene.Point p;
+        x = 0;
+        y = 0;
+        if (w.compute_point (flight, Graphene.Point () { x = (float) (w.get_width () / 2.0), y = (float) (w.get_height () / 2.0) }, out p)) {
+            x = p.x;
+            y = p.y;
+        }
+    }
+
+    /** Полёт одной звезды в бейдж счёта и зачисление/списание очка. */
+    private async void fly_star (int index) {
+        double sx, sy, tx, ty;
+        star_center (stars[index], out sx, out sy);
+        star_center (badge_star, out tx, out ty);
+        stars[index].set_hidden (true);
+        flight.begin_flight (sx, sy, tx, ty);
+        yield tween (0.53, (p) => { flight.set_progress (UiKit.ease_in (p)); });
+        if (cancelled) {
+            return;
+        }
+        flight.end_flight ();
+        flight.add_burst (tx, ty, false);
+
+        if (is_defeat) {
+            SoundManager.shared ().play_score_deduct ();
+            set_total (start_points - (index + 1));
+            badge_box.add_css_class ("down");
+            total_label.add_css_class ("lb-red");
+        } else {
+            SoundManager.shared ().play_score_count_up ();
+            set_total (start_points + index + 1);
+            badge_box.add_css_class ("up");
+            total_label.add_css_class ("lb-green");
+        }
+        // Пружинный «удар» бейджа: 1.25 → 1.0
+        yield tween (0.32, (p) => {
+            badge_fx.set_fx (1.0 + 0.25 * (1.0 - PanelStyle.spring (p * 0.4, 0.4, 0.55)), 1.0);
+        });
+        badge_fx.set_fx (1.0, 1.0);
+        badge_box.remove_css_class ("up");
+        badge_box.remove_css_class ("down");
+        total_label.remove_css_class ("lb-red");
+        total_label.remove_css_class ("lb-green");
+    }
+
+    // MARK: - Сценарий
+
+    private async void run_animations () {
+        // 1. Имя игрока и счёт + иконка
+        yield pause (0.25);
+        if (cancelled) {
+            return;
+        }
+        fade_in.begin (header_fx, 0.45);
+        yield fade_in (emoji_fx, 0.45);
+        if (cancelled) {
+            return;
+        }
+
+        // 2. Тип победы / плашка поражения
+        yield pause (0.15);
+        if (cancelled) {
+            return;
+        }
+        yield fade_in (capsule_fx, 0.4);
+
+        // При победе ждём окончания победного трека (~6 с), при поражении — звука поражения (~3 с)
+        yield pause (is_defeat ? 2.2 : 5.15);
+        if (cancelled) {
+            return;
+        }
+
+        // 3. Таблица статистики
+        SoundManager.shared ().play_table_entrance ();
+        yield fade_in (table_head_fx, 0.25, 1.0);
+        yield pause (0.32);
+        for (var i = 0; i < row_fx.length; i++) {
+            if (cancelled) {
+                return;
+            }
+            var idx = i;
+            var rfx = row_fx[i];
+            fade_row.begin (rfx);
+            yield pause (0.14);
+            if (cancelled) {
+                return;
+            }
+
+            // Сначала считает победитель, затем проигравший
+            var win_label = is_winner_left ? left_labels[i] : right_labels[i];
+            var win_cell = is_winner_left ? left_cells[i] : right_cells[i];
+            var win_target = is_winner_left ? left_targets[i] : right_targets[i];
+            var lose_label = is_winner_left ? right_labels[i] : left_labels[i];
+            var lose_cell = is_winner_left ? right_cells[i] : left_cells[i];
+            var lose_target = is_winner_left ? right_targets[i] : left_targets[i];
+
+            set_active_cell (win_cell, true, true);
+            yield count_up (win_target, true, win_label);
+            set_active_cell (win_cell, false);
+            yield pause (0.12);
+            if (cancelled) {
+                return;
+            }
+            set_active_cell (lose_cell, true, false);
+            yield count_up (lose_target, false, lose_label);
+            set_active_cell (lose_cell, false);
+            if (idx < row_fx.length - 1) {
+                yield pause (0.22);
+            }
+        }
+
+        yield pause (0.5);
+        if (cancelled) {
+            return;
+        }
+
+        // 4. Звёзды под таблицей по очереди
+        for (var i = 0; i < score_points; i++) {
+            yield pause (0.625);
+            if (cancelled) {
+                return;
+            }
+            SoundManager.shared ().play_star_pop (i);
+            double cx, cy;
+            star_center (stars[i], out cx, out cy);
+            flight.add_burst (cx, cy, true);
+            var star = stars[i];
+            yield tween (0.5, (p) => { star.set_pop (PanelStyle.spring (p * 0.9, 0.44, 0.52)); });
+            star.set_pop (1.0);
+        }
+
+        yield pause (0.6);
+        if (cancelled) {
+            return;
+        }
+
+        // 5. Полёт звёзд в бейдж общего счёта
+        if (badge_star != null) {
+            for (var i = 0; i < score_points; i++) {
+                if (cancelled) {
+                    return;
+                }
+                if (i == score_points - 1) {
+                    // Когда последняя звезда улетает — плавно центрируем таблицу между шапкой и кнопкой
+                    shift_table.begin ();
+                }
+                yield fly_star (i);
+                if (i < score_points - 1) {
+                    yield pause (0.16);
+                }
+            }
+        }
+        if (cancelled) {
+            return;
+        }
+
+        // 6. Салют только при победе Марсом или Домашним марсом
+        if (!is_defeat && victory_type.is_mars_or_home_mars ()) {
+            yield pause (0.08);
+            if (cancelled) {
+                return;
+            }
+            SoundManager.shared ().play_fireworks ();
+            salute_requested ();
+            yield pause (3.8);
+        } else {
+            yield pause (0.5);
+        }
+        if (cancelled) {
+            return;
+        }
+
+        // 7. Кнопка «Закрыть»
+        btn_fx.can_target = true;
+        yield fade_in (btn_fx, 0.4, 0.95);
+    }
+
+    private async void fade_row (FxBin fx) {
+        yield tween (0.32, (p) => {
+            var e = UiKit.ease_out (p);
+            fx.set_fx (1.0, e, 4.0 * (1.0 - e));
+        });
+    }
+
+    private async void shift_table () {
+        yield tween (0.55, (p) => {
+            table_fx.set_fx (1.0, 1.0, 35.0 * PanelStyle.spring (p * 0.9, 0.55, 0.8));
+        });
+        table_fx.set_fx (1.0, 1.0, 35.0);
+    }
+
+    // MARK: - Отрисовка карточки
 
     public override void snapshot (Gtk.Snapshot snapshot) {
         var w = get_width ();
         var h = get_height ();
         Graphene.Rect r = { { 0, 0 }, { w, h } };
         var cr = snapshot.append_cairo (r);
-        // Радиальный градиент фонового свечения
+        // Радиальный градиент фонового свечения (янтарный при победе, сдержанно-красный при поражении)
         rounded_path (cr, w, h, 24);
         cr.clip ();
+        double rr = 1.0;
+        double gg = is_defeat ? 0.23 : 0.58;
+        double bb = is_defeat ? 0.19 : 0.0;
         var cx = w / 2.0;
         var cy = h / 2.0 - 80;
         var pat = new Cairo.Pattern.radial (cx, cy, 0, cx, cy, 165);
-        double rr = is_red ? 1.0 : 1.0;
-        double gg = is_red ? 0.23 : 0.58;
-        double bb = is_red ? 0.19 : 0.0;
-        pat.add_color_stop_rgba (0.0, rr, gg, bb, 0.12);
-        pat.add_color_stop_rgba (0.55, rr, gg, bb, 0.10);
+        pat.add_color_stop_rgba (0.0, rr, gg, bb, is_defeat ? 0.09 : 0.12);
+        pat.add_color_stop_rgba (0.55, rr, gg, bb, is_defeat ? 0.07 : 0.10);
         pat.add_color_stop_rgba (1.0, rr, gg, bb, 0.0);
         cr.set_source (pat);
         cr.paint ();

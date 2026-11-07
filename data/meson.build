@@ -55,6 +55,14 @@ install_data(
   'sounds/paneldock.wav',
   'sounds/placement_step.wav',
   'sounds/victory.wav',
+  'sounds/defeat01.wav',
+  'sounds/defeat02.wav',
+  'sounds/fireworks.wav',
+  'sounds/score_deduct.wav',
+  'sounds/score_ding.wav',
+  'sounds/star_pop.wav',
+  'sounds/table_reveal.wav',
+  'sounds/tally_tick.wav',
   install_dir: get_option('datadir') / 'longbackgammon' / 'sounds'
 )
 

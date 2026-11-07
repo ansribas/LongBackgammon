@@ -18,8 +18,12 @@ public class StatisticsView : PopupView {
     private int reset_click_count = 0;
     private ulong stats_handler = 0;
 
-    public StatisticsView () {
+    /** Имя текущего игрока-человека: его статистика показывается при открытии окна. */
+    private string? current_player_name = null;
+
+    public StatisticsView (string? current_player_name = null) {
         base (550);
+        this.current_player_name = current_player_name;
         add_css_class ("lb-popup-stats");
         height_request = 470;
 
@@ -124,6 +128,15 @@ public class StatisticsView : PopupView {
                 exists = true;
             }
         }
+        if (selected_player == null && current_player_name != null) {
+            // При первом открытии выбираем текущего игрока, если он есть в статистике
+            foreach (var n in names) {
+                if (n == current_player_name) {
+                    selected_player = n;
+                    exists = true;
+                }
+            }
+        }
         if (!exists) {
             selected_player = names[0];
         }
@@ -138,7 +151,7 @@ public class StatisticsView : PopupView {
             var row = new Gtk.Box (Gtk.Orientation.HORIZONTAL, 6);
             row.margin_top = 2;
             row.margin_bottom = 2;
-            var nl = UiKit.label (n, "lb-body");
+            var nl = UiKit.name_label (n, "lb-body");
             nl.ellipsize = Pango.EllipsizeMode.END;
             nl.hexpand = true;
             row.append (nl);
@@ -155,6 +168,7 @@ public class StatisticsView : PopupView {
         if (sel_row != null) {
             list.select_row (sel_row);
         }
+        var sel_row_ref = sel_row;
         var detail_holder = new Gtk.Box (Gtk.Orientation.VERTICAL, 0);
         detail_holder.hexpand = true;
         list.row_selected.connect ((r) => {
@@ -169,6 +183,17 @@ public class StatisticsView : PopupView {
         ls.hscrollbar_policy = Gtk.PolicyType.NEVER;
         ls.width_request = 170;
         ls.set_child (list);
+        if (sel_row_ref != null) {
+            // Прокручиваем список к выбранному игроку после первой раскладки
+            Idle.add (() => {
+                Graphene.Point p;
+                if (sel_row_ref.compute_point (list, Graphene.Point () { x = 0, y = 0 }, out p)) {
+                    var adj = ls.vadjustment;
+                    adj.value = double.max (0, p.y - (adj.page_size - sel_row_ref.get_height ()) / 2);
+                }
+                return Source.REMOVE;
+            });
+        }
         body.append (ls);
         body.append (new Gtk.Separator (Gtk.Orientation.VERTICAL));
         detail_holder.append (build_detail (selected_player));
@@ -181,9 +206,10 @@ public class StatisticsView : PopupView {
         if (st == null) {
             return box;
         }
-        var title = UiKit.label (name, "lb-title", 0.5f);
-        title.wrap = true;
-        title.justify = Gtk.Justification.CENTER;
+        var title = UiKit.name_label (name, "lb-title", 0.5f);
+        title.halign = Gtk.Align.CENTER;
+        title.margin_start = 24;
+        title.margin_end = 24;
         title.margin_top = 20;
         title.margin_bottom = 20;
         box.append (title);
@@ -199,10 +225,10 @@ public class StatisticsView : PopupView {
         head.append (fixed (UiKit.label (Localization.stats_header_count (), "lb-caption-bold lb-secondary", 1.0f), 60));
         head.append (fixed (UiKit.label (Localization.stats_header_points (), "lb-caption-bold lb-secondary", 1.0f), 70));
         table.append (head);
-        table.append (detail_row (Localization.stats_oin_victories (), st.oin_victories, "🏅", st.oin_victories));
-        table.append (detail_row (Localization.stats_mars_victories (), st.mars_victories, "🏆", st.mars_victories * 2));
-        table.append (detail_row (Localization.stats_home_mars_victories (), st.home_mars_victories, "👑", st.home_mars_victories * 3));
-        table.append (detail_row (Localization.stats_losses (), st.losses, "❌", -st.losses));
+        table.append (detail_row (Localization.stats_oin_victories (), st.oin_victories, GameConfig.ICON_OIN_VICTORY, st.oin_victories));
+        table.append (detail_row (Localization.stats_mars_victories (), st.mars_victories, GameConfig.ICON_MARS_VICTORY, st.mars_victories * 2));
+        table.append (detail_row (Localization.stats_home_mars_victories (), st.home_mars_victories, GameConfig.ICON_HOME_MARS_VICTORY, st.home_mars_victories * 3));
+        table.append (detail_row (Localization.stats_losses (), st.losses, GameConfig.ICON_DEFEAT, -st.losses));
         // Итоговая строка
         var total = new Gtk.Box (Gtk.Orientation.HORIZONTAL, 0);
         total.add_css_class ("lb-stats-total");

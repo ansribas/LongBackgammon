@@ -120,9 +120,9 @@ public class UiKit {
             ".lb-go-total { font-size: 1.25rem; font-weight: bold; }" +
             ".lb-go-plus { font-size: 2rem; font-weight: bold; }" +
             ".lb-go-info { font-size: 0.7rem; font-weight: bold; color: alpha(currentColor, 0.45); }" +
-            ".lb-go-capsule { padding: 6px 12px; border-radius: 999px; font-size: 0.75rem; font-weight: bold; }" +
-            ".lb-go-capsule.orange { background-color: alpha(@accent_color, 0.15); color: @accent_color; }" +
-            ".lb-go-capsule.red { background-color: alpha(@destructive_color, 0.15); color: @destructive_color; }" +
+            ".lb-go-capsule { padding: 7px 16px; border-radius: 999px; font-size: 0.875rem; font-weight: bold; }" +
+            ".lb-go-capsule.orange { background-color: alpha(#ff9500, 0.14); color: #ff9500; }" +
+            ".lb-go-capsule.red { background-color: alpha(@destructive_color, 0.12); color: @destructive_color; border: 1px solid alpha(@destructive_color, 0.35); }" +
             ".lb-go-btn { padding: 13px 0; border-radius: 12px; font-size: 0.95rem; min-height: 38px; font-weight: bold; color: white;" +
             "  border: none; transition: all 250ms ease-out; }" +
             ".lb-go-btn.orange { background-color: @accent_bg_color; color: @accent_fg_color;" +
@@ -131,6 +131,17 @@ public class UiKit {
             ".lb-go-btn.red { background-color: @destructive_bg_color; color: @destructive_fg_color;" +
             "  box-shadow: 0 3px 6px alpha(black, 0.2); }" +
             ".lb-go-btn.red:hover { box-shadow: 0 5px 10px alpha(black, 0.35); transform: scale(1.015); }" +
+            ".lb-go-btn.blue { background-color: #0a84ff; color: white; box-shadow: 0 2px 4px alpha(#0a84ff, 0.3); }" +
+            ".lb-go-btn.blue:hover { box-shadow: 0 4px 8px alpha(#0a84ff, 0.45); transform: scale(1.015); }" +
+            ".lb-go-cell { background-color: alpha(currentColor, 0.04); border-radius: 6px; transition: background-color 150ms ease-out; }" +
+            ".lb-go-cell.head { background-color: alpha(currentColor, 0.08); }" +
+            ".lb-go-cell.active { background-color: alpha(#ff9500, 0.14); }" +
+            ".lb-go-value { font-size: 1rem; font-weight: bold; }" +
+            ".lb-go-cell.active.winner .lb-go-value { color: #ff9500; }" +
+            ".lb-go-badge { padding: 4px 10px; border-radius: 999px; background-color: alpha(currentColor, 0.06);" +
+            "  transition: background-color 250ms ease-in-out; }" +
+            ".lb-go-badge.up { background-color: alpha(@success_color, 0.18); }" +
+            ".lb-go-badge.down { background-color: alpha(@destructive_color, 0.18); }" +
             ".lb-go-close { padding: 8px; min-width: 0; min-height: 0; border-radius: 999px; border: none;" +
             "  box-shadow: none; background-color: alpha(currentColor, 0.06); }" +
             ".lb-go-close:hover { background-color: alpha(currentColor, 0.12); }" +
@@ -171,6 +182,76 @@ public class UiKit {
             }
         }
         l.xalign = xalign;
+        return l;
+    }
+
+    /** Сокращает имя игрока до единого стандарта длины (не более N символов + многоточие). */
+    public static string truncate_name (string text, int max_chars = GameConfig.MAX_PLAYER_NAME_DISPLAY_CHARACTERS) {
+        if (text.char_count () <= max_chars) {
+            return text;
+        }
+        return text.substring (0, text.index_of_nth_char (max_chars)) + "…";
+    }
+
+    /** Проверяет, обрезана ли метка (либо по лимиту 12 символов, либо визуально из-за нехватки ширины). */
+    public static bool is_label_truncated (Gtk.Label l, string full_text) {
+        if (full_text == "") {
+            return false;
+        }
+        if (full_text.char_count () > GameConfig.MAX_PLAYER_NAME_DISPLAY_CHARACTERS) {
+            return true;
+        }
+        var layout = l.get_layout ();
+        if (layout != null && layout.is_ellipsized ()) {
+            return true;
+        }
+        return false;
+    }
+
+    /** Подключает к метке мгновенную всплывающую подсказку (без системной задержки GTK, в стиле лога ходов). */
+    public static void attach_instant_tooltip (Gtk.Label l) {
+        var motion = new Gtk.EventControllerMotion ();
+        motion.enter.connect (() => {
+            var full = l.get_data<string> ("full_name") ?? "";
+            if (!is_label_truncated (l, full)) {
+                InstantTooltipState.shared ().hide (l);
+                return;
+            }
+            var container = LogTooltipState.shared ().container;
+            if (container == null) {
+                return;
+            }
+            Graphene.Rect bounds;
+            if (l.compute_bounds (container, out bounds)) {
+                InstantTooltipState.shared ().show (full, bounds, l);
+            }
+        });
+        motion.leave.connect (() => {
+            InstantTooltipState.shared ().hide (l);
+        });
+        l.add_controller (motion);
+        l.unmap.connect (() => {
+            InstantTooltipState.shared ().hide (l);
+        });
+    }
+
+    /** Обновляет имя игрока в существующей метке с учётом обрезки и мгновенной подсказки. */
+    public static void set_name_label_text (Gtk.Label l, string full_text) {
+        l.set_data<string> ("full_name", full_text);
+        l.label = truncate_name (full_text);
+        l.tooltip_text = null;
+        if (!is_label_truncated (l, full_text)) {
+            InstantTooltipState.shared ().hide (l);
+        }
+    }
+
+    /** Метка с именем игрока: длинные имена сокращаются (≤12 символов + «…» или по ширине), полное имя мгновенно всплывает при наведении. */
+    public static Gtk.Label name_label (string text, string css_classes, float xalign = 0.0f) {
+        var l = label (truncate_name (text), css_classes, xalign);
+        l.single_line_mode = true;
+        l.ellipsize = Pango.EllipsizeMode.END;
+        l.set_data<string> ("full_name", text);
+        attach_instant_tooltip (l);
         return l;
     }
 

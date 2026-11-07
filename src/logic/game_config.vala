@@ -326,6 +326,18 @@ public abstract class GameConfig {
 
     // MARK: - Аудио
     public const int DICE_ROLL_SOUNDS_COUNT = 3;
+    /** Количество wav-файлов поражения игрока (defeat01 ... defeat02). */
+    public const int DEFEAT_SOUNDS_COUNT = 2;
+
+    // MARK: - Отображение имён игроков
+    /** Максимальное число символов имени игрока до обрезки с многоточием. */
+    public const int MAX_PLAYER_NAME_DISPLAY_CHARACTERS = 12;
+
+    // MARK: - Иконки результатов партии (экран завершения и статистика)
+    public const string ICON_OIN_VICTORY = "🏅";
+    public const string ICON_MARS_VICTORY = "🏆";
+    public const string ICON_HOME_MARS_VICTORY = "👑";
+    public const string ICON_DEFEAT = "❌";
 
     // MARK: - Логи партий
     public const int LOG_MAX_ENTRIES = 100;
@@ -481,6 +493,7 @@ public class Localization {
     public static string badge_rolloff ()         { return tr ("badgeRollOff"); }
 
     // MARK: - Экран завершения игры
+    public static string game_over_table_title () { return tr ("gameOverTableTitle"); }
     public static string game_over_moves_stat ()  { return tr ("gameOverMovesStat"); }
     public static string game_over_doubles_stat (){ return tr ("gameOverDoublesStat"); }
     public static string game_over_fellout_dice_stat () { return tr ("gameOverFelloutDiceStat"); }

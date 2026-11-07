@@ -72,11 +72,6 @@ public class BoardView : Gtk.DrawingArea {
     // Минимальная дистанция смещения курсора в пикселях для старта перетаскивания
     private const double DRAG_MIN_DISTANCE = 10.0;
 
-    // Растровые текстуры доски и фишек (при отсутствии используется векторный fallback)
-    private Cairo.ImageSurface? board_img = null;
-    private Cairo.ImageSurface? white_img = null;
-    private Cairo.ImageSurface? black_img = null;
-
     // Предмасштабированные под текущий размер доски и HiDPI-масштаб поверхности
     private Cairo.ImageSurface? cached_board_surface = null;
     private Cairo.ImageSurface? cached_white_static_sprite = null;
@@ -86,6 +81,11 @@ public class BoardView : Gtk.DrawingArea {
     private int cached_board_px = 0;
     private int cached_scale_factor = 0;
     private double cached_sprite_pad = 0.0;
+
+    // Кэшированные объекты Pango для отрисовки цифр в мишенях и истории без покадровых аллокаций
+    private Pango.Layout? cached_pango_layout = null;
+    private Pango.FontDescription? cached_circle_font = null;
+    private Pango.FontDescription? cached_index_font = null;
 
     // Кэш статичного слоя (доска + подсветки + неподвижные фишки) на время полёта/перетаскивания
     private Cairo.ImageSurface? static_board_surface = null;
@@ -230,6 +230,9 @@ public class BoardView : Gtk.DrawingArea {
             update_cursor ();
         });
         motion.motion.connect ((x, y) => {
+            if (mouse_inside && Math.hypot (x - mouse_x, y - mouse_y) < 1.5) {
+                return;
+            }
             mouse_inside = true;
             mouse_x = x;
             mouse_y = y;
@@ -268,9 +271,6 @@ public class BoardView : Gtk.DrawingArea {
 
     private void load_images () {
         var theme = SettingsStore.shared ().board_theme;
-        board_img = load_asset (theme.board_asset_name ());
-        white_img = load_asset (theme.checker_asset_name (CheckerColor.WHITE));
-        black_img = load_asset (theme.checker_asset_name (CheckerColor.BLACK));
         invalidate_scaled_cache ();
 
         pointer_cursor = new Gdk.Cursor.from_name ("pointer", null);
@@ -428,13 +428,6 @@ public class BoardView : Gtk.DrawingArea {
     }
 
     private double frame_now_sec () {
-        var fc = get_frame_clock ();
-        if (fc != null) {
-            var ft = fc.get_frame_time ();
-            if (ft > 0) {
-                return ft / 1000000.0;
-            }
-        }
         return GLib.get_monotonic_time () / 1000000.0;
     }
 
@@ -796,6 +789,10 @@ public class BoardView : Gtk.DrawingArea {
             set_cursor (dragging ? pointer_cursor : null);
             return;
         }
+        if (session.is_animating || session.is_placing_checkers || session.is_computer_turn) {
+            set_cursor (null);
+            return;
+        }
         double ox, oy;
         board_origin (out ox, out oy);
         var px = mouse_x - ox;
@@ -880,12 +877,24 @@ public class BoardView : Gtk.DrawingArea {
         for (var raw = 1; raw <= 24; raw++) {
             var point = (BoardPoint) raw;
             var count = stack_count (point);
-            for (var i = 0; i < count; i++) {
+            if (count == 0) {
+                continue;
+            }
+            double bx, by;
+            BoardLayout.position (point, side, out bx, out by);
+            if (Math.fabs (px - bx) > r) {
+                continue;
+            }
+            for (var i = count - 1; i >= 0; i--) {
+                if (i < best_idx) {
+                    break;
+                }
                 double x, y;
                 stack_position (point, i, side, out x, out y);
-                if (Math.hypot (px - x, py - y) <= r && i >= best_idx) {
+                if (Math.hypot (px - x, py - y) <= r) {
                     best = point;
                     best_idx = i;
+                    break;
                 }
             }
         }
@@ -1256,11 +1265,16 @@ public class BoardView : Gtk.DrawingArea {
         cached_scale_factor = sf;
         static_board_dirty = true;
 
-        cached_board_surface = new Cairo.ImageSurface (Cairo.Format.ARGB32, target_px, target_px);
+        var theme = SettingsStore.shared ().board_theme;
+        var raw_board = load_asset (theme.board_asset_name ());
+        var raw_white = load_asset (theme.checker_asset_name (CheckerColor.WHITE));
+        var raw_black = load_asset (theme.checker_asset_name (CheckerColor.BLACK));
+
+        cached_board_surface = new Cairo.ImageSurface (Cairo.Format.RGB24, target_px, target_px);
         cached_board_surface.set_device_scale (sf, sf);
         var bcr = new Cairo.Context (cached_board_surface);
-        if (board_img != null) {
-            paint_image (bcr, board_img, 0, 0, side, side);
+        if (raw_board != null) {
+            paint_image (bcr, raw_board, 0, 0, side, side);
         } else {
             bcr.set_source_rgb (0.30, 0.18, 0.08);
             bcr.rectangle (0, 0, side, side);
@@ -1277,10 +1291,10 @@ public class BoardView : Gtk.DrawingArea {
         var shadow_r = 1.0 * (diameter / 36.0);
         cached_sprite_pad = Math.ceil (r + shadow_y + shadow_r + 2.0);
 
-        cached_white_static_sprite = build_static_checker_sprite (white_img, CheckerColor.WHITE, diameter, cached_sprite_pad, sf);
-        cached_black_static_sprite = build_static_checker_sprite (black_img, CheckerColor.BLACK, diameter, cached_sprite_pad, sf);
-        cached_white_fly_piece = build_fly_checker_piece (white_img, CheckerColor.WHITE, diameter, sf);
-        cached_black_fly_piece = build_fly_checker_piece (black_img, CheckerColor.BLACK, diameter, sf);
+        cached_white_static_sprite = build_static_checker_sprite (raw_white, CheckerColor.WHITE, diameter, cached_sprite_pad, sf);
+        cached_black_static_sprite = build_static_checker_sprite (raw_black, CheckerColor.BLACK, diameter, cached_sprite_pad, sf);
+        cached_white_fly_piece = build_fly_checker_piece (raw_white, CheckerColor.WHITE, diameter, sf);
+        cached_black_fly_piece = build_fly_checker_piece (raw_black, CheckerColor.BLACK, diameter, sf);
     }
 
     private void ensure_static_board_surface (double side) {
@@ -1291,7 +1305,7 @@ public class BoardView : Gtk.DrawingArea {
         if (static_board_surface == null
             || static_board_surface.get_width () != cached_board_px
             || static_board_surface.get_height () != cached_board_px) {
-            static_board_surface = new Cairo.ImageSurface (Cairo.Format.ARGB32, cached_board_px, cached_board_px);
+            static_board_surface = new Cairo.ImageSurface (Cairo.Format.RGB24, cached_board_px, cached_board_px);
             static_board_surface.set_device_scale (cached_scale_factor, cached_scale_factor);
             static_board_dirty = true;
         }
@@ -1301,11 +1315,6 @@ public class BoardView : Gtk.DrawingArea {
         static_board_dirty = false;
 
         var scr = new Cairo.Context (static_board_surface);
-        scr.set_operator (Cairo.Operator.SOURCE);
-        scr.set_source_rgba (0, 0, 0, 0);
-        scr.paint ();
-        scr.set_operator (Cairo.Operator.OVER);
-
         draw_board_background (scr, side);
         draw_highlights (scr, side);
         draw_static_checkers (scr, side);
@@ -1361,10 +1370,6 @@ public class BoardView : Gtk.DrawingArea {
             cr.paint ();
             return;
         }
-        if (board_img != null) {
-            paint_image (cr, board_img, 0, 0, side, side);
-            return;
-        }
         // Векторный fallback (если изображение не найдено)
         cr.set_source_rgb (0.30, 0.18, 0.08);
         cr.rectangle (0, 0, side, side);
@@ -1377,6 +1382,14 @@ public class BoardView : Gtk.DrawingArea {
 
     // MARK: - Подсветки (BoardHighlightsView)
 
+    private Pango.Layout get_cached_pango_layout (Cairo.Context cr) {
+        if (cached_pango_layout == null) {
+            cached_pango_layout = create_pango_layout ("");
+        }
+        Pango.cairo_update_layout (cr, cached_pango_layout);
+        return cached_pango_layout;
+    }
+
     private void draw_circle_with_number (Cairo.Context cr, double x, double y, double diameter,
                                           double r, double g, double b, double a, int number, bool show_number) {
         cr.set_source_rgba (r, g, b, a);
@@ -1385,12 +1398,14 @@ public class BoardView : Gtk.DrawingArea {
         if (!show_number) {
             return;
         }
-        var layout = Pango.cairo_create_layout (cr);
-        var font = new Pango.FontDescription ();
-        font.set_family ("sans-serif");
-        font.set_weight (Pango.Weight.NORMAL);
-        font.set_absolute_size (diameter * 0.45 * Pango.SCALE);
-        layout.set_font_description (font);
+        var layout = get_cached_pango_layout (cr);
+        if (cached_circle_font == null) {
+            cached_circle_font = new Pango.FontDescription ();
+            cached_circle_font.set_family ("sans-serif");
+            cached_circle_font.set_weight (Pango.Weight.NORMAL);
+        }
+        cached_circle_font.set_absolute_size (diameter * 0.45 * Pango.SCALE);
+        layout.set_font_description (cached_circle_font);
         layout.set_text (number.to_string (), -1);
         int lw, lh;
         layout.get_pixel_size (out lw, out lh);
@@ -1689,16 +1704,6 @@ public class BoardView : Gtk.DrawingArea {
             return;
         }
 
-        var img = (color == CheckerColor.WHITE) ? white_img : black_img;
-        if (img != null) {
-            cr.save ();
-            cr.arc (x, y, r, 0, 2 * Math.PI);
-            cr.clip ();
-            paint_image (cr, img, x - r, y - r, eff_diameter, eff_diameter);
-            cr.restore ();
-            return;
-        }
-
         // Векторный fallback
         if (color == CheckerColor.WHITE) {
             cr.set_source_rgb (0.97, 0.97, 0.98);
@@ -1762,12 +1767,14 @@ public class BoardView : Gtk.DrawingArea {
                 cr.arc (x, y, diameter / 2.0 - 0.5, 0, 2 * Math.PI);
                 cr.stroke ();
 
-                var layout = Pango.cairo_create_layout (cr);
-                var font = new Pango.FontDescription ();
-                font.set_family ("sans-serif");
-                font.set_weight (Pango.Weight.BOLD);
-                font.set_absolute_size (diameter * 0.44 * Pango.SCALE);
-                layout.set_font_description (font);
+                var layout = get_cached_pango_layout (cr);
+                if (cached_index_font == null) {
+                    cached_index_font = new Pango.FontDescription ();
+                    cached_index_font.set_family ("sans-serif");
+                    cached_index_font.set_weight (Pango.Weight.BOLD);
+                }
+                cached_index_font.set_absolute_size (diameter * 0.44 * Pango.SCALE);
+                layout.set_font_description (cached_index_font);
                 layout.set_text (p.raw_value ().to_string (), -1);
                 int lw, lh;
                 layout.get_pixel_size (out lw, out lh);

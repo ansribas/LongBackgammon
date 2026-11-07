@@ -431,18 +431,15 @@ public class GameBoard : Object {
         return true;
     }
 
-    /** Глубокая копия доски (для ИИ и отмены ходов). */
+    /**
+     * Копия доски (для ИИ и отмены ходов).
+     * Стопки PointStack иммутабельны и заменяются целиком при каждом ходе (copy-on-write),
+     * поэтому клонирование разделяет ссылки на неизменённые стопки без лишних аллокаций.
+     */
     public GameBoard clone () {
         var copy = new GameBoard ();
         for (var raw = 1; raw <= 24; raw++) {
-            var stack = stacks[raw];
-            if (stack != null) {
-                var ids = new uint8[stack.checker_ids.length];
-                for (var i = 0; i < ids.length; i++) {
-                    ids[i] = stack.checker_ids[i];
-                }
-                copy.stacks[raw] = new PointStack.with_ids (stack.color, ids);
-            }
+            copy.stacks[raw] = stacks[raw];
         }
         copy.set_borne_off (white_borne_off_ids, black_borne_off_ids);
         return copy;

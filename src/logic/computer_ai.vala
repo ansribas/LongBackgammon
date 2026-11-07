@@ -11,7 +11,7 @@ namespace Longbackgammon {
 public class ComputerAI {
     /** Суммарное количество очков (дистанции) до финиша. */
     public static int calculate_pip_count (GameBoard board, CheckerColor color) {
-        var route = PlayerPath.path (color);
+        unowned BoardPoint[] route = PlayerPath.route_ref (color);
         var total = 0;
         for (var idx = route.length - 1; idx >= 0; idx--) {
             var stack = board.stack_at (route[idx]);
@@ -22,25 +22,10 @@ public class ComputerAI {
         return total;
     }
 
-    private static bool[] home_points (CheckerColor color) {
-        var home = new bool[25];
-        if (color == CheckerColor.WHITE) {
-            for (var raw = 1; raw <= 6; raw++) {
-                home[raw] = true;
-            }
-        } else {
-            for (var raw = 13; raw <= 18; raw++) {
-                home[raw] = true;
-            }
-        }
-        return home;
-    }
-
     private static int count_checkers_outside_home (GameBoard board, CheckerColor color) {
-        var hp = home_points (color);
         var count = 0;
         for (var raw = 1; raw <= 24; raw++) {
-            if (!hp[raw]) {
+            if (!MoveValidator.is_home_raw (raw, color)) {
                 var stack = board.stack_at ((BoardPoint) raw);
                 if (stack != null && stack.color == color) {
                     count += stack.checker_ids.length;
@@ -51,7 +36,7 @@ public class ComputerAI {
     }
 
     private static int count_checkers_on_opponent_half (GameBoard board, CheckerColor color) {
-        var route = PlayerPath.path (color.opposite ());
+        unowned BoardPoint[] route = PlayerPath.route_ref (color.opposite ());
         var count = 0;
         for (var i = 0; i < route.length; i++) {
             var stack = board.stack_at (route[i]);
@@ -63,7 +48,7 @@ public class ComputerAI {
     }
 
     private static int calculate_max_our_prime (GameBoard board, CheckerColor color) {
-        var route = PlayerPath.path (color);
+        unowned BoardPoint[] route = PlayerPath.route_ref (color);
         var max_len = 0;
         var current_len = 0;
         for (var i = 0; i < route.length; i++) {
@@ -81,7 +66,7 @@ public class ComputerAI {
     }
 
     private static double calculate_connectivity_score (GameBoard board, CheckerColor color) {
-        var route = PlayerPath.path (color);
+        unowned BoardPoint[] route = PlayerPath.route_ref (color);
         var score = 0.0;
         for (var i = 0; i < route.length - 1; i++) {
             var s1 = board.stack_at (route[i]);
@@ -98,7 +83,7 @@ public class ComputerAI {
 
     private static int count_trapped_opponent_checkers (GameBoard board, CheckerColor color) {
         var opponent_color = color.opposite ();
-        var route = PlayerPath.path (opponent_color);
+        unowned BoardPoint[] route = PlayerPath.route_ref (opponent_color);
         var block_len = 0;
         var best_len = 0;
         var block_start = -1;
@@ -178,16 +163,15 @@ public class ComputerAI {
 
     private static double evaluate_score (MoveOption move, GameBoard board, CheckerColor color, int[] remaining_dice) {
         var w = AIWeights.default_weights ();
-        var route = PlayerPath.path (color);
+        unowned BoardPoint[] route = PlayerPath.route_ref (color);
         var opponent_color = color.opposite ();
-        var opponent_route = PlayerPath.path (opponent_color);
-        var hp = home_points (color);
+        unowned BoardPoint[] opponent_route = PlayerPath.route_ref (opponent_color);
         var home_start_idx = route.length - 6;
-        var from_index = PlayerPath.find_index (route, move.from);
+        var from_index = PlayerPath.index_of (move.from, color);
         if (from_index < 0) {
             from_index = 0;
         }
-        var target_index = move.to == null ? route.length : PlayerPath.find_index (route, move.to);
+        var target_index = move.to == null ? route.length : PlayerPath.index_of (move.to, color);
         if (target_index < 0) {
             target_index = from_index;
         }
@@ -199,8 +183,8 @@ public class ComputerAI {
         var outside_before = count_checkers_outside_home (board, color);
         var is_endgame = outside_before <= 6;
         var score = 0.0;
-        var is_from_home = hp[move.from.raw_value ()];
-        var is_to_home = move.to != null && hp[move.to.raw_value ()];
+        var is_from_home = MoveValidator.is_home_raw (move.from.raw_value (), color);
+        var is_to_home = move.to != null && MoveValidator.is_home_raw (move.to.raw_value (), color);
         var is_from_head = MoveValidator.is_head (move.from, color);
         var pip_progress = calculate_pip_count (board, color) - calculate_pip_count (simulated, color);
         var any_behind = false;

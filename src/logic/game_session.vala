@@ -114,6 +114,13 @@ public class GameSession : Object {
     private uint auto_end_token = 0;
     private int rolloff_anim_counter = 0;
 
+    [CCode (cname = "malloc_trim", cheader_filename = "malloc.h")]
+    private extern static int malloc_trim (size_t pad);
+
+    private static void trim_heap () {
+        malloc_trim (0);
+    }
+
     public GameSession () {
         white_turn_log = new TurnRecord[0];
         black_turn_log = new TurnRecord[0];
@@ -386,7 +393,7 @@ public class GameSession : Object {
         if (!is_game_started || is_placing_checkers) {
             return 360;
         }
-        var route = PlayerPath.path (color);
+        unowned BoardPoint[] route = PlayerPath.route_ref (color);
         var total = 0;
         for (var i = 0; i < route.length; i++) {
             var stack = board.stack_at (route[i]);
@@ -640,6 +647,7 @@ public class GameSession : Object {
         is_auto_playing_black = false;
 
         status_message = is_computer_turn ? Localization.status_computer_moving () : Localization.status_roll_dice ();
+        trim_heap ();
         notify_changed ();
         if (is_computer_turn) {
             auto_play_if_needed ();
@@ -848,6 +856,7 @@ public class GameSession : Object {
 
         SavedGameStore.shared ().clear ();
         is_game_started = false;
+        trim_heap ();
 
         notify_changed ();
 
@@ -923,6 +932,7 @@ public class GameSession : Object {
         reset_stats ();
         move_history = new MoveSnapshot[0];
         cached_legal_options = new MoveOption[0];
+        trim_heap ();
 
         if (animated) {
             is_animating = true;
@@ -1272,6 +1282,16 @@ public class GameSession : Object {
         return string.joinv (", ", parts);
     }
 
+    /** Имя текущего игрока-человека (при ходе компьютера — имя его соперника). */
+    public string current_human_player_name {
+        owned get {
+            if (is_computer_player (current_player)) {
+                return player_name (current_player.opposite ());
+            }
+            return player_name (current_player);
+        }
+    }
+
     /** Завершение партии: фиксация победы, запись статистики и отложенный показ итогового окна. */
     public void handle_delayed_victory () {
         // Немедленно блокируем доску и управление, но сохраняем сессию незавершённой
@@ -1280,6 +1300,8 @@ public class GameSession : Object {
         selected_point = null;
         remaining_dice = new int[0];
         move_history = new MoveSnapshot[0];
+
+        SavedGameStore.shared ().clear ();
 
         status_message = (current_player == CheckerColor.WHITE)
             ? Localization.victory_white ()
@@ -1420,7 +1442,12 @@ public class GameSession : Object {
         }
 
         // 7. Торжественное появление экрана победы со звуком
-        SoundManager.shared ().play_victory ();
+        // Победа человека — фанфары, поражение от ИИ — сдержанный звук поражения
+        if (is_computer_player (winner_color)) {
+            SoundManager.shared ().play_defeat ();
+        } else {
+            SoundManager.shared ().play_victory ();
+        }
         showing_game_over_result = true;
         is_animating = false;
         notify_changed ();

@@ -57,6 +57,11 @@
   <content_rating type="oars-1.1" />
 
   <releases>
+    <release version="1.0.7" date="2026-11-07">
+      <description>
+        <p>Redesigned Game Over modal with sequential tally counters, flying reward/deduction stars, and celebratory fireworks for Mars/Home Mars victories. Added match result entries to the turn log, standardized player name truncation with instant hover tooltips, new victory/defeat sound effects, and major memory/CPU optimizations.</p>
+      </description>
+    </release>
     <release version="1.0.6" date="2026-11-01">
       <description>
         <p>GNOME Human Interface Guidelines alignment: standard Libadwaita header bar button sizing and symbolic icons, primary menu placed next to window controls, system GSettings integration, GNOME HIG color palette, relative typography scale for accessibility, interactive Keyboard Shortcuts window (Ctrl+?), and donation link support.</p>

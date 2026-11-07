@@ -130,7 +130,7 @@ public class AdvancedAI {
             return false;
         }
 
-        var our_route = PlayerPath.path (color);
+        unowned BoardPoint[] our_route = PlayerPath.route_ref (color);
         var our_starter_control = 0;
         for (var idx = 0; idx <= 6; idx++) {
             var s = root_board.stack_at (our_route[idx]);
@@ -168,7 +168,7 @@ public class AdvancedAI {
         CheckerColor color
     ) {
         var opponent_color = color.opposite ();
-        var opp_route = PlayerPath.path (opponent_color);
+        unowned BoardPoint[] opp_route = PlayerPath.route_ref (opponent_color);
         var initial_choke_points = 0;
         for (var idx = 1; idx <= 3; idx++) {
             var s = root_board.stack_at (opp_route[idx]);
@@ -536,8 +536,8 @@ public class AdvancedAI {
 
         var score = 0.0;
 
-        var our_route = PlayerPath.path (color);
-        var opp_route = PlayerPath.path (opponent_color);
+        unowned BoardPoint[] our_route = PlayerPath.route_ref (color);
+        unowned BoardPoint[] opp_route = PlayerPath.route_ref (opponent_color);
         var our_head = PlayerPath.start_point (color);
         var opp_head = PlayerPath.start_point (opponent_color);
 
@@ -1480,7 +1480,7 @@ public class AdvancedAI {
     // MARK: - Вспомогательные функции
 
     public static int calculate_pip_count (GameBoard board, CheckerColor color) {
-        var route = PlayerPath.path (color);
+        unowned BoardPoint[] route = PlayerPath.route_ref (color);
         var total = 0;
         for (var index = 0; index < route.length; index++) {
             var stack = board.stack_at (route[index]);
@@ -1503,7 +1503,7 @@ public class AdvancedAI {
     }
 
     public static PrimeInfo[] analyze_primes_info (GameBoard board, CheckerColor friendly_color, CheckerColor target_route_color) {
-        var route = PlayerPath.path (target_route_color);
+        unowned BoardPoint[] route = PlayerPath.route_ref (target_route_color);
         var primes = new GenericArray<PrimeInfo> ();
         var current_len = 0;
         var prime_start_idx = 0;

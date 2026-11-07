@@ -61,7 +61,7 @@ public class SoundManager {
         return StoragePaths.find_asset_path ("sounds", name + ".wav");
     }
 
-    private void play (string name) {
+    private void play (string name, double volume = 1.0) {
         if (!SettingsStore.shared ().is_sound_enabled) {
             return;
         }
@@ -78,13 +78,13 @@ public class SoundManager {
             }
             return;
         }
-        if (!try_play (player, file)) {
+        if (!try_play (player, file, volume)) {
             // Пробуем остальных плееров по очереди
             for (var i = 0; i < player_candidates.length; i++) {
                 if (i == player_index) {
                     continue;
                 }
-                if (try_play (player_candidates[i], file)) {
+                if (try_play (player_candidates[i], file, volume)) {
                     player = player_candidates[i];
                     player_index = i;
                     return;
@@ -93,13 +93,18 @@ public class SoundManager {
         }
     }
 
-    private static bool try_play (string cmdname, string file) {
+    private static bool try_play (string cmdname, string file, double volume = 1.0) {
         string cmd;
         if (cmdname == "ffplay") {
-            cmd = "ffplay -nodisp -autoexit -loglevel quiet %s".printf (Shell.quote (file));
+            cmd = "ffplay -nodisp -autoexit -loglevel quiet -volume %d %s".printf ((int) (volume * 100), Shell.quote (file));
         } else if (cmdname == "gst-launch-1.0") {
             // GStreamer: работает и в системном окружении, и внутри Flatpak/GNOME Builder
-            cmd = "gst-launch-1.0 -q filesrc location=%s ! wavparse ! autoaudiosink".printf (Shell.quote (file));
+            if (volume < 0.999) {
+                cmd = "gst-launch-1.0 -q filesrc location=%s ! wavparse ! audioconvert ! volume volume=%s ! autoaudiosink"
+                    .printf (Shell.quote (file), volume.to_string ());
+            } else {
+                cmd = "gst-launch-1.0 -q filesrc location=%s ! wavparse ! autoaudiosink".printf (Shell.quote (file));
+            }
         } else {
             cmd = "%s %s".printf (cmdname, Shell.quote (file));
         }
@@ -131,6 +136,43 @@ public class SoundManager {
 
     public void play_victory () {
         play ("victory");
+    }
+
+    /** Звук поражения живого игрока от компьютера (случайный вариант). */
+    public void play_defeat () {
+        play ("defeat0%d".printf (1 + GLib.Random.int_range (0, GameConfig.DEFEAT_SOUNDS_COUNT)));
+    }
+
+    // MARK: - Звуки экрана результата
+
+    /** Появление звезды за победу / списание. */
+    public void play_star_pop (int index = 0) {
+        play ("star_pop", 0.95);
+    }
+
+    /** Раскрытие таблицы статистики. */
+    public void play_table_entrance () {
+        play ("table_reveal", 0.85);
+    }
+
+    /** Одиночный тик подсчёта в строке таблицы. */
+    public void play_tally_tick (bool is_winner) {
+        play ("tally_tick", is_winner ? 0.42 : 0.30);
+    }
+
+    /** Зачисление очков в счёт игрока. */
+    public void play_score_count_up () {
+        play ("score_ding");
+    }
+
+    /** Списание очка при прилёте красной звезды. */
+    public void play_score_deduct () {
+        play ("score_deduct");
+    }
+
+    /** Праздничный салют. */
+    public void play_fireworks () {
+        play ("fireworks", 0.9);
     }
 
     public void play_undo () {

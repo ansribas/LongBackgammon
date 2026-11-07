@@ -31,16 +31,60 @@ public class LogTooltipState : Object {
 }
 
 /**
- * Слой всплывающей подсказки: плашка с расшифровкой шагов записи хода под курсором мыши.
- * Каждая подсказка имеет собственную плавную анимацию появления и затухания (0.20 с easeInOut + масштаб 0.95..1.0),
- * благодаря чему при перемещении курсора между строками лога старая подсказка плавно гаснет, а новая плавно появляется.
+ * Глобальное состояние мгновенных всплывающих подсказок (для длинных имён игроков и т.д.).
+ * Работает без системной задержки GTK, в едином стиле с подсказками лога ходов.
+ */
+public class InstantTooltipState : Object {
+    private static InstantTooltipState? _shared = null;
+    public static InstantTooltipState shared () {
+        if (_shared == null) {
+            _shared = new InstantTooltipState ();
+        }
+        return _shared;
+    }
+
+    public string? active_text = null;
+    public Graphene.Rect target_frame = { { 0, 0 }, { 0, 0 } };
+    public Gtk.Widget? source_widget = null;
+    public signal void changed ();
+
+    public void show (string text, Graphene.Rect frame, Gtk.Widget source) {
+        active_text = text;
+        target_frame = frame;
+        source_widget = source;
+        changed ();
+    }
+
+    public void hide (Gtk.Widget source) {
+        if (source_widget == source) {
+            active_text = null;
+            source_widget = null;
+            changed ();
+        }
+    }
+
+    public void hide_all () {
+        if (active_text != null || source_widget != null) {
+            active_text = null;
+            source_widget = null;
+            changed ();
+        }
+    }
+}
+
+/**
+ * Слой всплывающей подсказки: плашка с расшифровкой шагов записи хода под курсором мыши
+ * и мгновенная подсказка полного имени игрока при обрезке.
+ * Каждая подсказка имеет собственную плавную анимацию появления и затухания (0.18–0.20 с easeInOut + масштаб 0.95..1.0).
  */
 public class LogTooltipView : Gtk.Widget {
     private class TooltipItem {
         public int record_id;
         public int side;
+        public bool is_instant;
         public double x;
         public double y;
+        public Graphene.Rect target_frame;
         public Gtk.Label label;
         public bool target_visible;
         public double progress;
@@ -59,6 +103,7 @@ public class LogTooltipView : Gtk.Widget {
         can_focus = false;
         session.changed.connect (refresh);
         LogTooltipState.shared ().changed.connect (refresh);
+        InstantTooltipState.shared ().changed.connect (refresh);
         SettingsStore.shared ().changed.connect (refresh);
     }
 
@@ -78,13 +123,6 @@ public class LogTooltipView : Gtk.Widget {
     }
 
     private int64 now_us () {
-        var fc = get_frame_clock ();
-        if (fc != null) {
-            var ft = fc.get_frame_time ();
-            if (ft > 0) {
-                return ft;
-            }
-        }
         return GLib.get_monotonic_time ();
     }
 
@@ -119,13 +157,25 @@ public class LogTooltipView : Gtk.Widget {
         var now = now_us ();
         var need_tick = false;
         TooltipItem? found_active = null;
+        TooltipItem? found_instant = null;
+        var inst = InstantTooltipState.shared ();
+        var has_instant = inst.active_text != null && inst.active_text != "";
 
         foreach (var item in items) {
-            if (active_id >= 0 && item.record_id == active_id && item.side == active_side) {
+            if (!item.is_instant && active_id >= 0 && item.record_id == active_id && item.side == active_side) {
                 found_active = item;
                 item.label.label = msg;
                 item.x = st.hovered_x;
                 item.y = st.hovered_y;
+                if (!item.target_visible) {
+                    item.target_visible = true;
+                    item.start_val = item.progress;
+                    item.start_us = now;
+                    need_tick = true;
+                }
+            } else if (item.is_instant && has_instant && item.label.label == inst.active_text) {
+                found_instant = item;
+                item.target_frame = inst.target_frame;
                 if (!item.target_visible) {
                     item.target_visible = true;
                     item.start_val = item.progress;
@@ -146,6 +196,7 @@ public class LogTooltipView : Gtk.Widget {
             var item = new TooltipItem ();
             item.record_id = active_id;
             item.side = active_side;
+            item.is_instant = false;
             item.x = st.hovered_x;
             item.y = st.hovered_y;
             item.target_visible = true;
@@ -163,6 +214,26 @@ public class LogTooltipView : Gtk.Widget {
             need_tick = true;
         }
 
+        if (has_instant && found_instant == null) {
+            var item = new TooltipItem ();
+            item.record_id = -1;
+            item.side = -1;
+            item.is_instant = true;
+            item.target_frame = inst.target_frame;
+            item.target_visible = true;
+            item.progress = 0.0;
+            item.start_val = 0.0;
+            item.start_us = now;
+            item.label = new Gtk.Label (inst.active_text);
+            item.label.add_css_class ("lb-tooltip");
+            item.label.wrap = false;
+            item.label.justify = Gtk.Justification.CENTER;
+            item.label.opacity = 0.0;
+            item.label.set_parent (this);
+            items += item;
+            need_tick = true;
+        }
+
         if (need_tick && tick_id == 0) {
             tick_id = add_tick_callback (on_anim_tick);
         }
@@ -172,11 +243,11 @@ public class LogTooltipView : Gtk.Widget {
     private bool on_anim_tick (Gtk.Widget w, Gdk.FrameClock clock) {
         var ft = clock.get_frame_time ();
         var now = ft > 0 ? ft : GLib.get_monotonic_time ();
-        const double duration = 0.20;
         var next_items = new TooltipItem[0];
         var still_animating = false;
 
         foreach (var item in items) {
+            var duration = item.is_instant ? 0.18 : 0.20;
             var target = item.target_visible ? 1.0 : 0.0;
             if (Math.fabs (item.progress - target) > 1e-4) {
                 var elapsed = double.max (0.0, (now - item.start_us) / 1000000.0);
@@ -228,13 +299,30 @@ public class LogTooltipView : Gtk.Widget {
             }
             int min_w, nat_w, mb, nb;
             item.label.measure (Gtk.Orientation.HORIZONTAL, -1, out min_w, out nat_w, out mb, out nb);
-            var w = int.max (min_w, int.min (nat_w, MAX_WIDTH));
+            int w;
+            if (item.is_instant) {
+                w = int.min (nat_w, int.max (min_w, width - 20));
+            } else {
+                w = int.max (min_w, int.min (nat_w, MAX_WIDTH));
+            }
             int min_h, nat_h;
             item.label.measure (Gtk.Orientation.VERTICAL, w, out min_h, out nat_h, out mb, out nb);
             var h = nat_h;
 
             int x;
-            if (item.side == (int) CheckerColor.WHITE || item.side == (int) CheckerColor.BLACK) {
+            int y;
+            if (item.is_instant) {
+                var mid_x = item.target_frame.origin.x + item.target_frame.size.width / 2.0f;
+                var half_w = w / 2.0f;
+                var min_cx = half_w + 10.0f;
+                var max_cx = width - half_w - 10.0f;
+                var cx_clamped = (min_cx > max_cx) ? (width / 2.0f) : float.min (float.max (min_cx, mid_x), max_cx);
+                x = (int) Math.round (cx_clamped - half_w);
+                var max_y = item.target_frame.origin.y + item.target_frame.size.height;
+                var min_y = item.target_frame.origin.y;
+                var cy_calc = (max_y + 32.0f > height) ? (min_y - 16.0f) : (max_y + 16.0f);
+                y = (int) Math.round (cy_calc - h / 2.0f);
+            } else if (item.side == (int) CheckerColor.WHITE || item.side == (int) CheckerColor.BLACK) {
                 var is_right_side = BoardLayout.is_player_on_right_side ((CheckerColor) item.side);
                 if (is_right_side) {
                     // Панель справа: правый край плашки выровнен по линии панели
@@ -245,10 +333,11 @@ public class LogTooltipView : Gtk.Widget {
                     var left_anchor = item.x - 85.0;
                     x = (int) left_anchor;
                 }
+                y = (int) (item.y - h / 2.0);
             } else {
                 x = (int) (item.x - w / 2.0);
+                y = (int) (item.y - h / 2.0);
             }
-            var y = (int) (item.y - h / 2.0);
             x = int.max (0, int.min (width - w, x));
             y = int.max (0, int.min (height - h, y));
             var scale = (float) (0.95 + 0.05 * item.progress);
@@ -342,7 +431,11 @@ public class LogCellView : Gtk.DrawingArea {
     }
 
     private double card_x () {
-        return double.max (0.0, (get_width () - CARD_W) / 2.0);
+        var w = get_width ();
+        if (w <= 0) {
+            w = panel.get_log_cell_width ();
+        }
+        return double.max (0.0, (w - CARD_W) / 2.0);
     }
 
     /** Прямоугольник слота кубика в координатах ячейки. */
@@ -581,9 +674,10 @@ public class LogCellView : Gtk.DrawingArea {
 
         var log = panel.color == CheckerColor.WHITE ? session.white_turn_log : session.black_turn_log;
         var is_latest = log.length > 0 && log[0].id == record.id;
+        var is_rolloff_animating = is_latest && record.is_rolloff && session.rolloff_animation_id != 0;
         for (var idx = 0; idx < 2; idx++) {
             var fly_id = idx == 0 ? 100 : 101;
-            if (is_latest && (panel.is_flying (fly_id) || panel.is_pending_fly (fly_id))) {
+            if (is_latest && (panel.is_flying (fly_id) || panel.is_pending_fly (fly_id) || (is_rolloff_animating && !panel.has_landed_rolloff (fly_id)))) {
                 continue;
             }
             var r = die_rect (idx);

@@ -39,30 +39,42 @@ public class MoveValidator {
         if (to == null) {
             return false;
         }
-        var temp_board = board.clone ();
-        temp_board.move_one_checker (from, to);
-
         var opponent_color = color.opposite ();
-        var opponent_route = PlayerPath.path (opponent_color);
 
         // Если соперник уже вывел хотя бы одну фишку, блокировка разрешена
-        if (temp_board.borne_off_count (opponent_color) > 0) {
+        if (board.borne_off_count (opponent_color) > 0) {
             return false;
         }
+
+        unowned BoardPoint[] opponent_route = PlayerPath.route_ref (opponent_color);
+        var src_stack = board.stack_at (from);
+        var has_src_checker = (src_stack != null && src_stack.checker_ids.length > 0);
+        var src_remains_ours = has_src_checker && src_stack.color == color && src_stack.checker_ids.length > 1;
+        var dst_becomes_ours = has_src_checker && src_stack.color == color;
 
         var block_start = -1;
         var current_block_length = 0;
 
         for (var index = 0; index < opponent_route.length; index++) {
-            var stack = temp_board.stack_at (opponent_route[index]);
-            if (stack != null && stack.color == color) {
+            var pt = opponent_route[index];
+            bool has_our_color;
+            if (has_src_checker && pt == to) {
+                has_our_color = dst_becomes_ours;
+            } else if (has_src_checker && pt == from) {
+                has_our_color = src_remains_ours;
+            } else {
+                var stack = board.stack_at (pt);
+                has_our_color = (stack != null && stack.color == color);
+            }
+
+            if (has_our_color) {
                 if (block_start < 0) {
                     block_start = index;
                 }
                 current_block_length++;
             } else {
                 if (block_start >= 0 && current_block_length >= 6) {
-                    if (!has_opponent_checkers_ahead (index - 1, opponent_route, temp_board, opponent_color)) {
+                    if (!has_opponent_checkers_ahead (index - 1, opponent_route, board, opponent_color)) {
                         return true;
                     }
                 }
@@ -72,18 +84,23 @@ public class MoveValidator {
         }
 
         if (block_start >= 0 && current_block_length >= 6) {
-            if (!has_opponent_checkers_ahead (opponent_route.length - 1, opponent_route, temp_board, opponent_color)) {
+            if (!has_opponent_checkers_ahead (opponent_route.length - 1, opponent_route, board, opponent_color)) {
                 return true;
             }
         }
 
         return false;
     }
-/** Все ли фишки цвета находятся в «доме» (последние 6 пунктов маршрута). */
+
+    /** Принадлежит ли ячейка «дому» указанного цвета (1..6 для белых, 13..18 для чёрных). */
+    public static bool is_home_raw (int raw, CheckerColor color) {
+        return (color == CheckerColor.WHITE) ? (raw >= 1 && raw <= 6) : (raw >= 13 && raw <= 18);
+    }
+
+    /** Все ли фишки цвета находятся в «доме» (последние 6 пунктов маршрута). */
     public static bool are_all_checkers_in_home (GameBoard board, CheckerColor color) {
-        var home = home_points (color);
         for (var raw = 1; raw <= 24; raw++) {
-            if (!home[raw]) {
+            if (!is_home_raw (raw, color)) {
                 var stack = board.stack_at ((BoardPoint) raw);
                 if (stack != null && stack.color == color && stack.checker_ids.length > 0) {
                     return false;
@@ -91,20 +108,6 @@ public class MoveValidator {
             }
         }
         return true;
-    }
-
-    private static bool[] home_points (CheckerColor color) {
-        var home = new bool[25];
-        if (color == CheckerColor.WHITE) {
-            for (var raw = 1; raw <= 6; raw++) {
-                home[raw] = true;
-            }
-        } else {
-            for (var raw = 13; raw <= 18; raw++) {
-                home[raw] = true;
-            }
-        }
-        return home;
     }
 
     /**

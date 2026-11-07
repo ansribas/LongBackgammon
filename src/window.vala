@@ -166,6 +166,7 @@ public class Window : Adw.ApplicationWindow {
     private bool dim_target_visible = false;
     private Adw.SpringAnimation? dim_animation = null;
     private LogTooltipView tooltip_view;
+    private FireworksView fireworks;
 
     private TitleBarButton stats_btn;
     private TitleBarButton sound_btn;
@@ -345,6 +346,11 @@ public class Window : Adw.ApplicationWindow {
         overlay.set_measure_overlay (dim, false);
 
         // Глобальный слой подсказок лога (не перехватывает мышь)
+        // Салют поверх всех окон (вылетает за границы карточки результата)
+        fireworks = new FireworksView ();
+        overlay.add_overlay (fireworks);
+        overlay.set_measure_overlay (fireworks, false);
+
         tooltip_view = new LogTooltipView (session);
         tooltip_view.can_target = false;
         overlay.add_overlay (tooltip_view);
@@ -423,6 +429,7 @@ public class Window : Adw.ApplicationWindow {
     // MARK: - Оверлеи
 
     private void close_all_overlays () {
+        InstantTooltipState.shared ().hide_all ();
         is_settings_presented = false;
         is_rules_presented = false;
         is_stats_presented = false;
@@ -587,9 +594,10 @@ public class Window : Adw.ApplicationWindow {
             v.close_requested.connect (() => {
                 exit_game_over (false);
             });
+            v.salute_requested.connect (() => { fireworks.start (); });
             return v;
         case "stats":
-            var v = new StatisticsView ();
+            var v = new StatisticsView (session.current_human_player_name);
             v.close_requested.connect (() => {
                 is_stats_presented = false;
                 sync_overlays ();
@@ -614,6 +622,8 @@ public class Window : Adw.ApplicationWindow {
     }
 
     private void exit_game_over (bool open_new_game) {
+        InstantTooltipState.shared ().hide_all ();
+        fireworks.stop ();
         session.set_showing_game_over_result (false);
         last_game_over_result = false;
         sync_overlays ();
@@ -631,13 +641,14 @@ public class Window : Adw.ApplicationWindow {
 
     /** Клик мимо всплывающего окна (прозрачная подложка ContentView). */
     private void on_backdrop_clicked () {
+        // Окно результата строго модальное: закрывается только кнопкой «Закрыть» внутри окна
+        if (session.showing_game_over_result) {
+            flash_modal ();
+            return;
+        }
         is_settings_presented = false;
         is_rules_presented = false;
         is_stats_presented = false;
-        if (session.showing_game_over_result) {
-            exit_game_over (false);
-            return;
-        }
         if (can_close_new_game) {
             is_new_game_presented = false;
         }
@@ -645,6 +656,13 @@ public class Window : Adw.ApplicationWindow {
     }
 
     private void flash_modal () {
+        if (session.showing_game_over_result && main_popup != null) {
+            var g = main_popup.content as GameOverView;
+            if (g != null) {
+                g.flash ();
+                return;
+            }
+        }
         if (modal_popup == null) {
             return;
         }
@@ -660,7 +678,7 @@ public class Window : Adw.ApplicationWindow {
 
     /** Блокирующий диалог открыт — вместо действия мигает рамкой. */
     private bool modal_blocks () {
-        if (show_restore_game || show_confirm_new_game) {
+        if (show_restore_game || show_confirm_new_game || session.showing_game_over_result) {
             flash_modal ();
             return true;
         }
@@ -758,10 +776,6 @@ public class Window : Adw.ApplicationWindow {
 
     public void request_new_game () {
         if (modal_blocks ()) {
-            return;
-        }
-        if (session.showing_game_over_result) {
-            exit_game_over (true);
             return;
         }
         // Подтверждение, если игра начата и не окончена (включая розыгрыш первого хода)

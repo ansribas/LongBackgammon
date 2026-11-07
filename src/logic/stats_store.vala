@@ -12,7 +12,29 @@ namespace Longbackgammon {
 public enum VictoryType {
     OIN,
     MARS,
-    HOME_MARS
+    HOME_MARS;
+
+    /** Иконка типа победы (настраивается в GameConfig). */
+    public string icon () {
+        switch (this) {
+        case HOME_MARS: return GameConfig.ICON_HOME_MARS_VICTORY;
+        case MARS: return GameConfig.ICON_MARS_VICTORY;
+        default: return GameConfig.ICON_OIN_VICTORY;
+        }
+    }
+
+    /** Очки за победу данного типа. */
+    public int points () {
+        switch (this) {
+        case HOME_MARS: return 3;
+        case MARS: return 2;
+        default: return 1;
+        }
+    }
+
+    public bool is_mars_or_home_mars () {
+        return this != OIN;
+    }
 }
 
 /** Статистика конкретного игрока. */

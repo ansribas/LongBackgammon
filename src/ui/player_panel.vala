@@ -103,15 +103,23 @@ public class PanelStyle {
         cr.set_source_rgba (c.red, c.green, c.blue, alpha);
     }
 
+    private static Pango.FontDescription? shared_fd = null;
+
+    private static Pango.FontDescription get_shared_fd (double px, int weight) {
+        if (shared_fd == null) {
+            shared_fd = new Pango.FontDescription ();
+            shared_fd.set_family ("Sans");
+        }
+        shared_fd.set_absolute_size (px * Pango.SCALE);
+        shared_fd.set_weight ((Pango.Weight) weight);
+        return shared_fd;
+    }
+
     /** Отрисовка центрированного текста через Pango. */
     public static double draw_text_centered (Cairo.Context cr, Gtk.Widget w, string text, double cx, double y,
                                              double px, int weight, double letter_spacing = 0) {
         var layout = w.create_pango_layout (text);
-        var fd = new Pango.FontDescription ();
-        fd.set_family ("Sans");
-        fd.set_absolute_size (px * Pango.SCALE);
-        fd.set_weight ((Pango.Weight) weight);
-        layout.set_font_description (fd);
+        layout.set_font_description (get_shared_fd (px, weight));
         if (letter_spacing > 0) {
             var attrs = new Pango.AttrList ();
             attrs.insert (Pango.attr_letter_spacing_new ((int) (letter_spacing * Pango.SCALE)));
@@ -126,11 +134,7 @@ public class PanelStyle {
 
     public static double text_width (Gtk.Widget w, string text, double px, int weight, double letter_spacing = 0) {
         var layout = w.create_pango_layout (text);
-        var fd = new Pango.FontDescription ();
-        fd.set_family ("Sans");
-        fd.set_absolute_size (px * Pango.SCALE);
-        fd.set_weight ((Pango.Weight) weight);
-        layout.set_font_description (fd);
+        layout.set_font_description (get_shared_fd (px, weight));
         if (letter_spacing > 0) {
             var attrs = new Pango.AttrList ();
             attrs.insert (Pango.attr_letter_spacing_new ((int) (letter_spacing * Pango.SCALE)));
@@ -296,13 +300,17 @@ public class PlayerPanel : Gtk.Box {
 
     private LogCellView? active_cell = null;
     private Gtk.Revealer? active_cell_revealer = null;
+    private Gtk.Revealer? result_cell_revealer = null;
+    private int animated_result_id = -1;
     private LogCellView[] record_cells = new LogCellView[0];
     private string log_signature = "";
     private int last_log_count = -1;
+    private int last_highlighted_log_id = -1;
 
     // Анимация плавного растворения/истаивания лога при очистке
     private LogCellView[] clearing_cells = new LogCellView[0];
     private Gtk.Revealer? clearing_active_revealer = null;
+    private Gtk.Revealer? clearing_result_revealer = null;
     private int64 clear_anim_start_us = 0;
     private uint clear_anim_tick_id = 0;
     private bool is_clearing_log = false;
@@ -327,6 +335,7 @@ public class PlayerPanel : Gtk.Box {
     // Анимации перелёта кубиков между верхней зоной и логом
     private FlyingDie[] flying = new FlyingDie[0];
     private int[] flown_rolloff_ids = new int[0];
+    private int[] landed_rolloff_ids = new int[0];
     private int[] pending_skipped = new int[0];
     private int[] pending_fly = new int[0];
     private int[] pending_unfly = new int[0];
@@ -383,7 +392,9 @@ public class PlayerPanel : Gtk.Box {
         name_label.hexpand = true;
         name_label.margin_start = 8;
         name_label.margin_end = 8;
+        name_label.single_line_mode = true;
         name_label.ellipsize = Pango.EllipsizeMode.END;
+        UiKit.attach_instant_tooltip (name_label);
         header_box.append (name_label);
         dice_card.append (header_box);
 
@@ -461,8 +472,10 @@ public class PlayerPanel : Gtk.Box {
                 last_board_side = cur_side;
                 start_name_swap_animation ();
             }
-            log_signature = "";
             on_session_changed ();
+            foreach (var c in all_cells ()) {
+                c.queue_draw ();
+            }
         });
         on_session_changed ();
     }
@@ -555,6 +568,25 @@ public class PlayerPanel : Gtk.Box {
         return false;
     }
 
+    public bool has_landed_rolloff (int id) {
+        foreach (var l in landed_rolloff_ids) {
+            if (l == id) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public int get_log_cell_width () {
+        if (log_list != null && log_list.get_width () > 0) {
+            return log_list.get_width ();
+        }
+        if (log_scroller != null && log_scroller.get_width () > 0) {
+            return log_scroller.get_width ();
+        }
+        return get_width () > 32 ? get_width () - 32 : 114;
+    }
+
     public bool is_flying (int id) {
         foreach (var f in flying) {
             if (f.id == id) {
@@ -591,13 +623,20 @@ public class PlayerPanel : Gtk.Box {
         return false;
     }
 
+    private void queue_draw_top_cells () {
+        if (active_cell != null) {
+            active_cell.queue_draw ();
+        }
+        if (record_cells.length > 0) {
+            record_cells[0].queue_draw ();
+        }
+    }
+
     public void add_pending_fly (int id) {
         if (!is_pending_fly (id)) {
             pending_fly += id;
             dice_zone.queue_draw ();
-            foreach (var c in all_cells ()) {
-                c.queue_draw ();
-            }
+            queue_draw_top_cells ();
         }
     }
 
@@ -610,18 +649,14 @@ public class PlayerPanel : Gtk.Box {
         }
         pending_fly = r;
         dice_zone.queue_draw ();
-        foreach (var c in all_cells ()) {
-            c.queue_draw ();
-        }
+        queue_draw_top_cells ();
     }
 
     public void add_pending_unfly (int id) {
         if (!is_pending_unfly (id)) {
             pending_unfly += id;
             dice_zone.queue_draw ();
-            foreach (var c in all_cells ()) {
-                c.queue_draw ();
-            }
+            queue_draw_top_cells ();
         }
     }
 
@@ -634,9 +669,7 @@ public class PlayerPanel : Gtk.Box {
         }
         pending_unfly = r;
         dice_zone.queue_draw ();
-        foreach (var c in all_cells ()) {
-            c.queue_draw ();
-        }
+        queue_draw_top_cells ();
     }
 
     private TurnRecord[] my_log () {
@@ -660,7 +693,8 @@ public class PlayerPanel : Gtk.Box {
     }
 
     private void on_session_changed () {
-        name_label.label = color == CheckerColor.WHITE ? session.white_player_name : session.black_player_name;
+        var full_name = color == CheckerColor.WHITE ? session.white_player_name : session.black_player_name;
+        UiKit.set_name_label_text (name_label, full_name);
         var active = is_active ();
         var my_turn = is_my_turn_to_act ();
         var is_game_in_progress = session.is_game_in_progress;
@@ -682,8 +716,7 @@ public class PlayerPanel : Gtk.Box {
             target_highlight = new_target_highlight;
             start_opacity = current_card_opacity;
             start_highlight = current_highlight;
-            var fc = get_frame_clock ();
-            transition_start_time = fc != null ? fc.get_frame_time () : GLib.get_monotonic_time ();
+            transition_start_time = GLib.get_monotonic_time ();
             if (turn_tick_id == 0) {
                 turn_tick_id = add_tick_callback (on_turn_transition_tick);
             }
@@ -724,38 +757,45 @@ public class PlayerPanel : Gtk.Box {
         }
 
         rebuild_log_if_needed ();
-        foreach (var c in all_cells ()) {
-            c.queue_draw ();
-        }
-        update_footer ();
-
         handle_dice_state_change ();
         var my_rd = color == CheckerColor.WHITE ? session.white_rolloff_dice : session.black_rolloff_dice;
-        if (my_rd == null && flown_rolloff_ids.length > 0) {
+        if ((my_rd == null || !session.is_first_move_rolloff_in_progress) && (flown_rolloff_ids.length > 0 || landed_rolloff_ids.length > 0)) {
             flown_rolloff_ids = new int[0];
+            landed_rolloff_ids = new int[0];
         }
         if (session.rolloff_animation_id != last_rolloff_anim_id) {
             last_rolloff_anim_id = session.rolloff_animation_id;
+            flown_rolloff_ids = new int[0];
+            landed_rolloff_ids = new int[0];
             if (session.rolloff_animation_id != 0) {
                 if (my_rd != null) {
                     animate_rolloff_dice_to_log (my_rd);
                 }
             } else {
-                flown_rolloff_ids = new int[0];
                 remove_pending_fly (100);
                 remove_pending_fly (101);
             }
         }
+        dice_zone.queue_draw ();
+        queue_draw_top_cells ();
+        if (session.highlighted_log_id != last_highlighted_log_id) {
+            foreach (var c in record_cells) {
+                var rid = c.record_id ();
+                if (rid == session.highlighted_log_id || rid == last_highlighted_log_id) {
+                    c.queue_draw ();
+                }
+            }
+            last_highlighted_log_id = session.highlighted_log_id;
+        }
+        update_footer ();
         if (flying.length > 0) {
             flying_layer.queue_draw ();
         }
     }
 
-    private string compute_signature () {
+    private string compute_records_signature (TurnRecord[] log) {
         var sb = new StringBuilder ();
-        var active = shows_active_cell ();
-        sb.append (active ? "A%d;".printf (session.current_turn_dice.length) : "-;");
-        foreach (var r in my_log ()) {
+        foreach (var r in log) {
             sb.append_printf ("%d;", r.id);
         }
         return sb.str;
@@ -777,12 +817,6 @@ public class PlayerPanel : Gtk.Box {
             }
         }
 
-        var sig = compute_signature ();
-        if (sig == log_signature) {
-            return;
-        }
-        log_signature = sig;
-
         var should_show_active = shows_active_cell ();
         if (should_show_active) {
             if (active_cell == null) {
@@ -800,6 +834,8 @@ public class PlayerPanel : Gtk.Box {
                     }
                     return Source.REMOVE;
                 });
+            } else {
+                active_cell.set_content_height ((int) active_cell.compute_height ());
             }
         } else {
             if (active_cell_revealer != null) {
@@ -809,17 +845,97 @@ public class PlayerPanel : Gtk.Box {
             }
         }
 
-        foreach (var c in record_cells) {
-            log_list.remove (c);
+        var log = my_log ();
+        var sig = compute_records_signature (log);
+        if (sig == log_signature) {
+            return;
         }
-        record_cells = new LogCellView[0];
-        foreach (var r in my_log ()) {
-            var cell = new LogCellView (this, r, false);
-            record_cells += cell;
-            log_list.append (cell);
+        log_signature = sig;
+
+        // Проверяем возможность инкрементального добавления новых записей в начало списка
+        var can_prepend = false;
+        var added_count = log.length - record_cells.length;
+        if (record_cells.length > 0 && added_count > 0 && result_cell_revealer == null) {
+            can_prepend = true;
+            for (var i = 0; i < record_cells.length; i++) {
+                if (record_cells[i].record == null || record_cells[i].record.id != log[added_count + i].id) {
+                    can_prepend = false;
+                    break;
+                }
+            }
         }
 
-        var count = my_log ().length;
+        if (can_prepend) {
+            record_cells[0].queue_draw ();
+            var new_cells = new LogCellView[log.length];
+            for (var i = 0; i < record_cells.length; i++) {
+                new_cells[added_count + i] = record_cells[i];
+            }
+            for (var k = added_count - 1; k >= 0; k--) {
+                var r = log[k];
+                var cell = new LogCellView (this, r, false);
+                new_cells[k] = cell;
+                if (r.game_result_is_win != null && r.id != animated_result_id) {
+                    animated_result_id = r.id;
+                    result_cell_revealer = new Gtk.Revealer ();
+                    result_cell_revealer.transition_type = Gtk.RevealerTransitionType.SLIDE_DOWN;
+                    result_cell_revealer.transition_duration = 280;
+                    result_cell_revealer.set_child (cell);
+                    result_cell_revealer.reveal_child = false;
+                    log_list.insert_child_after (result_cell_revealer, active_cell_revealer);
+                    var rev = result_cell_revealer;
+                    Idle.add (() => {
+                        if (rev != null) {
+                            rev.reveal_child = true;
+                        }
+                        return Source.REMOVE;
+                    });
+                } else {
+                    log_list.insert_child_after (cell, active_cell_revealer);
+                }
+            }
+            record_cells = new_cells;
+        } else {
+            if (result_cell_revealer != null) {
+                if (result_cell_revealer.get_parent () == log_list) {
+                    log_list.remove (result_cell_revealer);
+                }
+                result_cell_revealer = null;
+            }
+            foreach (var c in record_cells) {
+                if (c.get_parent () == log_list) {
+                    log_list.remove (c);
+                }
+            }
+            record_cells = new LogCellView[0];
+            if (log.length == 0 || log[0].game_result_is_win == null) {
+                animated_result_id = -1;
+            }
+            foreach (var r in log) {
+                var cell = new LogCellView (this, r, false);
+                record_cells += cell;
+                if (r.game_result_is_win != null && r.id != animated_result_id) {
+                    animated_result_id = r.id;
+                    result_cell_revealer = new Gtk.Revealer ();
+                    result_cell_revealer.transition_type = Gtk.RevealerTransitionType.SLIDE_DOWN;
+                    result_cell_revealer.transition_duration = 280;
+                    result_cell_revealer.set_child (cell);
+                    result_cell_revealer.reveal_child = false;
+                    log_list.append (result_cell_revealer);
+                    var rev = result_cell_revealer;
+                    Idle.add (() => {
+                        if (rev != null) {
+                            rev.reveal_child = true;
+                        }
+                        return Source.REMOVE;
+                    });
+                } else {
+                    log_list.append (cell);
+                }
+            }
+        }
+
+        var count = log.length;
         if (count != last_log_count) {
             last_log_count = count;
             Idle.add (() => {
@@ -870,9 +986,12 @@ public class PlayerPanel : Gtk.Box {
         is_clearing_log = true;
         clearing_cells = cells;
         clearing_active_revealer = active_cell_revealer;
+        clearing_result_revealer = result_cell_revealer;
 
         active_cell = null;
         active_cell_revealer = null;
+        result_cell_revealer = null;
+        animated_result_id = -1;
         record_cells = new LogCellView[0];
         log_signature = "";
         last_log_count = 0;
@@ -941,6 +1060,12 @@ public class PlayerPanel : Gtk.Box {
             }
             clearing_active_revealer = null;
         }
+        if (clearing_result_revealer != null) {
+            if (clearing_result_revealer.get_parent () == log_list) {
+                log_list.remove (clearing_result_revealer);
+            }
+            clearing_result_revealer = null;
+        }
         foreach (var c in clearing_cells) {
             if (c.get_parent () == log_list) {
                 log_list.remove (c);
@@ -974,6 +1099,9 @@ public class PlayerPanel : Gtk.Box {
 
         if (active_cell_revealer != null) {
             active_cell_revealer.reveal_child = true;
+        }
+        if (result_cell_revealer != null) {
+            result_cell_revealer.reveal_child = true;
         }
 
         foreach (var c in cells) {
@@ -1056,10 +1184,14 @@ public class PlayerPanel : Gtk.Box {
         if (!session.is_game_started) {
             flying = new FlyingDie[0];
             flown_rolloff_ids = new int[0];
+            landed_rolloff_ids = new int[0];
             pending_skipped = new int[0];
             pending_fly = new int[0];
             pending_unfly = new int[0];
             previous_turn_dice = new TurnDie[0];
+            for (var i = 0; i < skipped_cross_started_us.length; i++) {
+                skipped_cross_started_us[i] = 0;
+            }
             return;
         }
         var new_dice = session.current_turn_dice;
@@ -1083,6 +1215,9 @@ public class PlayerPanel : Gtk.Box {
             pending_skipped = new int[0];
             remove_non_rolloff_pending_fly ();
             pending_unfly = new int[0];
+            for (var i = 0; i < skipped_cross_started_us.length; i++) {
+                skipped_cross_started_us[i] = 0;
+            }
             return;
         }
 
@@ -1105,6 +1240,11 @@ public class PlayerPanel : Gtk.Box {
         }
         previous_turn_dice = TurnDie.clone_array (new_dice);
 
+        if (to_log.length > 0) {
+            var adj = log_scroller.get_vadjustment ();
+            adj.set_value (adj.get_lower ());
+        }
+
         for (var s = 0; s < to_log.length; s++) {
             var die = to_log[s];
             var stagger = s * 0.08;
@@ -1112,6 +1252,9 @@ public class PlayerPanel : Gtk.Box {
                 var pause = SettingsStore.shared ().animation_speed.intermediate_step_delay;
                 var skip_delay = pause + stagger;
                 Timeout.add ((uint) (skip_delay * 1000), () => {
+                    if (!is_pending_skip (die.id)) {
+                        return Source.REMOVE;
+                    }
                     remove_pending (die.id);
                     start_flying (die.id, die.value, true, true);
                     return Source.REMOVE;
@@ -1119,6 +1262,9 @@ public class PlayerPanel : Gtk.Box {
             } else if (stagger > 0) {
                 add_pending_fly (die.id);
                 Timeout.add ((uint) (stagger * 1000), () => {
+                    if (!is_pending_fly (die.id)) {
+                        return Source.REMOVE;
+                    }
                     remove_pending_fly (die.id);
                     start_flying (die.id, die.value, true, false);
                     return Source.REMOVE;
@@ -1133,6 +1279,9 @@ public class PlayerPanel : Gtk.Box {
             if (delay > 0) {
                 add_pending_unfly (die.id);
                 Timeout.add ((uint) (delay * 1000), () => {
+                    if (!is_pending_unfly (die.id)) {
+                        return Source.REMOVE;
+                    }
                     remove_pending_unfly (die.id);
                     start_flying (die.id, die.value, false, false);
                     return Source.REMOVE;
@@ -1151,6 +1300,8 @@ public class PlayerPanel : Gtk.Box {
             }
         }
         pending_skipped = r;
+        dice_zone.queue_draw ();
+        queue_draw_top_cells ();
     }
 
     private void remove_non_rolloff_flying () {
@@ -1174,20 +1325,25 @@ public class PlayerPanel : Gtk.Box {
     }
 
     private void animate_rolloff_dice_to_log (DiceRoll dice) {
+        var adj = log_scroller.get_vadjustment ();
+        adj.set_value (adj.get_lower ());
         int[] values = { dice.die1, dice.die2 };
         for (var idx = 0; idx < 2; idx++) {
             var fly_id = idx == 0 ? 100 : 101;
             var val = values[idx];
-            if (!has_flown_rolloff (fly_id)) {
-                flown_rolloff_ids += fly_id;
-            }
             if (idx == 0) {
+                if (!has_flown_rolloff (fly_id)) {
+                    flown_rolloff_ids += fly_id;
+                }
                 start_flying (fly_id, val, true, false);
             } else {
                 add_pending_fly (fly_id);
                 Timeout.add (80, () => {
                     remove_pending_fly (fly_id);
                     if (session.rolloff_animation_id != 0) {
+                        if (!has_flown_rolloff (fly_id)) {
+                            flown_rolloff_ids += fly_id;
+                        }
                         start_flying (fly_id, val, true, false);
                     }
                     return Source.REMOVE;
@@ -1197,14 +1353,15 @@ public class PlayerPanel : Gtk.Box {
     }
 
     private Graphene.Rect fallback_top_rect (int id) {
-        var is_dbl = (session.dice_roll != null && session.dice_roll.is_double) || session.current_turn_dice.length > 2;
+        var is_dbl = id < 100 && ((session.dice_roll != null && session.dice_roll.is_double) || session.current_turn_dice.length > 2);
         var pw = (double) get_width ();
         var size = is_dbl ? 34.0 : 48.0;
         var spacing = 5.0;
         var start_x = (pw - (size * 2 + spacing)) / 2.0;
         if (id >= 100) {
             var idx = id == 100 ? 0 : 1;
-            return dice_zone.rolloff_slot_rect (idx);
+            var x = start_x + idx * (size + spacing);
+            return Graphene.Rect ().init ((float) x, 48.0f, (float) size, (float) size);
         }
         if (is_dbl) {
             var row = id / 2;
@@ -1219,7 +1376,7 @@ public class PlayerPanel : Gtk.Box {
     }
 
     private Graphene.Rect fallback_log_rect (int id) {
-        var is_dbl = (session.dice_roll != null && session.dice_roll.is_double) || session.current_turn_dice.length > 2;
+        var is_dbl = id < 100 && ((session.dice_roll != null && session.dice_roll.is_double) || session.current_turn_dice.length > 2);
         var pw = (double) get_width ();
         var size = 40.0;
         var spacing = is_dbl ? 5.0 : 6.0;
@@ -1242,13 +1399,6 @@ public class PlayerPanel : Gtk.Box {
     }
 
     private int64 frame_now_us () {
-        var fc = get_frame_clock ();
-        if (fc != null) {
-            var ft = fc.get_frame_time ();
-            if (ft > 0) {
-                return ft;
-            }
-        }
         return GLib.get_monotonic_time ();
     }
 
@@ -1372,6 +1522,9 @@ public class PlayerPanel : Gtk.Box {
             if (elapsed < f.duration + 0.05) {
                 r += f;
             } else {
+                if ((f.id == 100 || f.id == 101) && !has_landed_rolloff (f.id)) {
+                    landed_rolloff_ids += f.id;
+                }
                 removed = true;
             }
         }
@@ -1401,10 +1554,13 @@ public class PlayerPanel : Gtk.Box {
         if (id >= 100) {
             var idx = id == 100 ? 0 : 1;
             if (top) {
+                if (!dice_zone.get_mapped () || dice_zone.get_width () <= 0) {
+                    return false;
+                }
                 src = dice_zone;
                 local = dice_zone.rolloff_slot_rect (idx);
             } else {
-                if (record_cells.length == 0 || !record_cells[0].record.is_rolloff || !record_cells[0].get_mapped ()) {
+                if (record_cells.length == 0 || !record_cells[0].record.is_rolloff) {
                     return false;
                 }
                 src = record_cells[0];
@@ -1412,14 +1568,17 @@ public class PlayerPanel : Gtk.Box {
             }
         } else {
             if (top) {
+                if (!dice_zone.get_mapped () || dice_zone.get_width () <= 0) {
+                    return false;
+                }
                 src = dice_zone;
                 var count = session.current_turn_dice.length > 0 ? session.current_turn_dice.length : 2;
                 local = dice_zone.top_slot_rect (id, count);
             } else {
-                if (active_cell != null && active_cell.get_mapped ()) {
+                if (active_cell != null) {
                     src = active_cell;
                     local = active_cell.die_rect (id);
-                } else if (record_cells.length > 0 && !record_cells[0].record.is_rolloff && record_cells[0].get_mapped ()) {
+                } else if (record_cells.length > 0 && !record_cells[0].record.is_rolloff) {
                     src = record_cells[0];
                     local = record_cells[0].die_rect (id);
                 } else {
@@ -1428,7 +1587,15 @@ public class PlayerPanel : Gtk.Box {
             }
         }
         Graphene.Point p;
-        if (!src.compute_point (flying_layer, Graphene.Point ().init (local.get_x (), local.get_y ()), out p)) {
+        if (src.get_mapped () && src.get_width () > 0 && src.get_height () > 0) {
+            if (!src.compute_point (flying_layer, Graphene.Point ().init (local.get_x (), local.get_y ()), out p)) {
+                return false;
+            }
+        } else if (!top && log_scroller.get_mapped () && log_scroller.get_width () > 0) {
+            if (!log_scroller.compute_point (flying_layer, Graphene.Point ().init (local.get_x (), local.get_y ()), out p)) {
+                return false;
+            }
+        } else {
             return false;
         }
         rect = Graphene.Rect ().init (p.x, p.y, local.get_width (), local.get_height ());
@@ -1448,6 +1615,17 @@ public class PlayerPanel : Gtk.Box {
         var now = frame_now_us ();
         float min_x = w, min_y = h, max_x = 0, max_y = 0;
         foreach (var f in flying) {
+            if (f.to_log) {
+                Graphene.Rect real_rect;
+                if (slot_rect (f.id, false, out real_rect)) {
+                    f.to_rect = real_rect;
+                }
+            } else {
+                Graphene.Rect real_top;
+                if (slot_rect (f.id, true, out real_top)) {
+                    f.to_rect = real_top;
+                }
+            }
             var elapsed = (now - f.start_us) / 1000000.0;
             var progress = double.min (1.0, double.max (0.0, elapsed / f.duration));
             var p = PanelStyle.ease_in_out (progress);
@@ -1553,13 +1731,6 @@ private class StatusMessagePlate : Gtk.DrawingArea {
     }
 
     private int64 now_us () {
-        var fc = get_frame_clock ();
-        if (fc != null) {
-            var ft = fc.get_frame_time ();
-            if (ft > 0) {
-                return ft;
-            }
-        }
         return GLib.get_monotonic_time ();
     }
 

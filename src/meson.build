@@ -33,6 +33,7 @@ longbackgammon_ui_sources = files(
   'ui/rules_view.vala',
   'ui/statistics_view.vala',
   'ui/new_game_dialogs.vala',
+  'ui/fireworks_view.vala',
   'ui/game_over_view.vala',
 )
 

@@ -105,8 +105,7 @@ public class BoardDiceOverlayLayer : Gtk.Widget {
             return;
         }
         var state = session.board_dice_state;
-        var fc = get_frame_clock ();
-        var now = (fc != null && fc.get_frame_time () > 0) ? fc.get_frame_time () : GLib.get_monotonic_time ();
+        var now = GLib.get_monotonic_time ();
         var elapsed = (now - state.start_time_us) / 1000000.0;
         var raw_t = double.min (1.0, double.max (0.0, elapsed / state.duration));
         var is_right_side = BoardLayout.is_player_on_right_side (state.color);
