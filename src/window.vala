@@ -73,8 +73,11 @@ public class GameLayout : Gtk.Widget {
     public override void size_allocate (int width, int height, int baseline) {
         int pw_min = 0;
         int pw_nat = 0;
+        int wp_min = 0;
+        int wp_nat = 0;
         black_panel.measure (Gtk.Orientation.HORIZONTAL, -1, out pw_min, out pw_nat, null, null);
-        var pw = int.max (GameConfig.CONTROL_PANEL_WIDTH / 2, pw_min);
+        white_panel.measure (Gtk.Orientation.HORIZONTAL, -1, out wp_min, out wp_nat, null, null);
+        var pw = int.max (GameConfig.CONTROL_PANEL_WIDTH / 2, int.max (pw_min, wp_min));
         var panels_w = pw * 2;
         var pad = GameConfig.WINDOW_PADDING;
         var side = int.max (100, int.min (width - panels_w, height - pad * 2));

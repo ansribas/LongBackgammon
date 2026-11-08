@@ -26,7 +26,13 @@ public class SoundManager {
     private SoundManager () {
         // Приоритет: PipeWire/PulseAudio (host), GStreamer (Flatpak/GNOME SDK),
         // ALSA и ffplay как последний резерв.
-        player_candidates = new string[] { "pw-play", "paplay", "gst-launch-1.0", "aplay", "ffplay" };
+        // Внутри Snap интерфейс audio-playback предоставляет сокет PulseAudio (paplay),
+        // а прямой сокет PipeWire (pw-play) заблокирован песочницей.
+        if (Environment.get_variable ("SNAP") != null) {
+            player_candidates = new string[] { "paplay", "gst-launch-1.0", "aplay", "ffplay" };
+        } else {
+            player_candidates = new string[] { "pw-play", "paplay", "gst-launch-1.0", "aplay", "ffplay" };
+        }
         for (var i = 0; i < player_candidates.length; i++) {
             if (find_in_path (player_candidates[i])) {
                 player = player_candidates[i];

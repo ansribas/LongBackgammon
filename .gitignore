@@ -9,10 +9,12 @@ compile_commands.json
 .ninja_deps
 .ninja_log
 
-# Flatpak & GNOME Builder
+# Flatpak, Snap & GNOME Builder
 /.flatpak-builder/
 /.flatpak/
 .gnome-builder/
+*.snap
+/snap/.snapcraft/
 
 # IDE & Editors
 .idea/

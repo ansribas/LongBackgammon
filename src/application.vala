@@ -14,9 +14,13 @@ public class Application : Adw.Application {
     private SimpleAction? undo_action = null;
 
     public Application () {
+        var app_flags = ApplicationFlags.DEFAULT_FLAGS;
+        if (Environment.get_variable ("SNAP") != null) {
+            app_flags = ApplicationFlags.NON_UNIQUE;
+        }
         Object (
             application_id: "io.github.ansribas.LongBackgammon",
-            flags: ApplicationFlags.DEFAULT_FLAGS,
+            flags: app_flags,
             resource_base_path: "/io/github/ansribas/LongBackgammon"
         );
     }

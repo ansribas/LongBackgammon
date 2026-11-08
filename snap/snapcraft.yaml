@@ -1,0 +1,54 @@
+name: longbackgammon
+title: LongBackgammon
+base: core24
+version: '1.0.7'
+summary: Classic Long Backgammon Board Game
+description: |
+  Long Backgammon is a popular variant of backgammon played with fifteen checkers
+  on a standard board. Players compete to move all their checkers into the home board
+  and bear them off first, following strict strategic rules and smart positioning.
+license: GPL-3.0-or-later
+icon: data/icons/hicolor/512x512/apps/io.github.ansribas.LongBackgammon.png
+website: https://github.com/ansribas/LongBackgammon
+source-code: https://github.com/ansribas/LongBackgammon
+issues: https://github.com/ansribas/LongBackgammon/issues
+donation: https://ko-fi.com/ansribas
+contact: https://github.com/ansribas/LongBackgammon/issues
+
+grade: stable
+confinement: strict
+
+platforms:
+  amd64:
+  arm64:
+
+apps:
+  longbackgammon:
+    command: usr/bin/longbackgammon
+    extensions: [gnome]
+    common-id: io.github.ansribas.LongBackgammon
+    desktop: usr/share/applications/io.github.ansribas.LongBackgammon.desktop
+    plugs:
+      - audio-playback
+
+parts:
+  longbackgammon:
+    plugin: meson
+    source: .
+    parse-info: [usr/share/metainfo/io.github.ansribas.LongBackgammon.metainfo.xml]
+    meson-parameters:
+      - --prefix=/usr
+      - -Dbuildtype=release
+    build-packages:
+      - valac
+      - gettext
+      - desktop-file-utils
+      - appstream
+    stage-packages:
+      - pulseaudio-utils
+    override-prime: |
+      craftctl default
+      rm -rf usr/share/dbus-1
+      rm -f usr/lib/*/libpulse-simple.so*
+      glib-compile-schemas usr/share/glib-2.0/schemas
+
