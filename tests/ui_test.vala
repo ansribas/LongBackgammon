@@ -158,6 +158,22 @@ int main (string[] args) {
         return 1;
     }
 
+    // Проверка настройки режима графики (по умолчанию Cairo, переключение в OpenGL и обратно)
+    var orig_renderer = SettingsStore.shared ().graphics_renderer;
+    SettingsStore.shared ().set_graphics_renderer (GraphicsRenderer.OPENGL);
+    if (SettingsStore.shared ().graphics_renderer != GraphicsRenderer.OPENGL ||
+        SettingsStore.shared ().graphics_renderer.to_raw () != "opengl") {
+        stderr.printf ("FAIL: expected GraphicsRenderer.OPENGL\n");
+        return 1;
+    }
+    SettingsStore.shared ().set_graphics_renderer (GraphicsRenderer.CAIRO);
+    if (SettingsStore.shared ().graphics_renderer != GraphicsRenderer.CAIRO ||
+        SettingsStore.shared ().graphics_renderer.to_raw () != "cairo") {
+        stderr.printf ("FAIL: expected GraphicsRenderer.CAIRO\n");
+        return 1;
+    }
+    SettingsStore.shared ().set_graphics_renderer (orig_renderer);
+
     stderr.printf ("ui_test OK\n");
     return 0;
 }

@@ -28,7 +28,10 @@ install_data('io.github.ansribas.LongBackgammon.gschema.xml',
   install_dir: get_option('datadir') / 'glib-2.0' / 'schemas'
 )
 
-gnome.compile_schemas(build_by_default: true)
+gnome.compile_schemas(
+  build_by_default: true,
+  depend_files: files('io.github.ansribas.LongBackgammon.gschema.xml')
+)
 
 compile_schemas = find_program('glib-compile-schemas', required: false, disabler: true)
 test('Validate schema file',

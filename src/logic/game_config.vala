@@ -120,6 +120,19 @@ public enum ScoreDisplayMode {
     }
 }
 
+public enum GraphicsRenderer {
+    CAIRO,
+    OPENGL;
+
+    public string to_raw () {
+        return (this == GraphicsRenderer.OPENGL) ? "opengl" : "cairo";
+    }
+
+    public static GraphicsRenderer from_raw (string raw) {
+        return (raw == "opengl" || raw == "gl") ? GraphicsRenderer.OPENGL : GraphicsRenderer.CAIRO;
+    }
+}
+
 public enum BoardTheme {
     WOOD,
     MARBLE;
@@ -439,6 +452,10 @@ public class Localization {
     public static string settings_score_display_label () { return tr ("settingsScoreDisplayLabel"); }
     public static string settings_score_display_score () { return tr ("settingsScoreDisplayScore"); }
     public static string settings_score_display_progress () { return tr ("settingsScoreDisplayProgress"); }
+    public static string settings_renderer_label () { return tr ("settingsRendererLabel"); }
+    public static string settings_renderer_subtitle () { return tr ("settingsRendererSubtitle"); }
+    public static string settings_renderer_cairo () { return tr ("settingsRendererCairo"); }
+    public static string settings_renderer_opengl () { return tr ("settingsRendererOpenGL"); }
     public static string settings_debug_export_label () { return tr ("settingsDebugExportLabel"); }
     public static string settings_language_russian () { return tr ("settingsLanguageRussian"); }
     public static string settings_language_english () { return tr ("settingsLanguageEnglish"); }

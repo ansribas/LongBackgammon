@@ -521,12 +521,8 @@ public class GameOverView : Gtk.Box {
         content.append (stars_box);
 
         // 5. Кнопка «Закрыть» (появляется последней)
-        var btn = new Gtk.Button.with_label (Localization.game_over_button_new_game ());
-        btn.add_css_class ("lb-go-btn");
-        btn.add_css_class ("blue");
-        btn.set_cursor_from_name ("pointer");
+        var btn = UiKit.button (Localization.game_over_button_new_game (), "lb-btn-blue");
         btn.halign = Gtk.Align.CENTER;
-        btn.width_request = 160;
         btn.margin_top = 4;
         btn.clicked.connect (() => { new_game_requested (); });
         btn_fx = new FxBin (btn);

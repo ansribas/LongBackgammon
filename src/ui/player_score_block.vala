@@ -232,11 +232,29 @@ public class PlayerScoreBlock : Gtk.Widget {
         bool has_scale = Math.fabs (scale - 1.0f) > 0.001f;
 
         if (has_rotation || has_scale) {
+            bool is_cairo = false;
+            var native = get_native ();
+            if (native != null) {
+                var renderer = native.get_renderer ();
+                if (renderer != null && renderer.get_type ().name () == "GskCairoRenderer") {
+                    is_cairo = true;
+                }
+            } else if (GLib.Environment.get_variable ("GSK_RENDERER") == "cairo") {
+                is_cairo = true;
+            }
+
             snapshot.save ();
             snapshot.translate ({ w / 2, h / 2 });
             if (has_rotation) {
-                snapshot.perspective (w * 4);
-                snapshot.rotate_3d (a, Graphene.Vec3.y_axis ());
+                if (is_cairo) {
+                    var rad = a * (float) (Math.PI / 180.0);
+                    var sx = float.max (0.02f, (float) Math.cos (rad));
+                    var sy = 1.0f - 0.04f * (float) Math.fabs (Math.sin (rad));
+                    snapshot.scale (sx, sy);
+                } else {
+                    snapshot.perspective (w * 4);
+                    snapshot.rotate_3d (a, Graphene.Vec3.y_axis ());
+                }
             }
             if (has_scale) {
                 snapshot.scale (scale, scale);

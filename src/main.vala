@@ -42,6 +42,12 @@ int main (string[] args) {
         }
     }
 
+    GLib.Environment.set_variable (
+        "GSK_RENDERER",
+        Longbackgammon.SettingsStore.shared ().graphics_renderer.to_raw (),
+        false
+    );
+
     var app = new Longbackgammon.Application ();
     return app.run (args);
 }

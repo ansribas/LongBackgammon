@@ -72,7 +72,6 @@ public class NewGameView : PopupView {
         row3_stack.add_named (p2_row, "player2");
 
         var sep = new Gtk.Separator (Gtk.Orientation.HORIZONTAL);
-        sep.add_css_class ("lb-row-sep");
         sec1.append (sep);
         sec1.append (row3_stack);
 
@@ -116,8 +115,8 @@ public class NewGameView : PopupView {
         content.append (groups);
 
         // Кнопка запуска партии
-        var start = UiKit.button (Localization.button_start_game (), "lb-btn-blue", "lb-btn-wide");
-        start.hexpand = true;
+        var start = UiKit.button (Localization.button_start_game (), "lb-btn-blue");
+        start.halign = Gtk.Align.CENTER;
         start.margin_top = 10;
         start.clicked.connect (() => { start_requested (); });
         content.append (start);

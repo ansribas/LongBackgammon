@@ -13,6 +13,7 @@ namespace Longbackgammon {
  */
 public class SettingsView : PopupView {
     private Gtk.ScrolledWindow? scroller = null;
+    private Gtk.Switch? sound_switch = null;
     private Language built_language;
     private int board_side = 600;
     private uint rebuild_source = 0;
@@ -22,8 +23,12 @@ public class SettingsView : PopupView {
         base (580);
         build ();
         settings_handler = SettingsStore.shared ().changed.connect (() => {
+            var s = SettingsStore.shared ();
+            if (sound_switch != null && sound_switch.active != s.is_sound_enabled) {
+                sound_switch.active = s.is_sound_enabled;
+            }
             // При смене языка перестраиваем интерфейс окна в цикле событий
-            if (SettingsStore.shared ().language != built_language && rebuild_source == 0) {
+            if (s.language != built_language && rebuild_source == 0) {
                 rebuild_source = Idle.add (() => {
                     rebuild_source = 0;
                     build ();
@@ -94,8 +99,8 @@ public class SettingsView : PopupView {
             }
         });
         general.add_row (new SettingsRow ("character.bubble", MacColors.BLUE, Localization.settings_language_label (), lang));
-        general.add_row (new SettingsRow ("speaker.wave.2.fill", MacColors.PINK, Localization.settings_sound_label (),
-            make_switch (s.is_sound_enabled, (v) => { s.set_is_sound_enabled (v); })));
+        sound_switch = make_switch (s.is_sound_enabled, (v) => { s.set_is_sound_enabled (v); });
+        general.add_row (new SettingsRow ("speaker.wave.2.fill", MacColors.PINK, Localization.settings_sound_label (), sound_switch));
 
         var ai_diff = new Gtk.DropDown.from_strings (new string[] {
             Localization.settings_ai_master (), Localization.settings_ai_standard ()
@@ -142,9 +147,24 @@ public class SettingsView : PopupView {
         score.changed.connect ((i) => {
             s.set_score_display_mode (i == 1 ? ScoreDisplayMode.PROGRESS : ScoreDisplayMode.SCORE);
         });
-        appearance.add_row (new SettingsRow ("percent", MacColors.RED, Localization.settings_score_display_label (), score));
-        content.append (SettingsSection.group (Localization.settings_section_appearance (), appearance,
-            Localization.settings_section_score_footer ()));
+        appearance.add_row (new SettingsRow (
+            "percent", MacColors.RED,
+            Localization.settings_score_display_label (), score,
+            Localization.settings_section_score_footer ()
+        ));
+
+        var renderer = new Segmented (new string[] {
+            Localization.settings_renderer_cairo (), Localization.settings_renderer_opengl ()
+        }, s.graphics_renderer == GraphicsRenderer.OPENGL ? 1 : 0, 180);
+        renderer.changed.connect ((i) => {
+            s.set_graphics_renderer (i == 1 ? GraphicsRenderer.OPENGL : GraphicsRenderer.CAIRO);
+        });
+        appearance.add_row (new SettingsRow (
+            "cpu", MacColors.INDIGO,
+            Localization.settings_renderer_label (), renderer,
+            Localization.settings_renderer_subtitle ()
+        ));
+        content.append (SettingsSection.group (Localization.settings_section_appearance (), appearance));
 
         // 3. УПРАВЛЕНИЕ
         var controls = new SettingsSection ();

@@ -1,6 +1,8 @@
 # Long Backgammon
 
 [![CI](https://github.com/ansribas/LongBackgammon/actions/workflows/ci.yml/badge.svg)](https://github.com/ansribas/LongBackgammon/actions/workflows/ci.yml)
+[![Snap Store](https://snapcraft.io/longbackgammon/badge.svg)](https://snapcraft.io/longbackgammon)
+[![Fedora COPR](https://img.shields.io/badge/Fedora%20COPR-ansvet%2Flongbackgammon-blue.svg)](https://copr.fedorainfracloud.org/coprs/ansvet/longbackgammon/)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 
 > 🇷🇺 **[Читать на русском](README.ru.md)**
@@ -50,9 +52,20 @@ Classic Long Backgammon (Russian Nardi / Длинные нарды) for GNOME/Li
 
 ## Installation
 
-Pre-built packages for Linux are available on the **[Releases](https://github.com/ansribas/LongBackgammon/releases)** page.
+### Snap (Snap Store) — Universal Linux package
+Available directly from the [Snap Store](https://snapcraft.io/longbackgammon):
+```bash
+sudo snap install longbackgammon
+```
 
-### Flatpak (.flatpak) — Recommended
+### Fedora (COPR)
+Native RPM repository for Fedora 44, Fedora 45, and Rawhide:
+```bash
+sudo dnf copr enable ansvet/longbackgammon
+sudo dnf install longbackgammon
+```
+
+### Flatpak (.flatpak) — Recommended for offline install
 Universal bundle compatible with any modern Linux distribution:
 ```bash
 flatpak install io.github.ansribas.LongBackgammon.flatpak
@@ -64,7 +77,7 @@ flatpak run io.github.ansribas.LongBackgammon
 
 ### AppImage (.AppImage)
 Standalone portable executable that requires no installation:
-1. Download `LongBackgammon-*-x86_64.AppImage` from Releases.
+1. Download `LongBackgammon-*-x86_64.AppImage` from [Releases](https://github.com/ansribas/LongBackgammon/releases).
 2. Make it executable:
    ```bash
    chmod +x LongBackgammon-*-x86_64.AppImage
@@ -75,7 +88,7 @@ Standalone portable executable that requires no installation:
    ```
 
 ### Debian / Ubuntu (.deb)
-Native package for Debian, Ubuntu, Linux Mint, and derivatives:
+Native package for Debian, Ubuntu, Linux Mint, and derivatives (available on [Releases](https://github.com/ansribas/LongBackgammon/releases)):
 ```bash
 sudo apt install ./longbackgammon_*_amd64.deb
 ```

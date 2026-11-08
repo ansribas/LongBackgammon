@@ -84,7 +84,6 @@ public class UiKit {
             ".lb-section { background-color: alpha(var(--view-bg-color, @view_bg_color), 0.6); border-radius: 10px;" +
             "  border: 1px solid alpha(currentColor, 0.07); }" +
             ".lb-row { padding: 8px 12px; min-height: 32px; }" +
-            ".lb-row-sep { margin-left: 44px; }" +
             // Кнопки по стандартам GNOME HIG
             ".lb-btn { border-radius: 10px; padding: 8px 36px; min-height: 36px; font-size: 0.95rem; font-weight: bold; color: white;" +
             "  box-shadow: none; border: none; background-image: none; transition: all 150ms ease-in-out; }" +
@@ -100,8 +99,11 @@ public class UiKit {
             ".lb-btn-narrow { padding: 8px 24px; }" +
             ".lb-plain { background: none; border: none; box-shadow: none; padding: 0; min-width: 0; min-height: 0; }" +
             ".lb-plain:hover { filter: brightness(1.15); }" +
-            // Сегментный переключатель (Picker .segmented)
-            ".lb-seg > button { padding: 3px 8px; min-height: 28px; font-size: 0.85rem; }" +
+            // Сегментный переключатель (Picker .segmented) с поддержкой системного акцентного цвета
+            ".lb-seg > button { padding: 3px 8px; min-height: 28px; font-size: 0.85rem; transition: all 150ms ease-in-out; }" +
+            ".lb-seg > button:checked { background-color: @accent_bg_color; color: @accent_fg_color; background-image: none; font-weight: 600; }" +
+            ".lb-seg > button:checked:hover { filter: brightness(1.08); }" +
+            ".lb-seg > button:checked:active { filter: brightness(0.92); }" +
             ".lb-entry { min-height: 32px; font-size: 0.95rem; }" +
             // Карточка правила (RuleSection)
             ".lb-rule-card { padding: 16px; border-radius: 14px; background-color: alpha(currentColor, 0.04);" +
@@ -123,16 +125,6 @@ public class UiKit {
             ".lb-go-capsule { padding: 7px 16px; border-radius: 999px; font-size: 0.875rem; font-weight: bold; }" +
             ".lb-go-capsule.orange { background-color: alpha(#ff9500, 0.14); color: #ff9500; }" +
             ".lb-go-capsule.red { background-color: alpha(@destructive_color, 0.12); color: @destructive_color; border: 1px solid alpha(@destructive_color, 0.35); }" +
-            ".lb-go-btn { padding: 13px 0; border-radius: 12px; font-size: 0.95rem; min-height: 38px; font-weight: bold; color: white;" +
-            "  border: none; transition: all 250ms ease-out; }" +
-            ".lb-go-btn.orange { background-color: @accent_bg_color; color: @accent_fg_color;" +
-            "  box-shadow: 0 3px 6px alpha(black, 0.2); }" +
-            ".lb-go-btn.orange:hover { box-shadow: 0 5px 10px alpha(black, 0.35); transform: scale(1.015); }" +
-            ".lb-go-btn.red { background-color: @destructive_bg_color; color: @destructive_fg_color;" +
-            "  box-shadow: 0 3px 6px alpha(black, 0.2); }" +
-            ".lb-go-btn.red:hover { box-shadow: 0 5px 10px alpha(black, 0.35); transform: scale(1.015); }" +
-            ".lb-go-btn.blue { background-color: #0a84ff; color: white; box-shadow: 0 2px 4px alpha(#0a84ff, 0.3); }" +
-            ".lb-go-btn.blue:hover { box-shadow: 0 4px 8px alpha(#0a84ff, 0.45); transform: scale(1.015); }" +
             ".lb-go-cell { background-color: alpha(currentColor, 0.04); border-radius: 6px; transition: background-color 150ms ease-out; }" +
             ".lb-go-cell.head { background-color: alpha(currentColor, 0.08); }" +
             ".lb-go-cell.active { background-color: alpha(#ff9500, 0.14); }" +
@@ -637,6 +629,24 @@ public class SFIcon : Gtk.DrawingArea {
             cr.fill ();
             rounded (cr, 0.26, 0.82, 0.48, 0.08, 0.04);
             cr.fill ();
+            break;
+        case "cpu":
+            // Процессор / графический чип с выводами
+            rounded (cr, 0.20, 0.20, 0.60, 0.60, 0.12);
+            cr.fill ();
+            knockout_begin (cr);
+            rounded (cr, 0.34, 0.34, 0.32, 0.32, 0.05);
+            cr.fill ();
+            knockout_end (cr);
+            cr.set_line_width (0.08);
+            double[] pins = { 0.34, 0.50, 0.66 };
+            foreach (var p in pins) {
+                cr.move_to (p, 0.06); cr.line_to (p, 0.20);
+                cr.move_to (p, 0.80); cr.line_to (p, 0.94);
+                cr.move_to (0.06, p); cr.line_to (0.20, p);
+                cr.move_to (0.80, p); cr.line_to (0.94, p);
+            }
+            cr.stroke ();
             break;
         case "ant.fill":
             cr.arc (0.5, 0.17, 0.1, 0, 2 * Math.PI);
@@ -1220,25 +1230,40 @@ public class Segmented : Gtk.Box {
     }
 }
 
-/** Строка настроек: цветная плитка-иконка, заголовок, элемент управления справа. */
+/** Строка настроек: 1-я строка (иконка, заголовок, элемент управления), 2-я строка — подсказка во всю ширину. */
 public class SettingsRow : Gtk.Box {
     public Gtk.Label title_label;
+    public Gtk.Label? subtitle_label = null;
 
-    public SettingsRow (string glyph, string tile_color, string title, Gtk.Widget control) {
-        Object (orientation: Gtk.Orientation.HORIZONTAL, spacing: 12);
+    public SettingsRow (string glyph, string tile_color, string title, Gtk.Widget control, string? subtitle = null) {
+        Object (orientation: Gtk.Orientation.VERTICAL, spacing: 6);
         add_css_class ("lb-row");
+
+        var top_row = new Gtk.Box (Gtk.Orientation.HORIZONTAL, 12);
         var icon = SFIcon.tile (glyph, tile_color);
         icon.valign = Gtk.Align.CENTER;
-        append (icon);
+        top_row.append (icon);
+
         title_label = UiKit.label (title, "lb-body");
         title_label.valign = Gtk.Align.CENTER;
         title_label.xalign = 0.0f;
         title_label.wrap = true;
         title_label.wrap_mode = Pango.WrapMode.WORD_CHAR;
         title_label.hexpand = true;
-        append (title_label);
+        top_row.append (title_label);
+
         control.valign = Gtk.Align.CENTER;
-        append (control);
+        top_row.append (control);
+        append (top_row);
+
+        if (subtitle != null && subtitle != "") {
+            subtitle_label = UiKit.label (subtitle, "lb-caption lb-secondary");
+            subtitle_label.xalign = 0.0f;
+            subtitle_label.wrap = true;
+            subtitle_label.wrap_mode = Pango.WrapMode.WORD_CHAR;
+            subtitle_label.hexpand = true;
+            append (subtitle_label);
+        }
     }
 }
 
@@ -1255,7 +1280,6 @@ public class SettingsSection : Gtk.Box {
     public void add_row (Gtk.Widget row) {
         if (count > 0) {
             var sep = new Gtk.Separator (Gtk.Orientation.HORIZONTAL);
-            sep.add_css_class ("lb-row-sep");
             append (sep);
         }
         append (row);

@@ -66,6 +66,11 @@
       <summary>Score display mode</summary>
       <description>Score display format: 'progress' or 'score'.</description>
     </key>
+    <key name="graphics-renderer" type="s">
+      <default>'cairo'</default>
+      <summary>Graphics renderer</summary>
+      <description>Graphics rendering engine: 'cairo' (lightweight 2D) or 'opengl' (hardware OpenGL).</description>
+    </key>
     <key name="is-sound-enabled" type="b">
       <default>true</default>
       <summary>Sound effects enabled</summary>

@@ -27,6 +27,7 @@ public class SettingsStore : Object {
     public const string KEY_SHOW_CELL_INDICES = "show-cell-indices";
     public const string KEY_ENABLE_DEBUG_EXPORT = "enable-debug-export";
     public const string KEY_SCORE_DISPLAY_MODE = "score-display-mode";
+    public const string KEY_GRAPHICS_RENDERER = "graphics-renderer";
     public const string KEY_IS_SOUND_ENABLED = "is-sound-enabled";
     public const string KEY_IS_FIRST_MOVE_ROLLOFF_ENABLED = "is-first-move-rolloff-enabled";
     public const string KEY_BOARD_SIDE = "board-side";
@@ -63,6 +64,7 @@ public class SettingsStore : Object {
     public bool show_cell_indices;
     public bool enable_debug_export;
     public ScoreDisplayMode score_display_mode;
+    public GraphicsRenderer graphics_renderer;
     public bool is_sound_enabled;
     public bool is_first_move_rolloff_enabled;
     public BoardSide board_side;
@@ -210,6 +212,16 @@ public class SettingsStore : Object {
         }
     }
 
+    public void set_graphics_renderer (GraphicsRenderer value) {
+        if (graphics_renderer != value) {
+            graphics_renderer = value;
+            if (settings != null && settings.settings_schema.has_key (KEY_GRAPHICS_RENDERER)) {
+                settings.set_string (KEY_GRAPHICS_RENDERER, graphics_renderer.to_raw ());
+            }
+            changed ();
+        }
+    }
+
     public void set_is_sound_enabled (bool value) {
         if (is_sound_enabled != value) {
             is_sound_enabled = value;
@@ -307,6 +319,9 @@ public class SettingsStore : Object {
             settings.set_boolean (KEY_SHOW_CELL_INDICES, show_cell_indices);
             settings.set_boolean (KEY_ENABLE_DEBUG_EXPORT, enable_debug_export);
             settings.set_string (KEY_SCORE_DISPLAY_MODE, score_display_mode.to_raw ());
+            if (settings.settings_schema.has_key (KEY_GRAPHICS_RENDERER)) {
+                settings.set_string (KEY_GRAPHICS_RENDERER, graphics_renderer.to_raw ());
+            }
             settings.set_boolean (KEY_IS_SOUND_ENABLED, is_sound_enabled);
             settings.set_boolean (KEY_IS_FIRST_MOVE_ROLLOFF_ENABLED, is_first_move_rolloff_enabled);
             settings.set_string (KEY_BOARD_SIDE, board_side.to_raw ());
@@ -414,6 +429,10 @@ public class SettingsStore : Object {
                 var new_sdm = ScoreDisplayMode.from_raw (settings.get_string (KEY_SCORE_DISPLAY_MODE));
                 if (score_display_mode != new_sdm) { score_display_mode = new_sdm; was_changed = true; }
                 break;
+            case KEY_GRAPHICS_RENDERER:
+                var new_gr = GraphicsRenderer.from_raw (settings.get_string (KEY_GRAPHICS_RENDERER));
+                if (graphics_renderer != new_gr) { graphics_renderer = new_gr; was_changed = true; }
+                break;
             case KEY_IS_SOUND_ENABLED:
                 var new_val = settings.get_boolean (KEY_IS_SOUND_ENABLED);
                 if (is_sound_enabled != new_val) { is_sound_enabled = new_val; was_changed = true; }
@@ -467,6 +486,7 @@ public class SettingsStore : Object {
         show_cell_indices = false;
         enable_debug_export = false;
         score_display_mode = ScoreDisplayMode.PROGRESS;
+        graphics_renderer = GraphicsRenderer.CAIRO;
         is_sound_enabled = true;
         is_first_move_rolloff_enabled = true;
         board_side = BoardSide.RIGHT;
@@ -494,6 +514,9 @@ public class SettingsStore : Object {
             show_cell_indices = settings.get_boolean (KEY_SHOW_CELL_INDICES);
             enable_debug_export = settings.get_boolean (KEY_ENABLE_DEBUG_EXPORT);
             score_display_mode = ScoreDisplayMode.from_raw (settings.get_string (KEY_SCORE_DISPLAY_MODE));
+            if (settings.settings_schema.has_key (KEY_GRAPHICS_RENDERER)) {
+                graphics_renderer = GraphicsRenderer.from_raw (settings.get_string (KEY_GRAPHICS_RENDERER));
+            }
             is_sound_enabled = settings.get_boolean (KEY_IS_SOUND_ENABLED);
             is_first_move_rolloff_enabled = settings.get_boolean (KEY_IS_FIRST_MOVE_ROLLOFF_ENABLED);
             board_side = BoardSide.from_raw (settings.get_string (KEY_BOARD_SIDE));

@@ -1,6 +1,8 @@
 # Long Backgammon (Длинные нарды)
 
 [![CI](https://github.com/ansribas/LongBackgammon/actions/workflows/ci.yml/badge.svg)](https://github.com/ansribas/LongBackgammon/actions/workflows/ci.yml)
+[![Snap Store](https://snapcraft.io/longbackgammon/badge.svg)](https://snapcraft.io/longbackgammon)
+[![Fedora COPR](https://img.shields.io/badge/Fedora%20COPR-ansvet%2Flongbackgammon-blue.svg)](https://copr.fedorainfracloud.org/coprs/ansvet/longbackgammon/)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 
 > 🇬🇧 **[Read in English](README.md)**
@@ -48,9 +50,20 @@
 
 ## Установка
 
-Готовые пакеты для Linux доступны на странице **[Релизы (Releases)](https://github.com/ansribas/LongBackgammon/releases)**.
+### Snap (Snap Store) — Универсальный пакет для Linux
+Доступен напрямую в каталоге [Snap Store](https://snapcraft.io/longbackgammon):
+```bash
+sudo snap install longbackgammon
+```
 
-### Flatpak (.flatpak) — Рекомендуемый способ
+### Fedora (COPR)
+Нативный RPM-репозиторий для Fedora 44, Fedora 45 и Rawhide:
+```bash
+sudo dnf copr enable ansvet/longbackgammon
+sudo dnf install longbackgammon
+```
+
+### Flatpak (.flatpak) — Рекомендуемый способ для оффлайн-установки
 Универсальный пакет, работающий в любом дистрибутиве Linux:
 ```bash
 flatpak install io.github.ansribas.LongBackgammon.flatpak
@@ -62,7 +75,7 @@ flatpak run io.github.ansribas.LongBackgammon
 
 ### AppImage (.AppImage)
 Не требует установки — портативный файл:
-1. Скачайте `LongBackgammon-*-x86_64.AppImage` со страницы релизов.
+1. Скачайте `LongBackgammon-*-x86_64.AppImage` со страницы [Релизов (Releases)](https://github.com/ansribas/LongBackgammon/releases).
 2. Сделайте файл исполняемым:
    ```bash
    chmod +x LongBackgammon-*-x86_64.AppImage
@@ -73,7 +86,7 @@ flatpak run io.github.ansribas.LongBackgammon
    ```
 
 ### Debian / Ubuntu (.deb)
-Пакет для Debian, Ubuntu, Linux Mint и производных:
+Пакет для Debian, Ubuntu, Linux Mint и производных (доступен на странице [Релизов](https://github.com/ansribas/LongBackgammon/releases)):
 ```bash
 sudo apt install ./longbackgammon_*_amd64.deb
 ```
