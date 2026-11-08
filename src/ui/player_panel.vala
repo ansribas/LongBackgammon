@@ -1886,12 +1886,12 @@ private class StatusMessagePlate : Gtk.DrawingArea {
         if (text == "" || alpha <= 0.001) {
             return;
         }
-        var avail_w = int.max (20, width - 16);
+        var avail_w = int.max (20, width - 10);
         var layout = create_pango_layout (text);
         var fd = new Pango.FontDescription ();
         fd.set_family ("Sans");
         fd.set_weight (Pango.Weight.BOLD);
-        fd.set_absolute_size (11.0 * Pango.SCALE);
+        fd.set_absolute_size (10.0 * Pango.SCALE);
         layout.set_font_description (fd);
         layout.set_width (avail_w * Pango.SCALE);
         layout.set_wrap (Pango.WrapMode.WORD_CHAR);
