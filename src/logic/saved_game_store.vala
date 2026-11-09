@@ -113,7 +113,25 @@ public class SavedGameStore : Object {
     }
 
     public bool has_saved_game {
-        get { return load () != null; }
+        get {
+            var data = load ();
+            if (data == null) {
+                return false;
+            }
+            // Если на доске нет стопок — это повреждённое сохранение, его восстанавливать нельзя
+            var has_stack = false;
+            for (var raw = 1; raw <= 24 && raw < data.stacks.length; raw++) {
+                if (data.stacks[raw] != null && data.stacks[raw].checker_ids.length > 0) {
+                    has_stack = true;
+                    break;
+                }
+            }
+            if (!has_stack) {
+                clear ();
+                return false;
+            }
+            return true;
+        }
     }
 
     // MARK: - Доска <-> данные
@@ -143,6 +161,11 @@ public class SavedGameStore : Object {
             }
         }
         board.set_borne_off (copy_u8 (white_off), copy_u8 (black_off));
+
+        // Страховочная защита: если стопки на поле пусты, но все фишки лежат в накопителях, восстанавливаем стартовую расстановку .initial_long ()
+        if (board.is_in_tray ()) {
+            board = GameBoard.initial_long ();
+        }
         return board;
     }
 

@@ -60,6 +60,16 @@ public class GameBoard : Object {
         return true;
     }
 
+    /** Проверяет, есть ли на игровом поле хотя бы одна фишка в стопках. */
+    public bool has_any_checkers_on_board () {
+        for (var raw = 1; raw <= 24; raw++) {
+            if (stacks[raw] != null && stacks[raw].checker_ids.length > 0) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private class BoardSlot : Object {
         public BoardPoint point;
         public int stack_index;

@@ -2,11 +2,21 @@ name: longbackgammon
 title: LongBackgammon
 base: core24
 version: '1.0.7'
-summary: Classic Long Backgammon Board Game
+summary: Classic Long Backgammon (Russian Nardi) for GNOME & Linux
 description: |
-  Long Backgammon is a popular variant of backgammon played with fifteen checkers
-  on a standard board. Players compete to move all their checkers into the home board
-  and bear them off first, following strict strategic rules and smart positioning.
+  Long Backgammon (Russian Nardi / Длинные нарды) is a classic tactical board game crafted natively for Linux and GNOME with GTK4 and Libadwaita.
+
+  Compete to bring all 15 checkers into your home board and bear them off before your opponent, relying on strategic foresight, positioning, and dice management.
+
+  Key Features:
+  • Single Player vs AI: Challenge the computer across two distinct difficulty tiers — Casual and Grandmaster.
+  • Local Two-Player Mode: Play against a friend on a single computer (Hotseat).
+  • Authentic Rules: Strict one-checker-from-the-head rule (with opening double exceptions for 3-3, 4-4, and 6-6), opening roll-off, and strict 6-point prime blockade enforcement.
+  • Official Match Scoring: Accurate tracking for normal victories (Oin), Mars (gammon), and Home Mars (backgammon).
+  • Modern GNOME Design: Fluid animations, authentic Wood and Marble visual themes, and 3D dice rolling physics.
+  • Intuitive Controls: Drag & drop checkers with magnetic snap, customizable dice cursor, and move trajectory preview arrows on hover.
+  • Quality of Life: Full undo support, real-time move history log, auto-save on exit, customizable game speeds, and rich sound effects.
+  • Multilingual: Fully localized into 14 languages.
 license: GPL-3.0-or-later
 icon: data/icons/hicolor/512x512/apps/io.github.ansribas.LongBackgammon.png
 website: https://github.com/ansribas/LongBackgammon

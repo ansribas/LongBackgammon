@@ -493,6 +493,7 @@ public class Window : Adw.ApplicationWindow {
             if (modal == "confirm") {
                 var v = new ConfirmNewGameView (session);
                 v.confirmed.connect (() => {
+                    SavedGameStore.shared ().clear ();
                     show_confirm_new_game = false;
                     sync_overlays ();
                     Timeout.add (180, () => {
@@ -626,6 +627,7 @@ public class Window : Adw.ApplicationWindow {
 
     private void exit_game_over (bool open_new_game) {
         InstantTooltipState.shared ().hide_all ();
+        SavedGameStore.shared ().clear ();
         fireworks.stop ();
         session.set_showing_game_over_result (false);
         last_game_over_result = false;
@@ -699,7 +701,6 @@ public class Window : Adw.ApplicationWindow {
         v.continue_requested.connect (() => {
             var d = SavedGameStore.shared ().load ();
             show_restore_game = false;
-            SavedGameStore.shared ().clear ();
             sync_overlays ();
             GLib.Timeout.add (180, () => {
                 if (d != null) {
@@ -723,21 +724,7 @@ public class Window : Adw.ApplicationWindow {
 
     /** «Сдаться»: поражение текущему игроку сохранённой партии, победа сопернику. */
     private void forfeit_saved_game () {
-        var data = SavedGameStore.shared ().load ();
-        if (data != null) {
-            var loser = data.current_player;
-            var winner = loser.opposite ();
-            var loser_name = loser == CheckerColor.WHITE ? data.white_player_name : data.black_player_name;
-            var winner_name = winner == CheckerColor.WHITE ? data.white_player_name : data.black_player_name;
-            if (!(loser == CheckerColor.BLACK && data.is_black_computer)) {
-                StatsStore.shared ().record_loss (loser_name);
-            }
-            if (!(winner == CheckerColor.BLACK && data.is_black_computer)) {
-                StatsStore.shared ().record_victory (winner_name, VictoryType.OIN);
-            }
-        }
-        SavedGameStore.shared ().clear ();
-        session.force_new_game ();
+        session.forfeit_current_game ();
     }
 
     // MARK: - Команды (меню, кнопки заголовка, горячие клавиши)

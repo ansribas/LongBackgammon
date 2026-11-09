@@ -647,6 +647,8 @@ public class GameSession : Object {
         is_auto_playing_black = false;
 
         status_message = is_computer_turn ? Localization.status_computer_moving () : Localization.status_roll_dice ();
+        // Автосохранение партии перед броском следующего игрока
+        save_to_store ();
         trim_heap ();
         notify_changed ();
         if (is_computer_turn) {
@@ -1712,6 +1714,8 @@ public class GameSession : Object {
         remaining_dice = new int[0];
         rolling_die_index = -1;
         status_message = is_computer_turn ? Localization.status_computer_moving () : Localization.status_roll_dice ();
+        // Автосохранение после определения победителя жеребьёвки первого хода
+        save_to_store ();
         notify_changed ();
     }
 
@@ -1752,6 +1756,8 @@ public class GameSession : Object {
         current_turn_record.dice = TurnDie.clone_array (current_turn_dice);
         selected_point = null;
         checkers_moved_from_head_this_turn = 0;
+        // Автосохранение партии после броска кубиков
+        save_to_store ();
     }
 
     private async void handle_board_rolloff_phase (uint g) {
@@ -2385,6 +2391,8 @@ public class GameSession : Object {
             no_moves_after_move_task.begin (gen);
         } else {
             status_message = is_computer_turn ? Localization.status_computer_moving () : Localization.status_select_checker ();
+            // Автосохранение промежуточного состояния хода (после перемещения шашки)
+            save_to_store ();
             notify_changed ();
         }
     }
@@ -2870,6 +2878,8 @@ public class GameSession : Object {
         current_turn_record = last.current_turn_record == null ? null : last.current_turn_record.clone ();
         selected_point = null;
         update_available_moves_cache ();
+        // Автосохранение партии после отмены хода
+        save_to_store ();
         notify_changed ();
 
         var undo_generation = gen;
@@ -3023,6 +3033,10 @@ public class GameSession : Object {
     // MARK: - Сохранение и форфейт при закрытии
 
     public void save_on_close () {
+        if (is_game_over) {
+            SavedGameStore.shared ().clear ();
+            return;
+        }
         if (is_game_in_progress) {
             save_to_store ();
         } else if (!SavedGameStore.shared ().has_saved_game) {
@@ -3032,24 +3046,49 @@ public class GameSession : Object {
 
     /** Завершает текущую игру форфейтом: текущий игрок проигрывает. */
     public void forfeit_current_game () {
-        if (!is_game_started || is_game_over) {
-            return;
+        if (is_game_started && !is_game_over) {
+            var loser_color = current_player;
+            var loser_name = player_name (loser_color);
+            if (!is_computer_player (loser_color)) {
+                StatsStore.shared ().record_loss (loser_name);
+            }
+            var winner_color = loser_color.opposite ();
+            if (!is_computer_player (winner_color)) {
+                StatsStore.shared ().record_victory (player_name (winner_color), VictoryType.OIN);
+            }
+            SavedGameStore.shared ().clear ();
+            force_new_game ();
+        } else {
+            var saved_data = SavedGameStore.shared ().load ();
+            if (saved_data != null) {
+                var loser_color = saved_data.current_player;
+                var loser_name = loser_color == CheckerColor.WHITE ? saved_data.white_player_name : saved_data.black_player_name;
+                if (!saved_data.is_black_computer || loser_color == CheckerColor.WHITE) {
+                    StatsStore.shared ().record_loss (loser_name);
+                }
+                var winner_color = loser_color.opposite ();
+                var winner_name = winner_color == CheckerColor.WHITE ? saved_data.white_player_name : saved_data.black_player_name;
+                if (!saved_data.is_black_computer || winner_color == CheckerColor.WHITE) {
+                    StatsStore.shared ().record_victory (winner_name, VictoryType.OIN);
+                }
+                SavedGameStore.shared ().clear ();
+                force_new_game ();
+            } else {
+                SavedGameStore.shared ().clear ();
+                force_new_game ();
+            }
         }
-        var loser_color = current_player;
-        var loser_name = player_name (loser_color);
-        if (!is_computer_player (loser_color)) {
-            StatsStore.shared ().record_loss (loser_name);
-        }
-        var winner_color = loser_color.opposite ();
-        if (!is_computer_player (winner_color)) {
-            StatsStore.shared ().record_victory (player_name (winner_color), VictoryType.OIN);
-        }
-        SavedGameStore.shared ().clear ();
-        force_new_game ();
     }
 
     /** Сохраняет текущее состояние игры в SavedGameStore. */
     public void save_to_store () {
+        if (!is_game_in_progress) {
+            return;
+        }
+        // Никогда не перезаписываем сохранение пустой доской (inTray)
+        if (!board.has_any_checkers_on_board ()) {
+            return;
+        }
         var data = new SavedGameData ();
         data.stacks = SavedGameStore.stacks_from_board (board);
         data.white_borne_off_ids = copy_uint8 (board.white_borne_off_ids);
