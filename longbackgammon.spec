@@ -1,6 +1,6 @@
 Name:           longbackgammon
 Version:        1.0.7
-Release:        1%{?dist}
+Release:        2%{?dist}
 Summary:        Classic Long Backgammon Board Game
 
 License:        GPL-3.0-or-later
@@ -12,6 +12,7 @@ BuildRequires:  gcc
 BuildRequires:  vala
 BuildRequires:  gettext
 BuildRequires:  desktop-file-utils
+BuildRequires:  libappstream-glib
 BuildRequires:  pkgconfig(glib-2.0)
 BuildRequires:  pkgconfig(gio-2.0)
 BuildRequires:  pkgconfig(gtk4)
@@ -38,6 +39,7 @@ positioning.
 
 %check
 desktop-file-validate %{buildroot}%{_datadir}/applications/io.github.ansribas.LongBackgammon.desktop
+appstream-util validate-relax --nonet %{buildroot}%{_datadir}/metainfo/io.github.ansribas.LongBackgammon.metainfo.xml
 
 %files -f %{name}.lang
 %license COPYING
@@ -51,5 +53,8 @@ desktop-file-validate %{buildroot}%{_datadir}/applications/io.github.ansribas.Lo
 %{_datadir}/icons/hicolor/*/apps/io.github.ansribas.LongBackgammon.png
 
 %changelog
+* Tue Nov 10 2026 Aleksey Svetlov <ans.ribas@gmail.com> - 1.0.7-2
+- Validate AppStream metainfo using appstream-util in %check
+
 * Sun Nov 08 2026 Aleksey Svetlov <ans.ribas@gmail.com> - 1.0.7-1
 - Release 1.0.7
