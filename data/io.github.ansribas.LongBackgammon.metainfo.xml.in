@@ -57,6 +57,11 @@
   <content_rating type="oars-1.1" />
 
   <releases>
+    <release version="1.0.7.2" date="2026-11-14">
+      <description>
+        <p>Turn-by-turn game autosave with forfeit state recovery, selectable graphics renderer (Cairo / OpenGL), modular architecture and UI performance improvements, improved header bar iconography, and official packaging support for RPM and Snap.</p>
+      </description>
+    </release>
     <release version="1.0.7" date="2026-11-07">
       <description>
         <p>Redesigned Game Over modal with sequential tally counters, flying reward/deduction stars, and celebratory fireworks for Mars/Home Mars victories. Added match result entries to the turn log, standardized player name truncation with instant hover tooltips, new victory/defeat sound effects, and major memory/CPU optimizations.</p>

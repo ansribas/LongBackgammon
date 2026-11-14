@@ -1,6 +1,6 @@
 Name:           longbackgammon
-Version:        1.0.7
-Release:        2%{?dist}
+Version:        1.0.7.2
+Release:        1%{?dist}
 Summary:        Classic Long Backgammon Board Game
 
 License:        GPL-3.0-or-later
@@ -53,6 +53,9 @@ appstream-util validate-relax --nonet %{buildroot}%{_datadir}/metainfo/io.github
 %{_datadir}/icons/hicolor/*/apps/io.github.ansribas.LongBackgammon.png
 
 %changelog
+* Sat Nov 14 2026 Aleksey Svetlov <ans.ribas@gmail.com> - 1.0.7.2-1
+- Release 1.0.7.2
+
 * Tue Nov 10 2026 Aleksey Svetlov <ans.ribas@gmail.com> - 1.0.7-2
 - Validate AppStream metainfo using appstream-util in %check
 

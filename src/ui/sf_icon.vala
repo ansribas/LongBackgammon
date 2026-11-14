@@ -140,26 +140,6 @@ public class SFIcon : Gtk.DrawingArea {
         cr.set_line_cap (Cairo.LineCap.ROUND);
         cr.set_line_join (Cairo.LineJoin.ROUND);
         switch (g) {
-        case "xmark.circle.fill":
-            cr.arc (0.5, 0.5, 0.5, 0, 2 * Math.PI);
-            cr.fill ();
-            knockout_begin (cr);
-            cr.set_line_width (0.09);
-            cr.move_to (0.33, 0.33);
-            cr.line_to (0.67, 0.67);
-            cr.move_to (0.67, 0.33);
-            cr.line_to (0.33, 0.67);
-            cr.stroke ();
-            knockout_end (cr);
-            break;
-        case "xmark":
-            cr.set_line_width (0.16);
-            cr.move_to (0.18, 0.18);
-            cr.line_to (0.82, 0.82);
-            cr.move_to (0.82, 0.18);
-            cr.line_to (0.18, 0.82);
-            cr.stroke ();
-            break;
         case "gearshape.fill":
             int teeth = 8;
             cr.new_path ();
@@ -193,7 +173,6 @@ public class SFIcon : Gtk.DrawingArea {
             cr.stroke ();
             break;
         case "speaker.wave.2.fill":
-        case "speaker.slash.fill":
             cr.move_to (0.04, 0.36);
             cr.line_to (0.22, 0.36);
             cr.line_to (0.48, 0.12);
@@ -203,23 +182,10 @@ public class SFIcon : Gtk.DrawingArea {
             cr.close_path ();
             cr.fill ();
             cr.set_line_width (0.08);
-            if (g == "speaker.wave.2.fill") {
-                cr.arc (0.48, 0.5, 0.2, -Math.PI / 4, Math.PI / 4);
-                cr.stroke ();
-                cr.arc (0.48, 0.5, 0.36, -Math.PI / 3.2, Math.PI / 3.2);
-                cr.stroke ();
-            } else {
-                knockout_begin (cr);
-                cr.set_line_width (0.2);
-                cr.move_to (0.1, 0.06);
-                cr.line_to (0.9, 0.94);
-                cr.stroke ();
-                knockout_end (cr);
-                cr.set_line_width (0.08);
-                cr.move_to (0.1, 0.06);
-                cr.line_to (0.9, 0.94);
-                cr.stroke ();
-            }
+            cr.arc (0.48, 0.5, 0.2, -Math.PI / 4, Math.PI / 4);
+            cr.stroke ();
+            cr.arc (0.48, 0.5, 0.36, -Math.PI / 3.2, Math.PI / 3.2);
+            cr.stroke ();
             break;
         case "character.bubble":
             rounded (cr, 0.02, 0.06, 0.96, 0.7, 0.2);
@@ -449,14 +415,6 @@ public class SFIcon : Gtk.DrawingArea {
             }
             cr.close_path ();
             cr.fill ();
-            break;
-        case "line.3.horizontal":
-            cr.set_line_width (0.1);
-            for (var i = 0; i < 3; i++) {
-                cr.move_to (0.12, 0.22 + i * 0.28);
-                cr.line_to (0.88, 0.22 + i * 0.28);
-            }
-            cr.stroke ();
             break;
         case "rectangle.lefthalf.inset.filled":
             cr.set_line_width (0.08);

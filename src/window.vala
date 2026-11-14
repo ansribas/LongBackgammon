@@ -121,11 +121,14 @@ public class GameLayout : Gtk.Widget {
 
 /** Кнопка панели заголовка (HeaderBar button) в соответствии с GNOME HIG. */
 public class TitleBarButton : Gtk.Button {
+    private SFIcon? sf_icon = null;
+
     public TitleBarButton (string icon_name_or_glyph, string tooltip) {
-        Object (icon_name: map_glyph (icon_name_or_glyph), tooltip_text: tooltip, valign: Gtk.Align.CENTER);
+        Object (tooltip_text: tooltip, valign: Gtk.Align.CENTER);
         UiKit.ensure_css ();
         add_css_class ("flat");
         add_css_class ("lb-tb-btn");
+        set_icon_or_glyph (icon_name_or_glyph);
     }
 
     public void set_active_state (bool active) {
@@ -134,10 +137,33 @@ public class TitleBarButton : Gtk.Button {
         } else {
             remove_css_class ("active");
         }
+        if (sf_icon != null) {
+            sf_icon.queue_draw ();
+        }
     }
 
     public void set_glyph (string g) {
-        icon_name = map_glyph (g);
+        set_icon_or_glyph (g);
+    }
+
+    private void set_icon_or_glyph (string name) {
+        if (name == "gearshape.fill" || name == "chart.bar.fill") {
+            icon_name = null;
+            if (sf_icon == null) {
+                sf_icon = new SFIcon (name, 16);
+                sf_icon.halign = Gtk.Align.CENTER;
+                sf_icon.valign = Gtk.Align.CENTER;
+                set_child (sf_icon);
+            } else {
+                sf_icon.set_glyph (name);
+            }
+        } else {
+            if (sf_icon != null) {
+                set_child (null);
+                sf_icon = null;
+            }
+            icon_name = map_glyph (name);
+        }
     }
 
     private static string map_glyph (string g) {
@@ -146,10 +172,6 @@ public class TitleBarButton : Gtk.Button {
                 return "audio-volume-high-symbolic";
             case "speaker.slash.fill":
                 return "audio-volume-muted-symbolic";
-            case "gearshape.fill":
-                return "preferences-system-symbolic";
-            case "chart.bar.fill":
-                return "view-list-ordered-symbolic";
             default:
                 return g;
         }
@@ -273,8 +295,8 @@ public class Window : Adw.ApplicationWindow {
     private void build_ui () {
         var header = new Adw.HeaderBar ();
 
-        // Панель действий слева: Настройки, Звук, Статистика (без нарушений HIG)
-        settings_btn = new TitleBarButton ("preferences-system-symbolic", Localization.settings_menu ());
+        // Панель действий слева: Настройки, Звук, Статистика
+        settings_btn = new TitleBarButton ("gearshape.fill", Localization.settings_menu ());
         settings_btn.clicked.connect (show_settings);
         header.pack_start (settings_btn);
 
@@ -285,7 +307,7 @@ public class Window : Adw.ApplicationWindow {
         });
         header.pack_start (sound_btn);
 
-        stats_btn = new TitleBarButton ("view-list-ordered-symbolic", Localization.stats_menu ());
+        stats_btn = new TitleBarButton ("chart.bar.fill", Localization.stats_menu ());
         stats_btn.clicked.connect (show_stats);
         header.pack_start (stats_btn);
         update_sound_button ();

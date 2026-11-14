@@ -1,7 +1,7 @@
 name: longbackgammon
 title: LongBackgammon
 base: core24
-version: '1.0.7'
+version: '1.0.7.2'
 summary: Classic Long Backgammon (Russian Nardi) for GNOME & Linux
 description: |
   Long Backgammon (Russian Nardi / Длинные нарды) is a classic tactical board game crafted natively for Linux and GNOME with GTK4 and Libadwaita.
