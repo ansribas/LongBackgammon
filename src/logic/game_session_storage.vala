@@ -20,37 +20,31 @@ public class GameSessionStorage {
     /** Завершает текущую игру форфейтом: текущий игрок проигрывает. */
     public static void forfeit_current_game (GameSession session) {
         if (session.is_game_started && !session.is_game_over) {
-            var loser_color = session.current_player;
-            var loser_name = session.player_name (loser_color);
-            if (!session.is_computer_player (loser_color)) {
-                StatsStore.shared ().record_loss (loser_name);
+            var loser = session.current_player;
+            var winner = loser.opposite ();
+            if (!session.is_computer_player (loser)) {
+                StatsStore.shared ().record_loss (session.player_name (loser));
             }
-            var winner_color = loser_color.opposite ();
-            if (!session.is_computer_player (winner_color)) {
-                StatsStore.shared ().record_victory (session.player_name (winner_color), VictoryType.OIN);
+            if (!session.is_computer_player (winner)) {
+                StatsStore.shared ().record_victory (session.player_name (winner), VictoryType.OIN);
             }
-            SavedGameStore.shared ().clear ();
-            session.force_new_game ();
         } else {
-            var saved_data = SavedGameStore.shared ().load ();
-            if (saved_data != null) {
-                var loser_color = saved_data.current_player;
-                var loser_name = loser_color == CheckerColor.WHITE ? saved_data.white_player_name : saved_data.black_player_name;
-                if (!saved_data.is_black_computer || loser_color == CheckerColor.WHITE) {
+            var d = SavedGameStore.shared ().load ();
+            if (d != null) {
+                var loser = d.current_player;
+                var winner = loser.opposite ();
+                var loser_name = loser == CheckerColor.WHITE ? d.white_player_name : d.black_player_name;
+                var winner_name = winner == CheckerColor.WHITE ? d.white_player_name : d.black_player_name;
+                if (!d.is_black_computer || loser == CheckerColor.WHITE) {
                     StatsStore.shared ().record_loss (loser_name);
                 }
-                var winner_color = loser_color.opposite ();
-                var winner_name = winner_color == CheckerColor.WHITE ? saved_data.white_player_name : saved_data.black_player_name;
-                if (!saved_data.is_black_computer || winner_color == CheckerColor.WHITE) {
+                if (!d.is_black_computer || winner == CheckerColor.WHITE) {
                     StatsStore.shared ().record_victory (winner_name, VictoryType.OIN);
                 }
-                SavedGameStore.shared ().clear ();
-                session.force_new_game ();
-            } else {
-                SavedGameStore.shared ().clear ();
-                session.force_new_game ();
             }
         }
+        SavedGameStore.shared ().clear ();
+        session.force_new_game ();
     }
 
     /** Сохраняет текущее состояние игры в SavedGameStore. */

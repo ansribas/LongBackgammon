@@ -174,17 +174,13 @@ public class GameOverView : Gtk.Box {
         table.append (table_head_fx);
 
         add_stat_row (table, Localization.game_over_moves_stat (),
-            is_right_side_white ? session.black_moves_count : session.white_moves_count,
-            is_right_side_white ? session.white_moves_count : session.black_moves_count);
+            session.white_moves_count, session.black_moves_count, is_right_side_white);
         add_stat_row (table, Localization.game_over_doubles_stat (),
-            is_right_side_white ? session.black_doubles_count : session.white_doubles_count,
-            is_right_side_white ? session.white_doubles_count : session.black_doubles_count);
+            session.white_doubles_count, session.black_doubles_count, is_right_side_white);
         add_stat_row (table, Localization.game_over_fellout_dice_stat (),
-            is_right_side_white ? session.black_total_dice_sum : session.white_total_dice_sum,
-            is_right_side_white ? session.white_total_dice_sum : session.black_total_dice_sum);
+            session.white_total_dice_sum, session.black_total_dice_sum, is_right_side_white);
         add_stat_row (table, Localization.game_over_burned_dice_stat (),
-            is_right_side_white ? session.black_burned_dice_sum : session.white_burned_dice_sum,
-            is_right_side_white ? session.white_burned_dice_sum : session.black_burned_dice_sum);
+            session.white_burned_dice_sum, session.black_burned_dice_sum, is_right_side_white);
         table_fx = new FxBin (table);
         table_fx.hexpand = true;
         content.append (table_fx);
@@ -277,7 +273,9 @@ public class GameOverView : Gtk.Box {
         return box;
     }
 
-    private void add_stat_row (Gtk.Box table, string title, int left_val, int right_val) {
+    private void add_stat_row (Gtk.Box table, string title, int white_val, int black_val, bool is_right_side_white) {
+        int left_val = is_right_side_white ? black_val : white_val;
+        int right_val = is_right_side_white ? white_val : black_val;
         var row = new Gtk.Box (Gtk.Orientation.HORIZONTAL, 3);
         var ll = UiKit.label ("0", "lb-go-value", 0.5f);
         var lc = cell (ll, 90);

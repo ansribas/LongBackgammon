@@ -81,16 +81,17 @@ public class StatisticsView : PopupView {
     /** Список имён игроков, отсортированный по убыванию набранных очков (при равенстве — по алфавиту). */
     private string[] sorted_names () {
         var names = new string[0];
-        StatsStore.shared ().player_stats.foreach ((name, st) => { names += name; });
         var stats = StatsStore.shared ().player_stats;
+        stats.foreach ((name, st) => { names += name; });
         for (var i = 0; i < names.length; i++) {
+            var pi = stats.lookup (names[i]).total_points;
             for (var j = i + 1; j < names.length; j++) {
-                var pi = stats.lookup (names[i]).total_points;
                 var pj = stats.lookup (names[j]).total_points;
                 if (pj > pi || (pj == pi && strcmp (names[j], names[i]) < 0)) {
                     var t = names[i];
                     names[i] = names[j];
                     names[j] = t;
+                    pi = pj;
                 }
             }
         }
@@ -122,20 +123,10 @@ public class StatisticsView : PopupView {
             return;
         }
 
-        var exists = false;
-        foreach (var n in names) {
-            if (n == selected_player) {
-                exists = true;
-            }
-        }
-        if (selected_player == null && current_player_name != null) {
-            // При первом открытии выбираем текущего игрока, если он есть в статистике
-            foreach (var n in names) {
-                if (n == current_player_name) {
-                    selected_player = n;
-                    exists = true;
-                }
-            }
+        var exists = selected_player != null && stats.contains (selected_player);
+        if (!exists && current_player_name != null && stats.contains (current_player_name)) {
+            selected_player = current_player_name;
+            exists = true;
         }
         if (!exists) {
             selected_player = names[0];

@@ -11,15 +11,7 @@ namespace Longbackgammon {
 public class ComputerAI {
     /** Суммарное количество очков (дистанции) до финиша. */
     public static int calculate_pip_count (GameBoard board, CheckerColor color) {
-        unowned BoardPoint[] route = PlayerPath.route_ref (color);
-        var total = 0;
-        for (var idx = route.length - 1; idx >= 0; idx--) {
-            var stack = board.stack_at (route[idx]);
-            if (stack != null && stack.color == color) {
-                total += stack.checker_ids.length * (route.length - idx);
-            }
-        }
-        return total;
+        return board.calculate_pip_count (color);
     }
 
     private static int count_checkers_outside_home (GameBoard board, CheckerColor color) {

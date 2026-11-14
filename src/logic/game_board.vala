@@ -83,11 +83,20 @@ public class GameBoard : Object {
         }
     }
 
-    private static int path_index_of (BoardPoint[] p, BoardPoint pt) {
-        for (var i = 0; i < p.length; i++) {
-            if (p[i] == pt) return i;
+    private static void sort_board_slots (BoardSlot[] slots, CheckerColor color) {
+        for (var i = 0; i < slots.length - 1; i++) {
+            for (var j = i + 1; j < slots.length; j++) {
+                var a = slots[i];
+                var b = slots[j];
+                bool swap = (a.stack_index != b.stack_index)
+                    ? (a.stack_index > b.stack_index)
+                    : (PlayerPath.index_of (a.point, color) > PlayerPath.index_of (b.point, color));
+                if (swap) {
+                    slots[i] = b;
+                    slots[j] = a;
+                }
+            }
         }
-        return pt.raw_value ();
     }
 
     /**
@@ -113,72 +122,29 @@ public class GameBoard : Object {
             }
         }
 
-        var w_path = PlayerPath.white ();
-        var b_path = PlayerPath.black ();
-
-        for (var i = 0; i < white_slots.length - 1; i++) {
-            for (var j = i + 1; j < white_slots.length; j++) {
-                var a = white_slots[i];
-                var b = white_slots[j];
-                bool swap = false;
-                if (a.stack_index != b.stack_index) {
-                    swap = (a.stack_index > b.stack_index);
-                } else {
-                    var a_idx = path_index_of (w_path, a.point);
-                    var b_idx = path_index_of (w_path, b.point);
-                    swap = (a_idx > b_idx);
-                }
-                if (swap) {
-                    white_slots[i] = b;
-                    white_slots[j] = a;
-                }
-            }
-        }
-
-        for (var i = 0; i < black_slots.length - 1; i++) {
-            for (var j = i + 1; j < black_slots.length; j++) {
-                var a = black_slots[i];
-                var b = black_slots[j];
-                bool swap = false;
-                if (a.stack_index != b.stack_index) {
-                    swap = (a.stack_index > b.stack_index);
-                } else {
-                    var a_idx = path_index_of (b_path, a.point);
-                    var b_idx = path_index_of (b_path, b.point);
-                    swap = (a_idx > b_idx);
-                }
-                if (swap) {
-                    black_slots[i] = b;
-                    black_slots[j] = a;
-                }
-            }
-        }
+        sort_board_slots (white_slots, CheckerColor.WHITE);
+        sort_board_slots (black_slots, CheckerColor.BLACK);
 
         var new_board = new GameBoard ();
 
         for (var i = 0; i < white_slots.length; i++) {
             var slot = white_slots[i];
-            var new_id = (uint8) i;
-            new_board.place_checker (new_id, CheckerColor.WHITE, slot.point, slot.stack_index);
+            new_board.place_checker ((uint8) i, CheckerColor.WHITE, slot.point, slot.stack_index);
         }
 
         for (var i = 0; i < black_slots.length; i++) {
             var slot = black_slots[i];
-            var new_id = (uint8) (15 + i);
-            new_board.place_checker (new_id, CheckerColor.BLACK, slot.point, slot.stack_index);
+            new_board.place_checker ((uint8) (15 + i), CheckerColor.BLACK, slot.point, slot.stack_index);
         }
 
-        var w_count = white_slots.length;
-        var b_count = black_slots.length;
-
-        var rem_w = new uint8[15 - w_count];
-        for (var i = 0; i < 15 - w_count; i++) {
+        var rem_w = new uint8[15 - white_slots.length];
+        for (var i = 0; i < rem_w.length; i++) {
             rem_w[i] = (uint8) (14 - i);
         }
         new_board.white_borne_off_ids = rem_w;
 
-        var rem_b = new uint8[15 - b_count];
-        for (var i = 0; i < 15 - b_count; i++) {
+        var rem_b = new uint8[15 - black_slots.length];
+        for (var i = 0; i < rem_b.length; i++) {
             rem_b[i] = (uint8) (29 - i);
         }
         new_board.black_borne_off_ids = rem_b;
@@ -189,6 +155,19 @@ public class GameBoard : Object {
     /** Количество выброшенных за борт фишек для цвета. */
     public int borne_off_count (CheckerColor color) {
         return (color == CheckerColor.WHITE) ? white_borne_off_ids.length : black_borne_off_ids.length;
+    }
+
+    /** Суммарное количество очков (дистанции) до финиша для цвета. */
+    public int calculate_pip_count (CheckerColor color) {
+        unowned BoardPoint[] route = PlayerPath.route_ref (color);
+        var total = 0;
+        for (var idx = 0; idx < route.length; idx++) {
+            var stack = stacks[route[idx].raw_value ()];
+            if (stack != null && stack.color == color) {
+                total += stack.checker_ids.length * (route.length - idx);
+            }
+        }
+        return total;
     }
 
     /** Победитель — игрок, вынесший все 15 фишек (не в состоянии inTray). */
@@ -208,41 +187,22 @@ public class GameBoard : Object {
 
     /** Перемещает фишку с конкретным ID в целевую позицию (для последовательной расстановки). */
     public void place_checker (uint8 id, CheckerColor color, BoardPoint? point, int index) {
-        var w_list = new GenericArray<uint8> ();
-        for (var i = 0; i < white_borne_off_ids.length; i++) {
-            if (white_borne_off_ids[i] != id) w_list.add (white_borne_off_ids[i]);
-        }
-        white_borne_off_ids = new uint8[w_list.length];
-        for (var i = 0; i < w_list.length; i++) white_borne_off_ids[i] = w_list[i];
-
-        var b_list = new GenericArray<uint8> ();
-        for (var i = 0; i < black_borne_off_ids.length; i++) {
-            if (black_borne_off_ids[i] != id) b_list.add (black_borne_off_ids[i]);
-        }
-        black_borne_off_ids = new uint8[b_list.length];
-        for (var i = 0; i < b_list.length; i++) black_borne_off_ids[i] = b_list[i];
+        white_borne_off_ids = ArrUtil.remove_u8 (white_borne_off_ids, id);
+        black_borne_off_ids = ArrUtil.remove_u8 (black_borne_off_ids, id);
 
         for (var raw = 1; raw <= 24; raw++) {
             var st = stacks[raw];
             if (st != null) {
-                var found_idx = -1;
+                var found = false;
                 for (var i = 0; i < st.checker_ids.length; i++) {
                     if (st.checker_ids[i] == id) {
-                        found_idx = i;
+                        found = true;
                         break;
                     }
                 }
-                if (found_idx >= 0) {
-                    var remaining = new uint8[st.checker_ids.length - 1];
-                    var k = 0;
-                    for (var i = 0; i < st.checker_ids.length; i++) {
-                        if (i != found_idx) remaining[k++] = st.checker_ids[i];
-                    }
-                    if (remaining.length == 0) {
-                        stacks[raw] = null;
-                    } else {
-                        stacks[raw] = new PointStack.with_ids (st.color, remaining);
-                    }
+                if (found) {
+                    var remaining = ArrUtil.remove_u8 (st.checker_ids, id);
+                    stacks[raw] = (remaining.length == 0) ? null : new PointStack.with_ids (st.color, remaining);
                     break;
                 }
             }

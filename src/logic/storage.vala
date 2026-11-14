@@ -168,6 +168,50 @@ public class ArrUtil {
         r[a.length] = v;
         return r;
     }
+    public static uint8[] remove_u8 (uint8[] a, uint8 v) {
+        var idx = -1;
+        for (var i = 0; i < a.length; i++) {
+            if (a[i] == v) { idx = i; break; }
+        }
+        if (idx < 0) return a;
+        var r = new uint8[a.length - 1];
+        for (var i = 0; i < idx; i++) r[i] = a[i];
+        for (var i = idx + 1; i < a.length; i++) r[i - 1] = a[i];
+        return r;
+    }
+    public static bool contains_int (int[] a, int v) {
+        for (var i = 0; i < a.length; i++) {
+            if (a[i] == v) return true;
+        }
+        return false;
+    }
+    public static int[] remove_int (int[] a, int v) {
+        var idx = -1;
+        for (var i = 0; i < a.length; i++) {
+            if (a[i] == v) { idx = i; break; }
+        }
+        if (idx < 0) return a;
+        var r = new int[a.length - 1];
+        for (var i = 0; i < idx; i++) r[i] = a[i];
+        for (var i = idx + 1; i < a.length; i++) r[i - 1] = a[i];
+        return r;
+    }
+    public static int[] append_int (int[] a, int v) {
+        var r = new int[a.length + 1];
+        for (var i = 0; i < a.length; i++) r[i] = a[i];
+        r[a.length] = v;
+        return r;
+    }
+    public static int[] add_unique_int (int[] a, int v) {
+        return contains_int (a, v) ? a : append_int (a, v);
+    }
+    public static int[] remove_int_at (int[] a, int index) {
+        if (index < 0 || index >= a.length) return a;
+        var r = new int[a.length - 1];
+        for (var i = 0; i < index; i++) r[i] = a[i];
+        for (var i = index + 1; i < a.length; i++) r[i - 1] = a[i];
+        return r;
+    }
 }
 
 } /* namespace Longbackgammon */

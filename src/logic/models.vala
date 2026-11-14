@@ -82,9 +82,9 @@ public class PointStack : Object {
     public PointStack.with_count (CheckerColor color, int count) {
         this.color = color;
         uint8 offset = (color == CheckerColor.WHITE) ? 0 : 15;
-        var ids = new uint8[0];
+        var ids = new uint8[count];
         for (var i = 0; i < count; i++) {
-            ids += (uint8) (offset + i);
+            ids[i] = (uint8) (offset + i);
         }
         checker_ids = ids;
     }

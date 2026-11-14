@@ -246,10 +246,7 @@ public class GameLifecycleController {
         var loser_color = session.current_player.opposite ();
         var loser_name = session.player_name (loser_color);
 
-        var is_home_mars = session.board.borne_off_count (loser_color) == 0
-                           && MoveValidator.are_all_checkers_in_home (session.board, loser_color);
-        var is_mars = session.board.borne_off_count (loser_color) == 0 && !is_home_mars;
-        var victory_type = is_home_mars ? VictoryType.HOME_MARS : (is_mars ? VictoryType.MARS : VictoryType.OIN);
+        var victory_type = session.board.victory_type (loser_color);
 
         if (!session.is_computer_player (session.current_player)) {
             StatsStore.shared ().record_victory (winner_name, victory_type);

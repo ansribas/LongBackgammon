@@ -293,21 +293,11 @@ public class PlayerPanel : Gtk.Box {
     }
 
     public bool has_flown_rolloff (int id) {
-        foreach (var f in flown_rolloff_ids) {
-            if (f == id) {
-                return true;
-            }
-        }
-        return false;
+        return ArrUtil.contains_int (flown_rolloff_ids, id);
     }
 
     public bool has_landed_rolloff (int id) {
-        foreach (var l in landed_rolloff_ids) {
-            if (l == id) {
-                return true;
-            }
-        }
-        return false;
+        return ArrUtil.contains_int (landed_rolloff_ids, id);
     }
 
     public int get_log_cell_width () {
@@ -330,30 +320,15 @@ public class PlayerPanel : Gtk.Box {
     }
 
     public bool is_pending_skip (int id) {
-        foreach (var p in pending_skipped) {
-            if (p == id) {
-                return true;
-            }
-        }
-        return false;
+        return ArrUtil.contains_int (pending_skipped, id);
     }
 
     public bool is_pending_fly (int id) {
-        foreach (var p in pending_fly) {
-            if (p == id) {
-                return true;
-            }
-        }
-        return false;
+        return ArrUtil.contains_int (pending_fly, id);
     }
 
     public bool is_pending_unfly (int id) {
-        foreach (var p in pending_unfly) {
-            if (p == id) {
-                return true;
-            }
-        }
-        return false;
+        return ArrUtil.contains_int (pending_unfly, id);
     }
 
     private void queue_draw_top_cells () {
@@ -374,13 +349,7 @@ public class PlayerPanel : Gtk.Box {
     }
 
     public void remove_pending_fly (int id) {
-        var r = new int[0];
-        foreach (var p in pending_fly) {
-            if (p != id) {
-                r += p;
-            }
-        }
-        pending_fly = r;
+        pending_fly = ArrUtil.remove_int (pending_fly, id);
         dice_zone.queue_draw ();
         queue_draw_top_cells ();
     }
@@ -394,13 +363,7 @@ public class PlayerPanel : Gtk.Box {
     }
 
     public void remove_pending_unfly (int id) {
-        var r = new int[0];
-        foreach (var p in pending_unfly) {
-            if (p != id) {
-                r += p;
-            }
-        }
-        pending_unfly = r;
+        pending_unfly = ArrUtil.remove_int (pending_unfly, id);
         dice_zone.queue_draw ();
         queue_draw_top_cells ();
     }
@@ -1026,13 +989,7 @@ public class PlayerPanel : Gtk.Box {
     }
 
     private void remove_pending (int id) {
-        var r = new int[0];
-        foreach (var p in pending_skipped) {
-            if (p != id) {
-                r += p;
-            }
-        }
-        pending_skipped = r;
+        pending_skipped = ArrUtil.remove_int (pending_skipped, id);
         dice_zone.queue_draw ();
         queue_draw_top_cells ();
     }
@@ -1085,49 +1042,29 @@ public class PlayerPanel : Gtk.Box {
         }
     }
 
-    private Graphene.Rect fallback_top_rect (int id) {
+    private Graphene.Rect fallback_slot_rect (int id, bool top) {
         var is_dbl = id < 100 && ((session.dice_roll != null && session.dice_roll.is_double) || session.current_turn_dice.length > 2);
         var pw = (double) get_width ();
-        var size = is_dbl ? 34.0 : 48.0;
-        var spacing = 5.0;
+        var size = top ? (is_dbl ? 34.0 : 48.0) : 40.0;
+        var spacing = top ? 5.0 : (is_dbl ? 5.0 : 6.0);
         var start_x = (pw - (size * 2 + spacing)) / 2.0;
-        if (id >= 100) {
-            var idx = id == 100 ? 0 : 1;
-            var x = start_x + idx * (size + spacing);
-            return Graphene.Rect ().init ((float) x, 48.0f, (float) size, (float) size);
-        }
-        if (is_dbl) {
-            var row = id / 2;
-            var col = id % 2;
-            var x = start_x + col * (size + spacing);
-            var y = 40.0 + row * (size + 3);
-            return Graphene.Rect ().init ((float) x, (float) y, (float) size, (float) size);
-        } else {
-            var x = start_x + id * (size + spacing);
-            return Graphene.Rect ().init ((float) x, 48.0f, (float) size, (float) size);
-        }
-    }
+        var base_y = top ? 48.0 : (id >= 100 ? 262.0 : 250.0);
+        var dbl_base_y = top ? 40.0 : 255.0;
 
-    private Graphene.Rect fallback_log_rect (int id) {
-        var is_dbl = id < 100 && ((session.dice_roll != null && session.dice_roll.is_double) || session.current_turn_dice.length > 2);
-        var pw = (double) get_width ();
-        var size = 40.0;
-        var spacing = is_dbl ? 5.0 : 6.0;
-        var start_x = (pw - (size * 2 + spacing)) / 2.0;
         if (id >= 100) {
             var idx = id == 100 ? 0 : 1;
             var x = start_x + idx * (size + spacing);
-            return Graphene.Rect ().init ((float) x, 262.0f, (float) size, (float) size);
+            return Graphene.Rect ().init ((float) x, (float) base_y, (float) size, (float) size);
         }
         if (is_dbl) {
             var row = id / 2;
             var col = id % 2;
             var x = start_x + col * (size + spacing);
-            var y = 255.0 + row * (size + 3);
+            var y = dbl_base_y + row * (size + 3);
             return Graphene.Rect ().init ((float) x, (float) y, (float) size, (float) size);
         } else {
             var x = start_x + id * (size + spacing);
-            return Graphene.Rect ().init ((float) x, 250.0f, (float) size, (float) size);
+            return Graphene.Rect ().init ((float) x, (float) base_y, (float) size, (float) size);
         }
     }
 
@@ -1156,10 +1093,10 @@ public class PlayerPanel : Gtk.Box {
         var ok_top = slot_rect (id, true, out top_r);
         var ok_log = slot_rect (id, false, out log_r);
         if (!ok_top) {
-            top_r = fallback_top_rect (id);
+            top_r = fallback_slot_rect (id, true);
         }
         if (!ok_log) {
-            log_r = fallback_log_rect (id);
+            log_r = fallback_slot_rect (id, false);
         }
 
         fd.from_rect = to_log ? top_r : log_r;

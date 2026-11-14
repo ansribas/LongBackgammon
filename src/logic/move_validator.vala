@@ -278,54 +278,46 @@ public class MoveValidator {
         } else {
             var die1 = remaining_dice[0];
             var die2 = remaining_dice[1];
-            var allow_combined_from_head = !is_head (from, color) || can_move_from_head;
-
-            if (allow_combined_from_head && can_pass_through (from, die1, board, color)) {
-                var mid = PlayerPath.point_from (from, die1, color);
-                if (mid != null) {
-                    var to_a = PlayerPath.point_from (mid, die2, color);
-                    if (to_a != null && !is_blocked (to_a, board, color)) {
-                        var option = new MoveOption (from, to_a, die1 + die2, new int[] { 0, 1 }, true);
-                        if (creates_illegal_prime (from, to_a, board, color)) {
-                            option.is_illegal_prime = true;
-                        }
-                        options += option;
-                    } else {
-                        var temp_board = board.clone ();
-                        temp_board.move_one_checker (from, mid);
-                        if (communities_allow_bear_off (mid, die2, temp_board, color)) {
-                            options += new MoveOption (from, null, die1 + die2, new int[] { 0, 1 }, true);
-                        }
-                    }
+            if (!is_head (from, color) || can_move_from_head) {
+                var opt1 = find_two_dice_combined (from, board, color, die1, die2, 0, 1);
+                if (opt1 != null) {
+                    options += opt1;
                 }
-            }
-
-            if (allow_combined_from_head && can_pass_through (from, die2, board, color)) {
-                var mid = PlayerPath.point_from (from, die2, color);
-                if (mid != null) {
-                    var to_b = PlayerPath.point_from (mid, die1, color);
-                    if (to_b != null && !is_blocked (to_b, board, color)) {
-                        if (!has_option (options, from, to_b, 0, false)) {
-                            var option = new MoveOption (from, to_b, die1 + die2, new int[] { 1, 0 }, true);
-                            if (creates_illegal_prime (from, to_b, board, color)) {
-                                option.is_illegal_prime = true;
-                            }
-                            options += option;
-                        }
-                    } else {
-                        var temp_board = board.clone ();
-                        temp_board.move_one_checker (from, mid);
-                        if (communities_allow_bear_off (mid, die1, temp_board, color)) {
-                            if (!has_option (options, from, null, die1 + die2, true)) {
-                                options += new MoveOption (from, null, die1 + die2, new int[] { 1, 0 }, true);
-                            }
-                        }
-                    }
+                var opt2 = find_two_dice_combined (from, board, color, die2, die1, 1, 0);
+                if (opt2 != null && !has_option (options, from, opt2.to, opt2.die, opt2.to == null)) {
+                    options += opt2;
                 }
             }
         }
 
         return options;
+    }
+
+    private static MoveOption? find_two_dice_combined (
+        BoardPoint from, GameBoard board, CheckerColor color,
+        int d1, int d2, int idx1, int idx2) {
+        if (!can_pass_through (from, d1, board, color)) {
+            return null;
+        }
+        var mid = PlayerPath.point_from (from, d1, color);
+        if (mid == null) {
+            return null;
+        }
+        var to = PlayerPath.point_from (mid, d2, color);
+        if (to != null && !is_blocked (to, board, color)) {
+            var option = new MoveOption (from, to, d1 + d2, new int[] { idx1, idx2 }, true);
+            if (creates_illegal_prime (from, to, board, color)) {
+                option.is_illegal_prime = true;
+            }
+            return option;
+        } else {
+            var temp_board = board.clone ();
+            temp_board.move_one_checker (from, mid);
+            if (communities_allow_bear_off (mid, d2, temp_board, color)) {
+                return new MoveOption (from, null, d1 + d2, new int[] { idx1, idx2 }, true);
+            }
+        }
+        return null;
     }
 
     private static int[] copy_ints (int[] src) {

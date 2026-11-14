@@ -277,18 +277,10 @@ public class GameSession : Object {
 
     /** Ходы подсвеченной записи лога. */
     public LogMove[] active_log_moves () {
-        if (highlighted_log_id < 0) {
-            return new LogMove[0];
-        }
-        foreach (var r in white_turn_log) {
-            if (r.id == highlighted_log_id) {
-                return r.moves;
-            }
-        }
-        foreach (var r in black_turn_log) {
-            if (r.id == highlighted_log_id) {
-                return r.moves;
-            }
+        TurnRecord? r = null;
+        CheckerColor c;
+        if (highlighted_log_id >= 0 && find_log_record (highlighted_log_id, out r, out c) && r != null) {
+            return r.moves;
         }
         return new LogMove[0];
     }
@@ -389,15 +381,7 @@ public class GameSession : Object {
         if (!is_game_started || is_placing_checkers) {
             return 360;
         }
-        unowned BoardPoint[] route = PlayerPath.route_ref (color);
-        var total = 0;
-        for (var i = 0; i < route.length; i++) {
-            var stack = board.stack_at (route[i]);
-            if (stack != null && stack.color == color) {
-                total += stack.checker_ids.length * (route.length - i);
-            }
-        }
-        return total;
+        return board.calculate_pip_count (color);
     }
 
     public double progress_percentage (CheckerColor color) {
@@ -513,13 +497,7 @@ public class GameSession : Object {
     }
 
     internal static int[] remove_at (int[] arr, int index) {
-        var result = new int[0];
-        for (var i = 0; i < arr.length; i++) {
-            if (i != index) {
-                result += arr[i];
-            }
-        }
-        return result;
+        return ArrUtil.remove_int_at (arr, index);
     }
 
     internal static int index_of (int[] arr, int value) {
@@ -574,19 +552,15 @@ public class GameSession : Object {
     }
 
     internal void insert_log_record (CheckerColor color, TurnRecord record) {
+        var existing = (color == CheckerColor.WHITE) ? white_turn_log : black_turn_log;
+        var arr = new TurnRecord[existing.length + 1];
+        arr[0] = record;
+        for (var i = 0; i < existing.length; i++) {
+            arr[i + 1] = existing[i];
+        }
         if (color == CheckerColor.WHITE) {
-            var arr = new TurnRecord[0];
-            arr += record;
-            foreach (var r in white_turn_log) {
-                arr += r;
-            }
             white_turn_log = arr;
         } else {
-            var arr = new TurnRecord[0];
-            arr += record;
-            foreach (var r in black_turn_log) {
-                arr += r;
-            }
             black_turn_log = arr;
         }
     }

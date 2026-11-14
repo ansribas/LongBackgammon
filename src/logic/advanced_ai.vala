@@ -1480,15 +1480,7 @@ public class AdvancedAI {
     // MARK: - Вспомогательные функции
 
     public static int calculate_pip_count (GameBoard board, CheckerColor color) {
-        unowned BoardPoint[] route = PlayerPath.route_ref (color);
-        var total = 0;
-        for (var index = 0; index < route.length; index++) {
-            var stack = board.stack_at (route[index]);
-            if (stack != null && stack.color == color) {
-                total += stack.checker_ids.length * (route.length - index);
-            }
-        }
-        return total;
+        return board.calculate_pip_count (color);
     }
 
     private static int count_checkers_before (int index, BoardPoint[] route, GameBoard board, CheckerColor color) {
@@ -1558,50 +1550,29 @@ public class AdvancedAI {
     }
 
     public static int[] remaining_dice_after (MoveOption move, int[] dice) {
-        var sorted = new int[move.die_indices.length];
-        for (var i = 0; i < move.die_indices.length; i++) {
-            sorted[i] = move.die_indices[i];
-        }
-        for (var i = 0; i < sorted.length - 1; i++) {
-            for (var j = i + 1; j < sorted.length; j++) {
-                if (sorted[i] < sorted[j]) {
-                    var tmp = sorted[i];
-                    sorted[i] = sorted[j];
-                    sorted[j] = tmp;
+        var result = new int[0];
+        for (var i = 0; i < dice.length; i++) {
+            var removed = false;
+            for (var j = 0; j < move.die_indices.length; j++) {
+                if (move.die_indices[j] == i) {
+                    removed = true;
+                    break;
                 }
             }
-        }
-        var list = new GenericArray<int> ();
-        for (var i = 0; i < dice.length; i++) {
-            list.add (dice[i]);
-        }
-        for (var i = 0; i < sorted.length; i++) {
-            var idx = sorted[i];
-            if (idx >= 0 && idx < list.length) {
-                list.remove_index (idx);
+            if (!removed) {
+                result += dice[i];
             }
-        }
-        var result = new int[list.length];
-        for (var i = 0; i < list.length; i++) {
-            result[i] = list[i];
         }
         return result;
     }
 
     private static bool is_game_first_turn (GameBoard board, CheckerColor color) {
-        var head_point = PlayerPath.start_point (color);
-        var stack = board.stack_at (head_point);
-        var head_count = (stack != null && stack.color == color) ? stack.checker_ids.length : 0;
-        return head_count == 15;
+        var stack = board.stack_at (PlayerPath.start_point (color));
+        return stack != null && stack.color == color && stack.checker_ids.length == 15;
     }
 
     private static bool is_home_point_for (BoardPoint point, CheckerColor color) {
-        var raw = point.raw_value ();
-        if (color == CheckerColor.WHITE) {
-            return raw >= 1 && raw <= 6;
-        } else {
-            return raw >= 13 && raw <= 18;
-        }
+        return MoveValidator.is_home_raw (point.raw_value (), color);
     }
 }
 

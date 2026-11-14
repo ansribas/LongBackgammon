@@ -70,38 +70,39 @@ public class DiceController {
         return true;
     }
 
+    private static async void resolve_rolloff (GameSession session, uint g) {
+        var w_roll = session.white_rolloff_dice;
+        var b_roll = session.black_rolloff_dice;
+        if (w_roll == null || b_roll == null) {
+            session.is_animating = false;
+            session.notify_changed ();
+            return;
+        }
+        var w_sum = w_roll.die1 + w_roll.die2;
+        var b_sum = b_roll.die1 + b_roll.die2;
+        if (w_sum == b_sum) {
+            yield handle_rolloff_tie (session, w_roll, b_roll, g);
+        } else {
+            var winner = w_sum > b_sum ? CheckerColor.WHITE : CheckerColor.BLACK;
+            yield handle_rolloff_win (session, winner, w_roll, b_roll, g);
+        }
+        if (g != session.gen) {
+            return;
+        }
+        session.is_animating = false;
+        session.notify_changed ();
+        if (session.is_computer_turn) {
+            session.auto_play_if_needed ();
+        }
+    }
+
     private static async void handle_rolloff_phase (GameSession session, AnimationSpeed anim, uint g) {
         if (session.white_rolloff_dice == null) {
             yield rolloff_white (session, anim, g);
         } else if (session.black_rolloff_dice == null) {
             yield rolloff_black (session, anim, g);
         } else {
-            var w_roll = session.white_rolloff_dice;
-            var b_roll = session.black_rolloff_dice;
-            var w_sum = w_roll.die1 + w_roll.die2;
-            var b_sum = b_roll.die1 + b_roll.die2;
-            if (w_sum == b_sum) {
-                yield handle_rolloff_tie (session, w_roll, b_roll, g);
-            } else {
-                var winner = w_sum > b_sum ? CheckerColor.WHITE : CheckerColor.BLACK;
-                yield handle_rolloff_win (session, winner, w_roll, b_roll, g);
-            }
-            if (g != session.gen) {
-                return;
-            }
-            session.is_animating = false;
-            session.notify_changed ();
-            if (session.is_computer_turn) {
-                session.auto_play_if_needed ();
-            }
-            return;
-        }
-        if (g != session.gen) {
-            return;
-        }
-        if (session.white_rolloff_dice != null && session.black_rolloff_dice != null) {
-            session.is_animating = false;
-            session.notify_changed ();
+            yield resolve_rolloff (session, g);
         }
     }
 
@@ -162,30 +163,7 @@ public class DiceController {
             return;
         }
 
-        var w_roll = session.white_rolloff_dice;
-        var b_roll = session.black_rolloff_dice;
-        if (w_roll == null || b_roll == null) {
-            session.is_animating = false;
-            session.notify_changed ();
-            return;
-        }
-        var w_sum = w_roll.die1 + w_roll.die2;
-        var b_sum = b_roll.die1 + b_roll.die2;
-
-        if (w_sum == b_sum) {
-            yield handle_rolloff_tie (session, w_roll, b_roll, g);
-        } else {
-            var winner = w_sum > b_sum ? CheckerColor.WHITE : CheckerColor.BLACK;
-            yield handle_rolloff_win (session, winner, w_roll, b_roll, g);
-        }
-        if (g != session.gen) {
-            return;
-        }
-        session.is_animating = false;
-        session.notify_changed ();
-        if (session.is_computer_turn) {
-            session.auto_play_if_needed ();
-        }
+        yield resolve_rolloff (session, g);
     }
 
     private static TurnRecord make_rolloff_record (DiceRoll roll, string text, bool winner, CheckerColor? winner_color) {
@@ -309,6 +287,33 @@ public class DiceController {
         session.save_to_store ();
     }
 
+    private static async bool await_board_dice_animation (GameSession session, double duration, string state_id, uint g) {
+        yield session.sleep_async (duration);
+        if (g != session.gen) {
+            cleanup_board_dice (session, state_id);
+            return false;
+        }
+        yield session.sleep_async (0.70);
+        if (g != session.gen) {
+            cleanup_board_dice (session, state_id);
+            return false;
+        }
+        if (session.board_dice_state != null && session.board_dice_state.id == state_id) {
+            session.board_dice_state.is_transferring = true;
+            session.board_dice_state.transfer_start_time_us = GLib.get_monotonic_time ();
+            session.notify_changed ();
+        }
+        yield session.sleep_async (0.38);
+        cleanup_board_dice (session, state_id);
+        return g == session.gen;
+    }
+
+    private static void cleanup_board_dice (GameSession session, string state_id) {
+        if (session.board_dice_state != null && session.board_dice_state.id == state_id) {
+            session.board_dice_state = null;
+        }
+    }
+
     private static async void handle_board_rolloff_phase (GameSession session, uint g) {
         var duration = (SettingsStore.shared ().game_speed == GameSpeed.SLOW) ? 2.10 : 1.75;
         if (session.white_rolloff_dice == null) {
@@ -316,67 +321,21 @@ public class DiceController {
         } else if (session.black_rolloff_dice == null) {
             yield rolloff_black_board (session, duration, g);
         } else {
-            var w_roll = session.white_rolloff_dice;
-            var b_roll = session.black_rolloff_dice;
-            var w_sum = w_roll.die1 + w_roll.die2;
-            var b_sum = b_roll.die1 + b_roll.die2;
-            if (w_sum == b_sum) {
-                yield handle_rolloff_tie (session, w_roll, b_roll, g);
-            } else {
-                var winner = w_sum > b_sum ? CheckerColor.WHITE : CheckerColor.BLACK;
-                yield handle_rolloff_win (session, winner, w_roll, b_roll, g);
-            }
-            session.is_animating = false;
-            session.notify_changed ();
-            if (session.is_computer_turn) {
-                session.auto_play_if_needed ();
-            }
+            yield resolve_rolloff (session, g);
         }
     }
 
     private static async void rolloff_white_board (GameSession session, double duration, uint g) {
         var roll = DiceRoll.random ();
         var state = new BoardDiceState (CheckerColor.WHITE, roll, duration);
-        var state_id = state.id;
         session.board_dice_state = state;
         session.rolling_die_index = -1;
         session.notify_changed ();
 
-        // 1. Ожидаем завершения физического броска на доске
-        yield session.sleep_async (duration);
-        if (g != session.gen) {
-            if (session.board_dice_state != null && session.board_dice_state.id == state_id) {
-                session.board_dice_state = null;
-            }
+        if (!(yield await_board_dice_animation (session, duration, state.id, g))) {
             return;
         }
 
-        // 2. Пауза в покое на доске (0.70 с)
-        yield session.sleep_async (0.70);
-        if (g != session.gen) {
-            if (session.board_dice_state != null && session.board_dice_state.id == state_id) {
-                session.board_dice_state = null;
-            }
-            return;
-        }
-
-        // 3. Быстрый перенос кубиков точно в слоты панели (0.38 с)
-        if (session.board_dice_state != null && session.board_dice_state.id == state_id) {
-            session.board_dice_state.is_transferring = true;
-            session.board_dice_state.transfer_start_time_us = GLib.get_monotonic_time ();
-            session.notify_changed ();
-        }
-        yield session.sleep_async (0.38);
-        if (g != session.gen) {
-            if (session.board_dice_state != null && session.board_dice_state.id == state_id) {
-                session.board_dice_state = null;
-            }
-            return;
-        }
-
-        if (session.board_dice_state != null && session.board_dice_state.id == state_id) {
-            session.board_dice_state = null;
-        }
         session.white_rolloff_dice = roll;
         session.rolling_dice_value1 = roll.die1;
         session.rolling_dice_value2 = roll.die2;
@@ -388,7 +347,6 @@ public class DiceController {
         session.status_message = "";
         session.notify_changed ();
 
-        // Пауза фиксации кубиков в панели белого игрока перед переходом хода
         yield session.sleep_async (0.75);
         if (g != session.gen) {
             return;
@@ -415,46 +373,14 @@ public class DiceController {
     private static async void rolloff_black_board (GameSession session, double duration, uint g) {
         var roll = DiceRoll.random ();
         var state = new BoardDiceState (CheckerColor.BLACK, roll, duration);
-        var state_id = state.id;
         session.board_dice_state = state;
         session.rolling_die_index = -1;
         session.notify_changed ();
 
-        // 1. Ожидаем завершения физического броска на доске
-        yield session.sleep_async (duration);
-        if (g != session.gen) {
-            if (session.board_dice_state != null && session.board_dice_state.id == state_id) {
-                session.board_dice_state = null;
-            }
+        if (!(yield await_board_dice_animation (session, duration, state.id, g))) {
             return;
         }
 
-        // 2. Пауза в покое на доске (0.70 с)
-        yield session.sleep_async (0.70);
-        if (g != session.gen) {
-            if (session.board_dice_state != null && session.board_dice_state.id == state_id) {
-                session.board_dice_state = null;
-            }
-            return;
-        }
-
-        // 3. Быстрый перенос кубиков точно в слоты панели (0.38 с)
-        if (session.board_dice_state != null && session.board_dice_state.id == state_id) {
-            session.board_dice_state.is_transferring = true;
-            session.board_dice_state.transfer_start_time_us = GLib.get_monotonic_time ();
-            session.notify_changed ();
-        }
-        yield session.sleep_async (0.38);
-        if (g != session.gen) {
-            if (session.board_dice_state != null && session.board_dice_state.id == state_id) {
-                session.board_dice_state = null;
-            }
-            return;
-        }
-
-        if (session.board_dice_state != null && session.board_dice_state.id == state_id) {
-            session.board_dice_state = null;
-        }
         session.black_rolloff_dice = roll;
         session.rolling_dice_value1 = roll.die1;
         session.rolling_dice_value2 = roll.die2;
@@ -463,36 +389,12 @@ public class DiceController {
         session.rolling_die_index = 1;
         session.notify_changed ();
 
-        // Пауза фиксации кубиков в панели чёрного игрока
         yield session.sleep_async (0.75);
         if (g != session.gen) {
             return;
         }
 
-        var w_roll = session.white_rolloff_dice;
-        var b_roll = session.black_rolloff_dice;
-        if (w_roll == null || b_roll == null) {
-            session.is_animating = false;
-            session.notify_changed ();
-            return;
-        }
-        var w_sum = w_roll.die1 + w_roll.die2;
-        var b_sum = b_roll.die1 + b_roll.die2;
-
-        if (w_sum == b_sum) {
-            yield handle_rolloff_tie (session, w_roll, b_roll, g);
-        } else {
-            var winner = w_sum > b_sum ? CheckerColor.WHITE : CheckerColor.BLACK;
-            yield handle_rolloff_win (session, winner, w_roll, b_roll, g);
-        }
-        if (g != session.gen) {
-            return;
-        }
-        session.is_animating = false;
-        session.notify_changed ();
-        if (session.is_computer_turn) {
-            session.auto_play_if_needed ();
-        }
+        yield resolve_rolloff (session, g);
     }
 
     private static async void handle_board_normal_roll (GameSession session, uint g) {
@@ -504,52 +406,41 @@ public class DiceController {
         var duration = (SettingsStore.shared ().game_speed == GameSpeed.SLOW) ? 2.10 : 1.75;
         var roll = DiceRoll.random ();
         var state = new BoardDiceState (session.current_player, roll, duration);
-        var state_id = state.id;
         session.board_dice_state = state;
         session.notify_changed ();
 
-        // 1. Ожидаем завершения физического броска на доске (звук удара t = 0.35 воспроизводится в BoardView)
-        yield session.sleep_async (duration);
-        if (g != session.gen) {
-            if (session.board_dice_state != null && session.board_dice_state.id == state_id) {
-                session.board_dice_state = null;
-            }
+        if (!(yield await_board_dice_animation (session, duration, state.id, g))) {
             return;
         }
 
         var rolling_player = session.current_player;
-
-        // 2. Пауза в покое на доске (0.70 с) — кубики застывают на доске
-        yield session.sleep_async (0.70);
-        if (g != session.gen) {
-            if (session.board_dice_state != null && session.board_dice_state.id == state_id) {
-                session.board_dice_state = null;
-            }
-            return;
-        }
-
-        // 3. Быстрый перенос кубиков точно в слоты панели (0.38 с)
-        if (session.board_dice_state != null && session.board_dice_state.id == state_id) {
-            session.board_dice_state.is_transferring = true;
-            session.board_dice_state.transfer_start_time_us = GLib.get_monotonic_time ();
-            session.notify_changed ();
-        }
-        yield session.sleep_async (0.38);
-        if (g != session.gen) {
-            if (session.board_dice_state != null && session.board_dice_state.id == state_id) {
-                session.board_dice_state = null;
-            }
-            return;
-        }
-
-        // 4. Очищаем доску и включаем кубики в панели управления
-        if (session.board_dice_state != null && session.board_dice_state.id == state_id) {
-            session.board_dice_state = null;
-        }
         apply_dice_roll (session, roll);
         session.update_available_moves_cache ();
         session.notify_changed ();
 
+        yield finish_normal_roll (session, roll, rolling_player, is_comp, g);
+    }
+
+    private static async void handle_normal_roll (GameSession session, AnimationSpeed anim, uint g) {
+        session.rolling_die_index = -1;
+        var is_comp = session.is_computer_turn;
+        if (is_comp) {
+            session.status_message = Localization.status_computer_moving ();
+        }
+        if (!(yield animate_rolling (session, anim, g))) {
+            return;
+        }
+
+        var roll = DiceRoll.random ();
+        var rolling_player = session.current_player;
+        apply_dice_roll (session, roll);
+        session.update_available_moves_cache ();
+        session.notify_changed ();
+
+        yield finish_normal_roll (session, roll, rolling_player, is_comp, g);
+    }
+
+    private static async void finish_normal_roll (GameSession session, DiceRoll roll, CheckerColor rolling_player, bool is_comp, uint g) {
         if (session.current_player == rolling_player && session.is_game_started && !session.is_game_over) {
             if (roll.is_double) {
                 yield handle_double_animation (session, g);
@@ -583,66 +474,9 @@ public class DiceController {
             return;
         }
 
-        if (is_comp) {
-            session.is_animating = false;
-            session.notify_changed ();
-            if (session.is_computer_turn) {
-                session.status_message = Localization.status_computer_moving ();
-                session.notify_changed ();
-                yield session.perform_computer_turn (g);
-            }
-        }
-    }
-
-    private static async void handle_normal_roll (GameSession session, AnimationSpeed anim, uint g) {
-        session.rolling_die_index = -1;
-        if (session.is_computer_turn) {
-            session.status_message = Localization.status_computer_moving ();
-        }
-        if (!(yield animate_rolling (session, anim, g))) {
-            return;
-        }
-
-        var roll = DiceRoll.random ();
-        var rolling_player = session.current_player;
-        apply_dice_roll (session, roll);
-        session.update_available_moves_cache ();
-        session.notify_changed ();
-
-        if (roll.is_double) {
-            yield handle_double_animation (session, g);
-            if (g != session.gen) {
-                return;
-            }
-        }
-
-        if (session.current_player != rolling_player || !session.is_game_started || session.is_game_over) {
-            return;
-        }
-
-        if (!session.is_computer_turn) {
-            session.status_message = Localization.status_select_checker ();
-            session.is_animating = false;
-            session.notify_changed ();
-        }
-
-        var has_playable = false;
-        foreach (var o in session.cached_legal_options) {
-            if (!o.is_illegal_prime) {
-                has_playable = true;
-                break;
-            }
-        }
-        var initial_dice_count = GameSession.move_values (roll).length;
-        if (!has_playable && session.remaining_dice.length == initial_dice_count) {
-            session.notify_changed ();
-            yield handle_no_moves (session, roll, g);
-            return;
-        }
-
         session.is_animating = false;
         session.notify_changed ();
-        if (session.is_computer_turn) {
+        if (is_comp && session.is_computer_turn) {
             session.status_message = Localization.status_computer_moving ();
             session.notify_changed ();
             yield session.perform_computer_turn (g);
