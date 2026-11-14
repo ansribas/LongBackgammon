@@ -126,6 +126,35 @@ public class Application : Adw.Application {
         }
     }
 
+    private bool has_toggle_button (Gtk.Widget widget) {
+        if (widget is Gtk.ToggleButton) {
+            return true;
+        }
+        var child = widget.get_first_child ();
+        while (child != null) {
+            if (has_toggle_button (child)) {
+                return true;
+            }
+            child = child.get_next_sibling ();
+        }
+        return false;
+    }
+
+    private Adw.PreferencesGroup? find_shortcuts_nav_group (Gtk.Widget widget) {
+        var child = widget.get_first_child ();
+        while (child != null) {
+            if (child is Adw.PreferencesGroup && has_toggle_button (child)) {
+                return (Adw.PreferencesGroup) child;
+            }
+            var found = find_shortcuts_nav_group (child);
+            if (found != null) {
+                return found;
+            }
+            child = child.get_next_sibling ();
+        }
+        return null;
+    }
+
     private void on_shortcuts_action () {
         var win = current_window ();
         var lang_code = SettingsStore.shared ().language.to_raw ();
@@ -133,10 +162,10 @@ public class Application : Adw.Application {
         GLib.Intl.setlocale (GLib.LocaleCategory.MESSAGES, "");
 
         var builder = new Gtk.Builder.from_resource ("/io/github/ansribas/LongBackgammon/shortcuts-dialog.ui");
-        var dialog = builder.get_object ("shortcuts_dialog") as Gtk.Window;
+        var dialog = builder.get_object ("shortcuts_dialog") as Adw.Dialog;
         if (dialog != null) {
-            set_shortcut_title (builder, "grp_game", Localization.shortcuts_section_game ());
-            set_shortcut_title (builder, "grp_general", Localization.shortcuts_section_general ());
+            set_shortcut_title (builder, "sec_game", Localization.shortcuts_section_game ());
+            set_shortcut_title (builder, "sec_general", Localization.shortcuts_section_general ());
 
             set_shortcut_title (builder, "sc_new_game", Localization.button_new_game ());
             set_shortcut_title (builder, "sc_undo", Localization.menu_undo ());
@@ -147,8 +176,22 @@ public class Application : Adw.Application {
             set_shortcut_title (builder, "sc_fullscreen", Localization.menu_fullscreen ());
             set_shortcut_title (builder, "sc_quit", Localization.menu_quit ());
 
-            dialog.set_transient_for (win);
-            dialog.present ();
+            dialog.present (win);
+
+            // Включаем отображение нативных кнопок-фильтров разделов («Партия» и «Общие»)
+            var nav = find_shortcuts_nav_group (dialog);
+            if (nav != null) {
+                nav.visible = true;
+                bool is_updating = false;
+                nav.notify["visible"].connect (() => {
+                    if (is_updating) {
+                        return;
+                    }
+                    is_updating = true;
+                    nav.visible = true;
+                    is_updating = false;
+                });
+            }
         }
     }
 

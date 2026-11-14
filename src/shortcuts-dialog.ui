@@ -1,77 +1,70 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <interface>
-  <object class="GtkShortcutsWindow" id="shortcuts_dialog">
-    <property name="modal">True</property>
+  <requires lib="gtk" version="4.0"/>
+  <requires lib="libadwaita" version="1.0"/>
+  <object class="AdwShortcutsDialog" id="shortcuts_dialog">
     <child>
-      <object class="GtkShortcutsSection">
-        <property name="visible">True</property>
-        <property name="section-name">shortcuts</property>
+      <object class="AdwShortcutsSection" id="sec_game">
+        <property name="title" translatable="yes">Game</property>
         <child>
-          <object class="GtkShortcutsGroup" id="grp_game">
-            <property name="visible">True</property>
-            <property name="title" translatable="yes">Game</property>
-            <child>
-              <object class="GtkShortcutsShortcut" id="sc_new_game">
-                <property name="visible">True</property>
-                <property name="title" translatable="yes">New Game</property>
-                <property name="action-name">app.new-game</property>
-              </object>
-            </child>
-            <child>
-              <object class="GtkShortcutsShortcut" id="sc_undo">
-                <property name="visible">True</property>
-                <property name="title" translatable="yes">Undo Move</property>
-                <property name="action-name">app.undo</property>
-              </object>
-            </child>
-            <child>
-              <object class="GtkShortcutsShortcut" id="sc_stats">
-                <property name="visible">True</property>
-                <property name="title" translatable="yes">Statistics</property>
-                <property name="action-name">app.stats</property>
-              </object>
-            </child>
-            <child>
-              <object class="GtkShortcutsShortcut" id="sc_rules">
-                <property name="visible">True</property>
-                <property name="title" translatable="yes">Game Rules</property>
-                <property name="action-name">app.rules</property>
-              </object>
-            </child>
+          <object class="AdwShortcutsItem" id="sc_new_game">
+            <property name="title" translatable="yes">New Game</property>
+            <property name="accelerator">&lt;Primary&gt;n</property>
+            <property name="action-name">app.new-game</property>
           </object>
         </child>
         <child>
-          <object class="GtkShortcutsGroup" id="grp_general">
-            <property name="visible">True</property>
-            <property name="title" translatable="yes">General</property>
-            <child>
-              <object class="GtkShortcutsShortcut" id="sc_settings">
-                <property name="visible">True</property>
-                <property name="title" translatable="yes">Preferences</property>
-                <property name="action-name">app.settings</property>
-              </object>
-            </child>
-            <child>
-              <object class="GtkShortcutsShortcut" id="sc_shortcuts">
-                <property name="visible">True</property>
-                <property name="title" translatable="yes">Keyboard Shortcuts</property>
-                <property name="action-name">app.shortcuts</property>
-              </object>
-            </child>
-            <child>
-              <object class="GtkShortcutsShortcut" id="sc_fullscreen">
-                <property name="visible">True</property>
-                <property name="title" translatable="yes">Toggle Full Screen</property>
-                <property name="action-name">app.fullscreen</property>
-              </object>
-            </child>
-            <child>
-              <object class="GtkShortcutsShortcut" id="sc_quit">
-                <property name="visible">True</property>
-                <property name="title" translatable="yes">Quit</property>
-                <property name="action-name">app.quit</property>
-              </object>
-            </child>
+          <object class="AdwShortcutsItem" id="sc_undo">
+            <property name="title" translatable="yes">Undo Move</property>
+            <property name="accelerator">&lt;Primary&gt;z</property>
+            <property name="action-name">app.undo</property>
+          </object>
+        </child>
+        <child>
+          <object class="AdwShortcutsItem" id="sc_stats">
+            <property name="title" translatable="yes">Statistics</property>
+            <property name="accelerator">&lt;Primary&gt;&lt;Alt&gt;s</property>
+            <property name="action-name">app.stats</property>
+          </object>
+        </child>
+        <child>
+          <object class="AdwShortcutsItem" id="sc_rules">
+            <property name="title" translatable="yes">Game Rules</property>
+            <property name="accelerator">F1</property>
+            <property name="action-name">app.rules</property>
+          </object>
+        </child>
+      </object>
+    </child>
+    <child>
+      <object class="AdwShortcutsSection" id="sec_general">
+        <property name="title" translatable="yes">General</property>
+        <child>
+          <object class="AdwShortcutsItem" id="sc_settings">
+            <property name="title" translatable="yes">Preferences</property>
+            <property name="accelerator">&lt;Primary&gt;comma</property>
+            <property name="action-name">app.settings</property>
+          </object>
+        </child>
+        <child>
+          <object class="AdwShortcutsItem" id="sc_shortcuts">
+            <property name="title" translatable="yes">Keyboard Shortcuts</property>
+            <property name="accelerator">&lt;Primary&gt;question</property>
+            <property name="action-name">app.shortcuts</property>
+          </object>
+        </child>
+        <child>
+          <object class="AdwShortcutsItem" id="sc_fullscreen">
+            <property name="title" translatable="yes">Toggle Full Screen</property>
+            <property name="accelerator">F11 &lt;Primary&gt;&lt;Super&gt;f</property>
+            <property name="action-name">app.fullscreen</property>
+          </object>
+        </child>
+        <child>
+          <object class="AdwShortcutsItem" id="sc_quit">
+            <property name="title" translatable="yes">Quit</property>
+            <property name="accelerator">&lt;Primary&gt;q</property>
+            <property name="action-name">app.quit</property>
           </object>
         </child>
       </object>

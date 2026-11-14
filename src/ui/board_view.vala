@@ -8,56 +8,6 @@
 
 namespace Longbackgammon {
 
-/** Позиция фишки для анимации (в долях стороны доски, чтобы не зависеть от размеров). */
-public class CPoint {
-    public double x;
-    public double y;
-
-    public CPoint (double x, double y) {
-        this.x = x;
-        this.y = y;
-    }
-}
-
-/** Активное перемещение фишки (координаты в долях стороны доски). */
-public class CMove {
-    public double sx;
-    public double sy;
-    public double ex;
-    public double ey;
-    public double t0;
-    public double duration;
-    /** true — пружина (возврат после неудачного перетаскивания), false — easeInOut. */
-    public bool spring;
-    public double arc_scale;
-    public bool is_top_half;
-    public double scale;
-    public double lift;
-    public CheckerColor color;
-    public bool is_drag_drop;
-    public int stack_index;
-
-    public CMove (double sx, double sy, double ex, double ey, double t0, double duration,
-                  bool spring = false, double arc_scale = 0.0, bool is_top_half = false,
-                  CheckerColor color = CheckerColor.WHITE, bool is_drag_drop = false,
-                  int stack_index = 0) {
-        this.sx = sx;
-        this.sy = sy;
-        this.ex = ex;
-        this.ey = ey;
-        this.t0 = t0;
-        this.duration = duration;
-        this.spring = spring;
-        this.arc_scale = arc_scale;
-        this.is_top_half = is_top_half;
-        this.scale = is_drag_drop ? 1.08 : 1.0;
-        this.lift = is_drag_drop ? 0.4 : 0.0;
-        this.color = color;
-        this.is_drag_drop = is_drag_drop;
-        this.stack_index = stack_index;
-    }
-}
-
 public class BoardView : Gtk.DrawingArea {
     public GameSession session { get; construct set; }
     public bool overlay_presented { get; set; default = false; }
@@ -65,9 +15,6 @@ public class BoardView : Gtk.DrawingArea {
     public signal void new_game_requested ();
 
     // Цвет подсветки ходов из лога (насыщенный синий)
-    private const double LOG_BLUE_R = 0.0;
-    private const double LOG_BLUE_G = 0.478;
-    private const double LOG_BLUE_B = 1.0;
 
     // Минимальная дистанция смещения курсора в пикселях для старта перетаскивания
     private const double DRAG_MIN_DISTANCE = 10.0;
@@ -82,10 +29,9 @@ public class BoardView : Gtk.DrawingArea {
     private int cached_scale_factor = 0;
     private double cached_sprite_pad = 0.0;
 
-    // Кэшированные объекты Pango для отрисовки цифр в мишенях и истории без покадровых аллокаций
+    // Кэшированные объекты Pango для отрисовки цифр в мишенях без покадровых аллокаций
     private Pango.Layout? cached_pango_layout = null;
     private Pango.FontDescription? cached_circle_font = null;
-    private Pango.FontDescription? cached_index_font = null;
 
     // Кэш статичного слоя (доска + подсветки + неподвижные фишки) на время полёта/перетаскивания
     private Cairo.ImageSurface? static_board_surface = null;
@@ -363,11 +309,8 @@ public class BoardView : Gtk.DrawingArea {
     }
 
     /** Позиция фишки index в стопке точки (пиксели доски). */
-    private void stack_position (BoardPoint point, int index, double side, out double x, out double y, BoardSide? side_option = null) {
-        var diameter = BoardLayout.checker_diameter (side);
-        BoardLayout.position (point, side, out x, out y, side_option);
-        var dir = point.stack_direction_for (side_option ?? SettingsStore.shared ().board_side);
-        y += BoardLayout.stack_offset (index, diameter, dir);
+    private inline void stack_position (BoardPoint point, int index, double side, out double x, out double y, BoardSide? side_option = null) {
+        BoardGeometry.stack_position (point, index, side, out x, out y, side_option);
     }
 
     private int stack_count (BoardPoint point) {
@@ -375,13 +318,8 @@ public class BoardView : Gtk.DrawingArea {
         return (stack == null) ? 0 : stack.checker_ids.length;
     }
 
-    private static bool contains_point (BoardPoint[] arr, BoardPoint p) {
-        foreach (var x in arr) {
-            if (x == p) {
-                return true;
-            }
-        }
-        return false;
+    private static inline bool contains_point (BoardPoint[] arr, BoardPoint p) {
+        return BoardGeometry.contains_point (arr, p);
     }
 
     // MARK: - Анимация перемещения фишек
@@ -399,32 +337,7 @@ public class BoardView : Gtk.DrawingArea {
 
     /** Целевые позиции всех фишек в долях стороны доски. */
     private HashTable<uint8, CPoint> build_positions (BoardSide? side_option = null) {
-        var map = new HashTable<uint8, CPoint> (null, null);
-        for (var raw = 1; raw <= 24; raw++) {
-            var point = (BoardPoint) raw;
-            var stack = session.board.stack_at (point);
-            if (stack == null) {
-                continue;
-            }
-            for (var i = 0; i < stack.checker_ids.length; i++) {
-                double x, y;
-                stack_position (point, i, 1.0, out x, out y, side_option);
-                map.insert (stack.checker_ids[i], new CPoint (x, y));
-            }
-        }
-        uint8[] wb = session.board.white_borne_off_ids;
-        for (var i = 0; i < wb.length; i++) {
-            double bx, by;
-            BoardLayout.bear_off_position (CheckerColor.WHITE, i, 1.0, out bx, out by, side_option);
-            map.insert (wb[i], new CPoint (bx, by));
-        }
-        uint8[] bb = session.board.black_borne_off_ids;
-        for (var i = 0; i < bb.length; i++) {
-            double bx, by;
-            BoardLayout.bear_off_position (CheckerColor.BLACK, i, 1.0, out bx, out by, side_option);
-            map.insert (bb[i], new CPoint (bx, by));
-        }
-        return map;
+        return BoardGeometry.build_positions (session.board, side_option);
     }
 
     private double frame_now_sec () {
@@ -600,36 +513,12 @@ public class BoardView : Gtk.DrawingArea {
         return copy;
     }
 
-    /** Плавная интерполяция ease-in-out по кубической кривой Безье (0.42, 0, 0.58, 1). */
-    private static double ease_in_out (double t) {
-        if (t <= 0) {
-            return 0;
-        }
-        if (t >= 1) {
-            return 1;
-        }
-        // Решаем x(u) = t методом Ньютона для кривой Безье (0.42,0)-(0.58,1)
-        double u = t;
-        for (var i = 0; i < 8; i++) {
-            var x = 3 * (1 - u) * (1 - u) * u * 0.42 + 3 * (1 - u) * u * u * 0.58 + u * u * u - t;
-            var dx = 3 * (1 - u) * (1 - u) * 0.42 + 6 * (1 - u) * u * (0.58 - 0.42) + 3 * u * u * (1 - 0.58);
-            if (Math.fabs (dx) < 1e-6) {
-                break;
-            }
-            u -= x / dx;
-            u = double.max (0, double.min (1, u));
-        }
-        return 3 * (1 - u) * u * u + u * u * u;
+    private static inline double ease_in_out (double t) {
+        return BoardGeometry.ease_in_out (t);
     }
 
-    /** Затухающие гармонические колебания пружины (response, dampingFraction). */
-    private static double spring_value (double t, double response = PlacementAnimation.SPRING_RESPONSE, double damping = PlacementAnimation.SPRING_DAMPING) {
-        var resp = response > 0.001 ? response : PlacementAnimation.SPRING_RESPONSE;
-        var damp = damping > 0.001 ? damping : PlacementAnimation.SPRING_DAMPING;
-        var omega = 2 * Math.PI / resp;
-        var zeta = damp;
-        var wd = omega * Math.sqrt (1 - zeta * zeta);
-        return 1.0 - Math.exp (-zeta * omega * t) * (Math.cos (wd * t) + zeta / Math.sqrt (1 - zeta * zeta) * Math.sin (wd * t));
+    private static inline double spring_value (double t, double response = PlacementAnimation.SPRING_RESPONSE, double damping = PlacementAnimation.SPRING_DAMPING) {
+        return BoardGeometry.spring_value (t, response, damping);
     }
 
     /** Обновляет текущие позиции по активным перемещениям. */
@@ -815,91 +704,16 @@ public class BoardView : Gtk.DrawingArea {
 
     // MARK: - Определение элементов под курсором (Hit-testing)
 
-    /** Зелёная мишень хода (верхний слой, zIndex 1000). */
-    private BoardPoint? green_target_at (double px, double py, double side) {
-        if (session.selected_point == null || session.is_computer_turn) {
-            return null;
-        }
-        var r = BoardLayout.checker_diameter (side) / 2.0;
-        foreach (var t in session.target_points ()) {
-            double tx, ty;
-            stack_position (t, stack_count (t), side, out tx, out ty);
-            if (Math.hypot (px - tx, py - ty) <= r) {
-                return t;
-            }
-        }
-        return null;
+    private inline BoardPoint? green_target_at (double px, double py, double side) {
+        return BoardGeometry.green_target_at (session, px, py, side);
     }
 
-    private bool is_bear_off_available (CheckerColor color) {
-        return session.current_player == color && session.can_bear_off_selected && !session.is_computer_turn;
+    private inline bool bear_off_area_hit (double px, double py, double side) {
+        return BoardGeometry.bear_off_area_hit (session, px, py, side);
     }
 
-    /** Кнопки выноса: кружок на месте следующей фишки и капсула на весь столбец накопителя. */
-    private bool bear_off_area_hit (double px, double py, double side) {
-        var color = session.current_player;
-        if (!is_bear_off_available (color)) {
-            return false;
-        }
-        var diameter = BoardLayout.checker_diameter (side);
-        var count = session.board.borne_off_count (color);
-        double nx, ny;
-        BoardLayout.bear_off_position (color, count, side, out nx, out ny);
-        if (Math.hypot (px - nx, py - ny) <= diameter / 2.0) {
-            return true;
-        }
-        double sx, sy;
-        BoardLayout.bear_off_position (color, 0, side, out sx, out sy);
-        var cx = (sx + nx) / 2.0;
-        var cy = (sy + ny) / 2.0;
-        var spacing = diameter * 1.01;
-        var h = count > 0 ? (count + 1) * spacing + diameter : diameter * 2;
-        var w = diameter * 1.5;
-        // Капсула: прямоугольник со скруглёнными концами радиуса w/2
-        var dx = Math.fabs (px - cx);
-        var dy = Math.fabs (py - cy);
-        if (dx > w / 2.0 || dy > h / 2.0) {
-            return false;
-        }
-        var straight = h / 2.0 - w / 2.0;
-        if (dy <= straight) {
-            return true;
-        }
-        return Math.hypot (dx, dy - straight) <= w / 2.0;
-    }
-
-    /** Фишка под курсором (верхняя по z: больший индекс в стопке рисуется выше). */
-    private BoardPoint? checker_at (double px, double py, double side, out int index) {
-        var r = BoardLayout.checker_diameter (side) / 2.0;
-        BoardPoint? best = null;
-        int best_idx = -1;
-        index = -1;
-        for (var raw = 1; raw <= 24; raw++) {
-            var point = (BoardPoint) raw;
-            var count = stack_count (point);
-            if (count == 0) {
-                continue;
-            }
-            double bx, by;
-            BoardLayout.position (point, side, out bx, out by);
-            if (Math.fabs (px - bx) > r) {
-                continue;
-            }
-            for (var i = count - 1; i >= 0; i--) {
-                if (i < best_idx) {
-                    break;
-                }
-                double x, y;
-                stack_position (point, i, side, out x, out y);
-                if (Math.hypot (px - x, py - y) <= r) {
-                    best = point;
-                    best_idx = i;
-                    break;
-                }
-            }
-        }
-        index = best_idx;
-        return best;
+    private inline BoardPoint? checker_at (double px, double py, double side, out int index) {
+        return BoardGeometry.checker_at (session, px, py, side, out index);
     }
 
     // MARK: - Клики
@@ -1716,217 +1530,8 @@ public class BoardView : Gtk.DrawingArea {
 
     // MARK: - История (HistoryLogView)
 
-    private void draw_history_log (Cairo.Context cr, double side) {
-        if (!SettingsStore.shared ().highlight_log_paths || log_shown_id < 0) {
-            return;
-        }
-        TurnRecord? record;
-        CheckerColor color;
-        if (!session.find_log_record (log_shown_id, out record, out color) || record == null) {
-            return;
-        }
-        var t = (frame_now_sec () - log_anim_t0) / 0.2;
-        var e = ease_in_out (double.min (1.0, double.max (0.0, t)));
-        // Появление: стрелка «прорисовывается» (progress 0→1) и проявляется; исчезновение — растворение
-        var progress = log_fading_out ? 1.0 : e;
-        var alpha = log_fading_out ? 1.0 - e : e;
-        if (alpha <= 0.001 || progress <= 0) {
-            return;
-        }
-
-        var diameter = BoardLayout.checker_diameter (side);
-        var radius = diameter * 0.52;
-        var arrow_width = double.max (3.5, diameter * 0.08);
-
-        cr.push_group ();
-
-        // 1. Круги подсветки пройденных пунктов (с номерами индексов, если включено)
-        var points = new BoardPoint[0];
-        foreach (var m in record.moves) {
-            foreach (var s in m.steps) {
-                if (!contains_point (points, s.from)) {
-                    points += s.from;
-                }
-                if (s.to != null && !contains_point (points, s.to)) {
-                    points += s.to;
-                }
-            }
-        }
-        var show_indices = SettingsStore.shared ().show_cell_indices;
-        var circle_opacity = show_indices ? 0.85 : 0.35;
-        foreach (var p in points) {
-            double x, y;
-            BoardLayout.position (p, side, out x, out y);
-            cr.set_source_rgba (LOG_BLUE_R, LOG_BLUE_G, LOG_BLUE_B, circle_opacity);
-            cr.arc (x, y, diameter / 2.0, 0, 2 * Math.PI);
-            cr.fill ();
-
-            if (show_indices) {
-                cr.set_source_rgba (1.0, 1.0, 1.0, 0.3);
-                cr.set_line_width (1.0);
-                cr.arc (x, y, diameter / 2.0 - 0.5, 0, 2 * Math.PI);
-                cr.stroke ();
-
-                var layout = get_cached_pango_layout (cr);
-                if (cached_index_font == null) {
-                    cached_index_font = new Pango.FontDescription ();
-                    cached_index_font.set_family ("sans-serif");
-                    cached_index_font.set_weight (Pango.Weight.BOLD);
-                }
-                cached_index_font.set_absolute_size (diameter * 0.44 * Pango.SCALE);
-                layout.set_font_description (cached_index_font);
-                layout.set_text (p.raw_value ().to_string (), -1);
-                int lw, lh;
-                layout.get_pixel_size (out lw, out lh);
-
-                cr.set_source_rgba (0.0, 0.0, 0.0, 0.4);
-                cr.move_to (x - lw / 2.0, y - lh / 2.0 + 1.0);
-                Pango.cairo_show_layout (cr, layout);
-
-                cr.set_source_rgba (1.0, 1.0, 1.0, 1.0);
-                cr.move_to (x - lw / 2.0, y - lh / 2.0);
-                Pango.cairo_show_layout (cr, layout);
-            }
-        }
-
-        // 2. Стрелки перемещения
-        var log = (color == CheckerColor.WHITE) ? session.white_turn_log : session.black_turn_log;
-        var turn_idx = -1;
-        for (var i = 0; i < log.length; i++) {
-            if (log[i].id == record.id) {
-                turn_idx = i;
-                break;
-            }
-        }
-        // Фишки, вынесенные в более ранних (старых) ходах: лог хранится от новых к старым
-        var older = 0;
-        if (turn_idx >= 0) {
-            for (var i = turn_idx + 1; i < log.length; i++) {
-                foreach (var m in log[i].moves) {
-                    older += count_bearoff_steps (m, m.steps.length);
-                }
-            }
-        }
-
-        var turn_prev = 0;
-        for (var midx = 0; midx < record.moves.length; midx++) {
-            var move = record.moves[midx];
-            for (var sdx = 0; sdx < move.steps.length; sdx++) {
-                var step = move.steps[sdx];
-                double fx, fy, tx, ty;
-                BoardLayout.position (step.from, side, out fx, out fy);
-                if (step.to != null) {
-                    BoardLayout.position (step.to, side, out tx, out ty);
-                } else if (turn_idx < 0) {
-                    BoardLayout.bear_off_position (color, 0, side, out tx, out ty);
-                } else {
-                    var idx = older + turn_prev + count_bearoff_steps (move, sdx);
-                    BoardLayout.bear_off_position (color, idx, side, out tx, out ty);
-                }
-                draw_arrow (cr, fx, fy, tx, ty, progress, radius, radius, arrow_width, side);
-            }
-            turn_prev += count_bearoff_steps (move, move.steps.length);
-        }
-
-        cr.pop_group_to_source ();
-        cr.paint_with_alpha (alpha);
+    private inline void draw_history_log (Cairo.Context cr, double side) {
+        BoardHistoryRenderer.draw_history_log (cr, side, session, log_shown_id, log_anim_t0, log_fading_out, frame_now_sec ());
     }
-
-    /** Количество выносов среди первых `limit` шагов хода. */
-    private int count_bearoff_steps (LogMove move, int limit) {
-        var n = 0;
-        for (var i = 0; i < limit && i < move.steps.length; i++) {
-            if (move.steps[i].to == null) {
-                n++;
-            }
-        }
-        return n;
-    }
-
-    /** Стрелка (ArrowShape): квадратичная дуга к центру доски, наконечник 30°, тень. */
-    private void draw_arrow (Cairo.Context cr, double fx, double fy, double tx, double ty, double progress,
-                             double start_radius, double end_radius, double width, double side) {
-        var dx = tx - fx;
-        var dy = ty - fy;
-        var dist = Math.sqrt (dx * dx + dy * dy);
-        if (dist <= 1 || progress <= 0) {
-            return;
-        }
-        var mid_x = (fx + tx) / 2.0;
-        var mid_y = (fy + ty) / 2.0;
-        var arc_depth = double.max (16, dist * 0.18);
-        var offset_y = mid_y < side / 2.0 ? arc_depth : -arc_depth;
-        var cx = mid_x;
-        var cy = mid_y + offset_y;
-
-        var safe_start = double.min (start_radius, dist * 0.42);
-        var safe_end = double.min (end_radius, dist * 0.42);
-
-        double ax = fx, ay = fy;
-        var out_dx = cx - fx;
-        var out_dy = cy - fy;
-        var out_len = Math.sqrt (out_dx * out_dx + out_dy * out_dy);
-        if (out_len > 0 && safe_start > 0) {
-            ax = fx + out_dx / out_len * safe_start;
-            ay = fy + out_dy / out_len * safe_start;
-        }
-        double bx = tx, by = ty;
-        var in_dx = tx - cx;
-        var in_dy = ty - cy;
-        var in_len = Math.sqrt (in_dx * in_dx + in_dy * in_dy);
-        if (in_len > 0 && safe_end > 0) {
-            bx = tx - in_dx / in_len * safe_end;
-            by = ty - in_dy / in_len * safe_end;
-        }
-
-        // Обрезка кривой до progress (де Кастельжо)
-        var t = double.min (1.0, progress);
-        var c1x = ax + (cx - ax) * t;
-        var c1y = ay + (cy - ay) * t;
-        var tipx = Math.pow (1 - t, 2) * ax + 2 * (1 - t) * t * cx + t * t * bx;
-        var tipy = Math.pow (1 - t, 2) * ay + 2 * (1 - t) * t * cy + t * t * by;
-
-        var tanx = 2 * (1 - t) * (cx - ax) + 2 * t * (bx - cx);
-        var tany = 2 * (1 - t) * (cy - ay) + 2 * t * (by - cy);
-        var angle = Math.atan2 (tany, tanx);
-        var head = double.min (15, double.max (10, dist * 0.15));
-        var head_angle = Math.PI / 6;
-
-        cr.set_line_width (width);
-        cr.set_line_cap (Cairo.LineCap.ROUND);
-        cr.set_line_join (Cairo.LineJoin.ROUND);
-
-        // Тень (black 0.35, radius 2, y +1) — два смещённых слоя
-        for (var pass = 0; pass < 3; pass++) {
-            double ox = 0, oy = 0;
-            if (pass == 0) {
-                oy = 1.0;
-                cr.set_source_rgba (0, 0, 0, 0.18);
-                cr.set_line_width (width + 3);
-            } else if (pass == 1) {
-                oy = 1.0;
-                cr.set_source_rgba (0, 0, 0, 0.22);
-                cr.set_line_width (width + 1);
-            } else {
-                cr.set_source_rgba (LOG_BLUE_R, LOG_BLUE_G, LOG_BLUE_B, 0.92);
-                cr.set_line_width (width);
-            }
-            cr.new_path ();
-            // Квадратичная → кубическая кривая
-            var q1x = ax + 2.0 / 3.0 * (c1x - ax);
-            var q1y = ay + 2.0 / 3.0 * (c1y - ay);
-            var q2x = tipx + 2.0 / 3.0 * (c1x - tipx);
-            var q2y = tipy + 2.0 / 3.0 * (c1y - tipy);
-            cr.move_to (ax + ox, ay + oy);
-            cr.curve_to (q1x + ox, q1y + oy, q2x + ox, q2y + oy, tipx + ox, tipy + oy);
-            cr.move_to (tipx + ox, tipy + oy);
-            cr.line_to (tipx - head * Math.cos (angle - head_angle) + ox, tipy - head * Math.sin (angle - head_angle) + oy);
-            cr.move_to (tipx + ox, tipy + oy);
-            cr.line_to (tipx - head * Math.cos (angle + head_angle) + ox, tipy - head * Math.sin (angle + head_angle) + oy);
-            cr.stroke ();
-        }
-    }
-
 }
-
 } /* namespace Longbackgammon */
