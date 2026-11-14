@@ -16,7 +16,7 @@ BuildRequires:  libappstream-glib
 BuildRequires:  pkgconfig(glib-2.0)
 BuildRequires:  pkgconfig(gio-2.0)
 BuildRequires:  pkgconfig(gtk4)
-BuildRequires:  pkgconfig(libadwaita-1) >= 1.4
+BuildRequires:  pkgconfig(libadwaita-1) >= 1.5
 
 Requires:       hicolor-icon-theme
 

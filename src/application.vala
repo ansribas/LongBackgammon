@@ -126,35 +126,10 @@ public class Application : Adw.Application {
         }
     }
 
-    private bool has_toggle_button (Gtk.Widget widget) {
-        if (widget is Gtk.ToggleButton) {
-            return true;
-        }
-        var child = widget.get_first_child ();
-        while (child != null) {
-            if (has_toggle_button (child)) {
-                return true;
-            }
-            child = child.get_next_sibling ();
-        }
-        return false;
-    }
-
-    private Adw.PreferencesGroup? find_shortcuts_nav_group (Gtk.Widget widget) {
-        var child = widget.get_first_child ();
-        while (child != null) {
-            if (child is Adw.PreferencesGroup && has_toggle_button (child)) {
-                return (Adw.PreferencesGroup) child;
-            }
-            var found = find_shortcuts_nav_group (child);
-            if (found != null) {
-                return found;
-            }
-            child = child.get_next_sibling ();
-        }
-        return null;
-    }
-
+    // TODO: В будущем (когда базовые LTS-дистрибутивы, в частности Ubuntu 24.04, обновятся до Libadwaita >= 1.8)
+    // перевести этот диалог и shortcuts-dialog.ui на нативный класс AdwShortcutsDialog.
+    // Текущая реализация на AdwDialog (Libadwaita 1.5) — временное решение для предотвращения падения
+    // на Ubuntu 24.04 LTS из-за отсутствия AdwShortcutsDialog в libadwaita-1.5.0.
     private void on_shortcuts_action () {
         var win = current_window ();
         var lang_code = SettingsStore.shared ().language.to_raw ();
@@ -163,36 +138,141 @@ public class Application : Adw.Application {
 
         var builder = new Gtk.Builder.from_resource ("/io/github/ansribas/LongBackgammon/shortcuts-dialog.ui");
         var dialog = builder.get_object ("shortcuts_dialog") as Adw.Dialog;
-        if (dialog != null) {
-            set_shortcut_title (builder, "sec_game", Localization.shortcuts_section_game ());
-            set_shortcut_title (builder, "sec_general", Localization.shortcuts_section_general ());
-
-            set_shortcut_title (builder, "sc_new_game", Localization.button_new_game ());
-            set_shortcut_title (builder, "sc_undo", Localization.menu_undo ());
-            set_shortcut_title (builder, "sc_stats", Localization.stats_menu ());
-            set_shortcut_title (builder, "sc_rules", Localization.rules_menu_item ());
-            set_shortcut_title (builder, "sc_settings", Localization.settings_menu ());
-            set_shortcut_title (builder, "sc_shortcuts", Localization.menu_shortcuts ());
-            set_shortcut_title (builder, "sc_fullscreen", Localization.menu_fullscreen ());
-            set_shortcut_title (builder, "sc_quit", Localization.menu_quit ());
-
-            dialog.present (win);
-
-            // Включаем отображение нативных кнопок-фильтров разделов («Партия» и «Общие»)
-            var nav = find_shortcuts_nav_group (dialog);
-            if (nav != null) {
-                nav.visible = true;
-                bool is_updating = false;
-                nav.notify["visible"].connect (() => {
-                    if (is_updating) {
-                        return;
-                    }
-                    is_updating = true;
-                    nav.visible = true;
-                    is_updating = false;
-                });
-            }
+        if (dialog == null) {
+            return;
         }
+
+        var btn_game = builder.get_object ("btn_game") as Gtk.ToggleButton;
+        var btn_general = builder.get_object ("btn_general") as Gtk.ToggleButton;
+        var grp_game = builder.get_object ("grp_game") as Adw.PreferencesGroup;
+        var grp_general = builder.get_object ("grp_general") as Adw.PreferencesGroup;
+        var nav_group = builder.get_object ("nav_group") as Adw.PreferencesGroup;
+        var search_entry = builder.get_object ("search_entry") as Gtk.SearchEntry;
+
+        dialog.title = Localization.menu_shortcuts ();
+        if (search_entry != null) {
+            search_entry.placeholder_text = Localization.menu_shortcuts ();
+        }
+        if (btn_game != null) {
+            btn_game.label = Localization.shortcuts_section_game ();
+        }
+        if (btn_general != null) {
+            btn_general.label = Localization.shortcuts_section_general ();
+        }
+        if (grp_game != null) {
+            grp_game.title = Localization.shortcuts_section_game ();
+        }
+        if (grp_general != null) {
+            grp_general.title = Localization.shortcuts_section_general ();
+        }
+
+        set_shortcut_title (builder, "row_new_game", Localization.button_new_game ());
+        set_shortcut_title (builder, "row_undo", Localization.menu_undo ());
+        set_shortcut_title (builder, "row_stats", Localization.stats_menu ());
+        set_shortcut_title (builder, "row_rules", Localization.rules_menu_item ());
+        set_shortcut_title (builder, "row_settings", Localization.settings_menu ());
+        set_shortcut_title (builder, "row_shortcuts", Localization.menu_shortcuts ());
+        set_shortcut_title (builder, "row_fullscreen", Localization.menu_fullscreen ());
+        set_shortcut_title (builder, "row_quit", Localization.menu_quit ());
+
+        Adw.ActionRow[] game_rows = {
+            builder.get_object ("row_new_game") as Adw.ActionRow,
+            builder.get_object ("row_undo") as Adw.ActionRow,
+            builder.get_object ("row_stats") as Adw.ActionRow,
+            builder.get_object ("row_rules") as Adw.ActionRow
+        };
+
+        Adw.ActionRow[] general_rows = {
+            builder.get_object ("row_settings") as Adw.ActionRow,
+            builder.get_object ("row_shortcuts") as Adw.ActionRow,
+            builder.get_object ("row_fullscreen") as Adw.ActionRow,
+            builder.get_object ("row_quit") as Adw.ActionRow
+        };
+
+        bool updating_filters = false;
+        GLib.SourceFunc filter_closure = () => {
+            string query = (search_entry != null) ? search_entry.text.strip ().down () : "";
+            bool is_searching = query.length > 0;
+            if (nav_group != null) {
+                nav_group.visible = !is_searching;
+            }
+
+            bool game_active = btn_game != null && btn_game.active;
+            bool gen_active = btn_general != null && btn_general.active;
+
+            bool show_game_section = !gen_active || game_active;
+            bool show_gen_section = !game_active || gen_active;
+
+            bool game_any_match = false;
+            foreach (var row in game_rows) {
+                if (row == null) {
+                    continue;
+                }
+                bool match = show_game_section && (!is_searching || row.title.down ().contains (query));
+                row.visible = match;
+                if (match) {
+                    game_any_match = true;
+                }
+            }
+            if (grp_game != null) {
+                grp_game.visible = game_any_match;
+            }
+
+            bool gen_any_match = false;
+            foreach (var row in general_rows) {
+                if (row == null) {
+                    continue;
+                }
+                bool match = show_gen_section && (!is_searching || row.title.down ().contains (query));
+                row.visible = match;
+                if (match) {
+                    gen_any_match = true;
+                }
+            }
+            if (grp_general != null) {
+                grp_general.visible = gen_any_match;
+            }
+            return false;
+        };
+
+        if (btn_game != null) {
+            btn_game.toggled.connect (() => {
+                if (updating_filters) {
+                    return;
+                }
+                updating_filters = true;
+                if (btn_game.active && btn_general != null) {
+                    btn_general.active = false;
+                }
+                filter_closure ();
+                updating_filters = false;
+            });
+        }
+
+        if (btn_general != null) {
+            btn_general.toggled.connect (() => {
+                if (updating_filters) {
+                    return;
+                }
+                updating_filters = true;
+                if (btn_general.active && btn_game != null) {
+                    btn_game.active = false;
+                }
+                filter_closure ();
+                updating_filters = false;
+            });
+        }
+
+        if (search_entry != null) {
+            search_entry.search_changed.connect (() => {
+                filter_closure ();
+            });
+            search_entry.stop_search.connect (() => {
+                search_entry.text = "";
+            });
+        }
+
+        dialog.present (win);
     }
 
     private void on_about_action () {

@@ -1,73 +1,188 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <interface>
+  <!--
+    TODO: В будущем (когда базовые LTS-дистрибутивы, в частности Ubuntu 24.04 c Libadwaita 1.5,
+    обновятся до Libadwaita >= 1.8) заменить эту реализацию на нативный AdwShortcutsDialog:
+    <object class="AdwShortcutsDialog" id="shortcuts_dialog">
+      <child><object class="AdwShortcutsSection" ...>
+    Сейчас используется AdwDialog (доступный с Libadwaita 1.5), чтобы избежать падения программы
+    на Ubuntu 24.04 LTS из-за отсутствия класса AdwShortcutsDialog (появился только в Libadwaita 1.8).
+  -->
   <requires lib="gtk" version="4.0"/>
-  <requires lib="libadwaita" version="1.0"/>
-  <object class="AdwShortcutsDialog" id="shortcuts_dialog">
-    <child>
-      <object class="AdwShortcutsSection" id="sec_game">
-        <property name="title" translatable="yes">Game</property>
-        <child>
-          <object class="AdwShortcutsItem" id="sc_new_game">
-            <property name="title" translatable="yes">New Game</property>
-            <property name="accelerator">&lt;Primary&gt;n</property>
-            <property name="action-name">app.new-game</property>
+  <requires lib="libadwaita" version="1.5"/>
+  <object class="AdwDialog" id="shortcuts_dialog">
+    <property name="title" translatable="yes">Keyboard Shortcuts</property>
+    <property name="content-width">520</property>
+    <property name="content-height">560</property>
+    <style>
+      <class name="shortcuts"/>
+    </style>
+    <property name="child">
+      <object class="AdwToolbarView">
+        <child type="top">
+          <object class="AdwHeaderBar">
+            <property name="title-widget">
+              <object class="AdwClamp">
+                <property name="maximum-size">360</property>
+                <property name="hexpand">True</property>
+                <property name="child">
+                  <object class="GtkSearchEntry" id="search_entry">
+                    <property name="placeholder-text" translatable="yes">Search shortcuts</property>
+                  </object>
+                </property>
+              </object>
+            </property>
           </object>
         </child>
-        <child>
-          <object class="AdwShortcutsItem" id="sc_undo">
-            <property name="title" translatable="yes">Undo Move</property>
-            <property name="accelerator">&lt;Primary&gt;z</property>
-            <property name="action-name">app.undo</property>
+        <property name="content">
+          <object class="AdwPreferencesPage">
+            <child>
+              <object class="AdwPreferencesGroup" id="nav_group">
+                <child>
+                  <object class="GtkBox">
+                    <property name="orientation">horizontal</property>
+                    <property name="spacing">6</property>
+                    <property name="halign">center</property>
+                    <style>
+                      <class name="navigation-box"/>
+                    </style>
+                    <child>
+                      <object class="GtkToggleButton" id="btn_game">
+                        <property name="label" translatable="yes">Match</property>
+                        <style>
+                          <class name="pill"/>
+                        </style>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkToggleButton" id="btn_general">
+                        <property name="label" translatable="yes">General</property>
+                        <style>
+                          <class name="pill"/>
+                        </style>
+                      </object>
+                    </child>
+                  </object>
+                </child>
+              </object>
+            </child>
+            <child>
+              <object class="AdwPreferencesGroup" id="grp_game">
+                <property name="title" translatable="yes">Game</property>
+                <child>
+                  <object class="AdwActionRow" id="row_new_game">
+                    <property name="title" translatable="yes">New Game</property>
+                    <style>
+                      <class name="shortcut-row"/>
+                    </style>
+                    <child type="suffix">
+                      <object class="GtkShortcutLabel">
+                        <property name="accelerator">&lt;Primary&gt;n</property>
+                      </object>
+                    </child>
+                  </object>
+                </child>
+                <child>
+                  <object class="AdwActionRow" id="row_undo">
+                    <property name="title" translatable="yes">Undo Move</property>
+                    <style>
+                      <class name="shortcut-row"/>
+                    </style>
+                    <child type="suffix">
+                      <object class="GtkShortcutLabel">
+                        <property name="accelerator">&lt;Primary&gt;z</property>
+                      </object>
+                    </child>
+                  </object>
+                </child>
+                <child>
+                  <object class="AdwActionRow" id="row_stats">
+                    <property name="title" translatable="yes">Statistics</property>
+                    <style>
+                      <class name="shortcut-row"/>
+                    </style>
+                    <child type="suffix">
+                      <object class="GtkShortcutLabel">
+                        <property name="accelerator">&lt;Primary&gt;&lt;Alt&gt;s</property>
+                      </object>
+                    </child>
+                  </object>
+                </child>
+                <child>
+                  <object class="AdwActionRow" id="row_rules">
+                    <property name="title" translatable="yes">Game Rules</property>
+                    <style>
+                      <class name="shortcut-row"/>
+                    </style>
+                    <child type="suffix">
+                      <object class="GtkShortcutLabel">
+                        <property name="accelerator">F1</property>
+                      </object>
+                    </child>
+                  </object>
+                </child>
+              </object>
+            </child>
+            <child>
+              <object class="AdwPreferencesGroup" id="grp_general">
+                <property name="title" translatable="yes">General</property>
+                <child>
+                  <object class="AdwActionRow" id="row_settings">
+                    <property name="title" translatable="yes">Preferences</property>
+                    <style>
+                      <class name="shortcut-row"/>
+                    </style>
+                    <child type="suffix">
+                      <object class="GtkShortcutLabel">
+                        <property name="accelerator">&lt;Primary&gt;comma</property>
+                      </object>
+                    </child>
+                  </object>
+                </child>
+                <child>
+                  <object class="AdwActionRow" id="row_shortcuts">
+                    <property name="title" translatable="yes">Keyboard Shortcuts</property>
+                    <style>
+                      <class name="shortcut-row"/>
+                    </style>
+                    <child type="suffix">
+                      <object class="GtkShortcutLabel">
+                        <property name="accelerator">&lt;Primary&gt;question</property>
+                      </object>
+                    </child>
+                  </object>
+                </child>
+                <child>
+                  <object class="AdwActionRow" id="row_fullscreen">
+                    <property name="title" translatable="yes">Toggle Full Screen</property>
+                    <style>
+                      <class name="shortcut-row"/>
+                    </style>
+                    <child type="suffix">
+                      <object class="GtkShortcutLabel">
+                        <property name="accelerator">F11 &lt;Primary&gt;&lt;Super&gt;f</property>
+                      </object>
+                    </child>
+                  </object>
+                </child>
+                <child>
+                  <object class="AdwActionRow" id="row_quit">
+                    <property name="title" translatable="yes">Quit</property>
+                    <style>
+                      <class name="shortcut-row"/>
+                    </style>
+                    <child type="suffix">
+                      <object class="GtkShortcutLabel">
+                        <property name="accelerator">&lt;Primary&gt;q</property>
+                      </object>
+                    </child>
+                  </object>
+                </child>
+              </object>
+            </child>
           </object>
-        </child>
-        <child>
-          <object class="AdwShortcutsItem" id="sc_stats">
-            <property name="title" translatable="yes">Statistics</property>
-            <property name="accelerator">&lt;Primary&gt;&lt;Alt&gt;s</property>
-            <property name="action-name">app.stats</property>
-          </object>
-        </child>
-        <child>
-          <object class="AdwShortcutsItem" id="sc_rules">
-            <property name="title" translatable="yes">Game Rules</property>
-            <property name="accelerator">F1</property>
-            <property name="action-name">app.rules</property>
-          </object>
-        </child>
+        </property>
       </object>
-    </child>
-    <child>
-      <object class="AdwShortcutsSection" id="sec_general">
-        <property name="title" translatable="yes">General</property>
-        <child>
-          <object class="AdwShortcutsItem" id="sc_settings">
-            <property name="title" translatable="yes">Preferences</property>
-            <property name="accelerator">&lt;Primary&gt;comma</property>
-            <property name="action-name">app.settings</property>
-          </object>
-        </child>
-        <child>
-          <object class="AdwShortcutsItem" id="sc_shortcuts">
-            <property name="title" translatable="yes">Keyboard Shortcuts</property>
-            <property name="accelerator">&lt;Primary&gt;question</property>
-            <property name="action-name">app.shortcuts</property>
-          </object>
-        </child>
-        <child>
-          <object class="AdwShortcutsItem" id="sc_fullscreen">
-            <property name="title" translatable="yes">Toggle Full Screen</property>
-            <property name="accelerator">F11 &lt;Primary&gt;&lt;Super&gt;f</property>
-            <property name="action-name">app.fullscreen</property>
-          </object>
-        </child>
-        <child>
-          <object class="AdwShortcutsItem" id="sc_quit">
-            <property name="title" translatable="yes">Quit</property>
-            <property name="accelerator">&lt;Primary&gt;q</property>
-            <property name="action-name">app.quit</property>
-          </object>
-        </child>
-      </object>
-    </child>
+    </property>
   </object>
 </interface>
