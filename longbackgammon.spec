@@ -1,6 +1,6 @@
 Name:           longbackgammon
 Version:        1.0.7.2
-Release:        1%{?dist}
+Release:        2%{?dist}
 Summary:        Classic Long Backgammon Board Game
 
 License:        GPL-3.0-or-later
@@ -18,6 +18,7 @@ BuildRequires:  pkgconfig(gio-2.0)
 BuildRequires:  pkgconfig(gtk4)
 BuildRequires:  pkgconfig(libadwaita-1) >= 1.5
 
+Requires:       %{name}-data = %{version}-%{release}
 Requires:       hicolor-icon-theme
 
 %description
@@ -25,6 +26,13 @@ Long Backgammon is a popular variant of backgammon played with fifteen checkers
 on a standard board. Players compete to move all their checkers into the home
 board and bear them off first, following strict strategic rules and smart
 positioning.
+
+%package        data
+Summary:        Data files for Long Backgammon
+BuildArch:      noarch
+
+%description    data
+Data files for Long Backgammon, including graphics, sounds, and board themes.
 
 %prep
 %autosetup -n LongBackgammon-%{version}
@@ -45,14 +53,19 @@ appstream-util validate-relax --nonet %{buildroot}%{_datadir}/metainfo/io.github
 %license COPYING
 %doc README.md README.ru.md
 %{_bindir}/longbackgammon
-%{_datadir}/longbackgammon/
 %{_datadir}/applications/io.github.ansribas.LongBackgammon.desktop
 %{_datadir}/metainfo/io.github.ansribas.LongBackgammon.metainfo.xml
 %{_datadir}/glib-2.0/schemas/io.github.ansribas.LongBackgammon.gschema.xml
 %{_datadir}/dbus-1/services/io.github.ansribas.LongBackgammon.service
 %{_datadir}/icons/hicolor/*/apps/io.github.ansribas.LongBackgammon.png
 
+%files data
+%license COPYING
+%{_datadir}/longbackgammon/
+
 %changelog
+* Sun Nov 15 2026 Aleksey Svetlov <ans.ribas@gmail.com> - 1.0.7.2-2
+- Move architecture-independent game assets to a noarch data subpackage
 * Sat Nov 14 2026 Aleksey Svetlov <ans.ribas@gmail.com> - 1.0.7.2-1
 - Release 1.0.7.2
 
