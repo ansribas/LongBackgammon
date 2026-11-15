@@ -5,11 +5,8 @@
     "sdk" : "org.gnome.Sdk",
     "command" : "longbackgammon",
     "finish-args" : [
-        "--share=ipc",
-        "--socket=fallback-x11",
-        "--device=dri",
         "--socket=wayland",
-        "--socket=pulseaudio",
+        "--device=dri",
         "--filesystem=xdg-run/pipewire-0"
     ],
     "cleanup" : [

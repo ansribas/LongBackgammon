@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: longbackgammon\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-01 20:48+0200\n"
+"POT-Creation-Date: 2026-11-14 13:18+0200\n"
 "PO-Revision-Date: 2026-10-26 09:00+0200\n"
 "Last-Translator: Aleksey Svetlov <ansribas>\n"
 "Language-Team: Turkmen <tk@li.org>\n"
@@ -31,6 +31,7 @@ msgstr "Klassiki uzyn nardy stoluň oýny"
 msgid "GTK;Backgammon;Game;"
 msgstr ""
 
+#: data/io.github.ansribas.LongBackgammon.metainfo.xml.in:11
 msgid ""
 "Long Backgammon is a popular variant of backgammon played with fifteen "
 "checkers on a standard board. Players compete to move all their checkers "
@@ -46,15 +47,46 @@ msgstr ""
 msgid "Aleksey Svetlov"
 msgstr ""
 
+#: data/io.github.ansribas.LongBackgammon.metainfo.xml.in:30
 msgid "Classic match and gameplay"
 msgstr "Klassiki oýun we oýun barşy"
 
+#: data/io.github.ansribas.LongBackgammon.metainfo.xml.in:34
 msgid "Game settings, visual themes, and audio preferences"
 msgstr "Oýun sazlamalary, wizual temalar we ses ukyplary"
 
+#: data/io.github.ansribas.LongBackgammon.metainfo.xml.in:38
 msgid "Interactive rules guide and match scoring"
 msgstr "Interaktiw düzgünler gollanmasy we oýun hasaby"
 
+#: data/io.github.ansribas.LongBackgammon.metainfo.xml.in:62
+msgid ""
+"Turn-by-turn game autosave with forfeit state recovery, selectable graphics "
+"renderer (Cairo / OpenGL), modular architecture and UI performance "
+"improvements, improved header bar iconography, and official packaging "
+"support for RPM and Snap."
+msgstr ""
+"Ýeňilmegini ykrar etme ýagdaýyny dikeltmek bilen ädimme-ädim oýny awtomatiki "
+"ýatda saklamak, saýlap bolýan grafiki renderleýji (Cairo / OpenGL), modully "
+"arhitektura we interfeýsiň öndürijiligini ýokarlandyrmak, başlyk zolagynyň "
+"gowulandyrylan nyşanlary we RPM hem-de Snap üçin resmi paket goldawy."
+
+#: data/io.github.ansribas.LongBackgammon.metainfo.xml.in:67
+msgid ""
+"Redesigned Game Over modal with sequential tally counters, flying reward/"
+"deduction stars, and celebratory fireworks for Mars/Home Mars victories. "
+"Added match result entries to the turn log, standardized player name "
+"truncation with instant hover tooltips, new victory/defeat sound effects, "
+"and major memory/CPU optimizations."
+msgstr ""
+"Yzygiderli utuk hasaplaýjylary, uçýan baýrak/jerime ýyldyzlary we Mars/Öý "
+"Marsy ýeňişleri üçin baýramçylyk feýerwerki bolan täzelenen Oýun gutardy "
+"penjiresi. Göçümler ýazgysyna oýnuň netijesiniň ýazgylary, syçanjyk eltilende "
+"derrew peýda bolýan maslahatlar bilen oýunçylaryň atlarynyň "
+"standartlaşdyrylan gysgaltmasy, ýeňiş we ýeňliş üçin täze ses effektleri "
+"hem-de ýat we prosessor üçin möhüm optimizasiýalar."
+
+#: data/io.github.ansribas.LongBackgammon.metainfo.xml.in:72
 msgid ""
 "GNOME Human Interface Guidelines alignment: standard Libadwaita header bar "
 "button sizing and symbolic icons, primary menu placed next to window "
@@ -69,6 +101,7 @@ msgstr ""
 "klawiatura gysga ýollary penjiresi (Ctrl+?) we haýyr-sahawat baglanyşygynyň "
 "goldawy."
 
+#: data/io.github.ansribas.LongBackgammon.metainfo.xml.in:77
 msgid ""
 "Configurable board side selection (Left / Right) with smooth transitions, "
 "animated checker collection into trays, panel docking sound effects, hidden "
@@ -79,6 +112,7 @@ msgstr ""
 "effektleri, statistikany gizlin arassalamak we daşlary çykarmak prosesiniň "
 "gowulandyrylmagy."
 
+#: data/io.github.ansribas.LongBackgammon.metainfo.xml.in:82
 msgid "Initial release of Long Backgammon for Linux."
 msgstr "Long Backgammon-yň Linux üçin ilkinji neşiri."
 
@@ -188,74 +222,84 @@ msgid "Score display format: 'progress' or 'score'."
 msgstr ""
 
 #: data/io.github.ansribas.LongBackgammon.gschema.xml:71
-msgid "Sound effects enabled"
+msgid "Graphics renderer"
 msgstr ""
 
 #: data/io.github.ansribas.LongBackgammon.gschema.xml:72
-msgid "Whether sound effects are played."
+msgid ""
+"Graphics rendering engine: 'cairo' (lightweight 2D) or 'opengl' (hardware "
+"OpenGL)."
 msgstr ""
 
 #: data/io.github.ansribas.LongBackgammon.gschema.xml:76
-msgid "Rolloff for first move enabled"
+msgid "Sound effects enabled"
 msgstr ""
 
 #: data/io.github.ansribas.LongBackgammon.gschema.xml:77
-msgid "Whether players roll dice to determine who moves first."
+msgid "Whether sound effects are played."
 msgstr ""
 
 #: data/io.github.ansribas.LongBackgammon.gschema.xml:81
-msgid "Board orientation side"
+msgid "Rolloff for first move enabled"
 msgstr ""
 
 #: data/io.github.ansribas.LongBackgammon.gschema.xml:82
-msgid "Side where head checkers start: 'right' or 'left'."
+msgid "Whether players roll dice to determine who moves first."
 msgstr ""
 
 #: data/io.github.ansribas.LongBackgammon.gschema.xml:86
-msgid "Drag and drop enabled"
+msgid "Board orientation side"
 msgstr ""
 
 #: data/io.github.ansribas.LongBackgammon.gschema.xml:87
-msgid "Allow moving checkers via drag and drop."
+msgid "Side where head checkers start: 'right' or 'left'."
 msgstr ""
 
 #: data/io.github.ansribas.LongBackgammon.gschema.xml:91
-msgid "White player name"
+msgid "Drag and drop enabled"
 msgstr ""
 
 #: data/io.github.ansribas.LongBackgammon.gschema.xml:92
-msgid "Custom name for the white checker player."
+msgid "Allow moving checkers via drag and drop."
 msgstr ""
 
 #: data/io.github.ansribas.LongBackgammon.gschema.xml:96
-msgid "Black player name"
+msgid "White player name"
 msgstr ""
 
 #: data/io.github.ansribas.LongBackgammon.gschema.xml:97
-msgid "Custom name for the black checker player."
+msgid "Custom name for the white checker player."
 msgstr ""
 
 #: data/io.github.ansribas.LongBackgammon.gschema.xml:101
-msgid "Window width"
+msgid "Black player name"
 msgstr ""
 
 #: data/io.github.ansribas.LongBackgammon.gschema.xml:102
-msgid "Saved main window width in pixels."
+msgid "Custom name for the black checker player."
 msgstr ""
 
 #: data/io.github.ansribas.LongBackgammon.gschema.xml:106
-msgid "Window height"
+msgid "Window width"
 msgstr ""
 
 #: data/io.github.ansribas.LongBackgammon.gschema.xml:107
-msgid "Saved main window height in pixels."
+msgid "Saved main window width in pixels."
 msgstr ""
 
 #: data/io.github.ansribas.LongBackgammon.gschema.xml:111
-msgid "Window maximized"
+msgid "Window height"
 msgstr ""
 
 #: data/io.github.ansribas.LongBackgammon.gschema.xml:112
+msgid "Saved main window height in pixels."
+msgstr ""
+
+#: data/io.github.ansribas.LongBackgammon.gschema.xml:116
+msgid "Window maximized"
+msgstr ""
+
+#: data/io.github.ansribas.LongBackgammon.gschema.xml:117
 msgid "Whether the main window was maximized."
 msgstr ""
 
