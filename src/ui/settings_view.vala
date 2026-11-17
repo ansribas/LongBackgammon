@@ -50,9 +50,6 @@ public class SettingsView : PopupView {
         base.dispose ();
     }
 
-    private int debug_click_count = 0;
-    private Gtk.Revealer? debug_revealer = null;
-
     private void build () {
         UiKit.clear_box (this);
         var s = SettingsStore.shared ();
@@ -60,16 +57,6 @@ public class SettingsView : PopupView {
 
         var header = new PopupHeader (Localization.settings_header (), true);
         header.close_button.clicked.connect (() => { close_requested (); });
-        var title_click = new Gtk.GestureClick ();
-        title_click.released.connect (() => {
-            if (debug_click_count < 10) {
-                debug_click_count++;
-                if (debug_click_count >= 10 && debug_revealer != null) {
-                    debug_revealer.reveal_child = true;
-                }
-            }
-        });
-        header.title_label.add_controller (title_click);
         append (header);
         append (new Gtk.Separator (Gtk.Orientation.HORIZONTAL));
 
@@ -192,16 +179,6 @@ public class SettingsView : PopupView {
         log_sec.add_row (new SettingsRow ("arrowshape.turn.up.right.fill", MacColors.INDIGO, Localization.settings_highlight_log_paths_label (), hl_sw));
         log_sec.add_row (new SettingsRow ("number.circle.fill", MacColors.BLUE, Localization.settings_show_cell_indices_label (), cell_indices_sw));
         content.append (SettingsSection.group (Localization.settings_section_log (), log_sec));
-
-        // 6. ОТЛАДКА (раскрывается по 10 кликам по заголовку)
-        debug_revealer = new Gtk.Revealer ();
-        debug_revealer.transition_type = Gtk.RevealerTransitionType.SLIDE_DOWN;
-        debug_revealer.reveal_child = (debug_click_count >= 10);
-        var debug = new SettingsSection ();
-        debug.add_row (new SettingsRow ("ant.fill", MacColors.GRAY, Localization.settings_debug_export_label (),
-            make_switch (s.enable_debug_export, (v) => { s.set_enable_debug_export (v); })));
-        debug_revealer.set_child (SettingsSection.group (Localization.settings_section_debug (), debug));
-        content.append (debug_revealer);
 
         scroller = new Gtk.ScrolledWindow ();
         scroller.hscrollbar_policy = Gtk.PolicyType.NEVER;

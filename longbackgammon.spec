@@ -1,6 +1,6 @@
 Name:           longbackgammon
-Version:        1.0.7.2
-Release:        2%{?dist}
+Version:        1.0.7.3
+Release:        1%{?dist}
 Summary:        Classic Long Backgammon Board Game
 
 License:        GPL-3.0-or-later
@@ -64,6 +64,9 @@ appstream-util validate-relax --nonet %{buildroot}%{_datadir}/metainfo/io.github
 %{_datadir}/longbackgammon/
 
 %changelog
+* Tue Nov 17 2026 Aleksey Svetlov <ans.ribas@gmail.com> - 1.0.7.3-1
+- Release 1.0.7.3
+
 * Sun Nov 15 2026 Aleksey Svetlov <ans.ribas@gmail.com> - 1.0.7.2-2
 - Move architecture-independent game assets to a noarch data subpackage
 * Sat Nov 14 2026 Aleksey Svetlov <ans.ribas@gmail.com> - 1.0.7.2-1

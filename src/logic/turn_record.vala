@@ -98,6 +98,20 @@ public class TurnRecord : Object {
         return is_rolloff && rolloff_winner == null && !is_rolloff_winner;
     }
 
+    /** Список значений несыгранных (сгоревших) кубиков. */
+    public int[] skipped_dice_values () {
+        var from_dice = new int[0];
+        foreach (var d in dice) {
+            if (d.is_skipped) {
+                from_dice += d.value;
+            }
+        }
+        if (from_dice.length > 0) {
+            return from_dice;
+        }
+        return extract_skipped_dice_values ();
+    }
+
     /** Динамически локализованная строка хода для всплывающей подсказки. */
     public string formatted_message (CheckerColor color, GameSession session) {
         if (game_result_is_win != null) {

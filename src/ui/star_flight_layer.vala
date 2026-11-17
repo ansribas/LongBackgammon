@@ -147,6 +147,31 @@ public class StarArt : Object {
     }
 }
 
+/** Компактный индикатор звезды очков рейтинга (золотая / красная) для списков, шапок и таблиц. */
+public class StarIconWidget : Gtk.DrawingArea {
+    private bool defeat;
+    private double star_size;
+
+    public StarIconWidget (bool defeat = false, double size = 12.0) {
+        this.defeat = defeat;
+        this.star_size = size;
+        width_request = (int) Math.ceil (size + 4);
+        height_request = (int) Math.ceil (size + 4);
+        valign = Gtk.Align.CENTER;
+        halign = Gtk.Align.CENTER;
+        set_draw_func ((area, cr, w, h) => {
+            StarArt.draw_star (cr, w / 2.0, h / 2.0, star_size / 2.0, defeat);
+        });
+    }
+
+    public void set_defeat (bool defeat) {
+        if (this.defeat != defeat) {
+            this.defeat = defeat;
+            queue_draw ();
+        }
+    }
+}
+
 /** Звезда-награда под таблицей: пружинное появление (pop 0 → 1) с ореолом. */
 public class RewardStar : Gtk.DrawingArea {
     public double pop = 0.0;

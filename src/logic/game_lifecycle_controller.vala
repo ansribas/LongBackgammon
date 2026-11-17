@@ -76,7 +76,7 @@ public class GameLifecycleController {
             if (!session.is_computer_player (winner_color)) {
                 StatsStore.shared ().record_victory (session.player_name (winner_color), VictoryType.OIN);
             }
-            session.save_game_log ();
+            session.save_game_log (winner_color, true);
         }
 
         session.white_turn_log = new TurnRecord[0];
@@ -362,7 +362,7 @@ public class GameLifecycleController {
         }
 
         // Сохраняем полный лог партии после добавления победного хода в историю
-        session.save_game_log ();
+        session.save_game_log (winner_color, false);
         session.notify_changed ();
 
         // 6. Отдельная дополнительная пауза в 0.5 секунды:

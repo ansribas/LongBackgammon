@@ -353,7 +353,7 @@ public abstract class GameConfig {
     public const string ICON_DEFEAT = "❌";
 
     // MARK: - Логи партий
-    public const int LOG_MAX_ENTRIES = 100;
+    public const int LOG_MAX_ENTRIES = 10;
     public const string LOG_SUBDIRECTORY_NAME = "longbackgammon";
     public const string LOG_FILE_NAME = "game_logs.json";
     public const string STATS_FILE_NAME = "player_stats.json";
@@ -424,7 +424,6 @@ public class Localization {
     public static string settings_section_general ()    { return tr ("settingsSectionGeneral"); }
     public static string settings_section_appearance () { return tr ("settingsSectionAppearance"); }
     public static string settings_section_controls ()   { return tr ("settingsSectionControls"); }
-    public static string settings_section_debug ()      { return tr ("settingsSectionDebug"); }
     public static string settings_game_settings_section () { return tr ("settingsGameSettingsSection"); }
     public static string settings_first_move_rolloff_label () { return tr ("settingsFirstMoveRollOffLabel"); }
     public static string settings_board_side_label ()   { return tr ("settingsBoardSideLabel"); }
@@ -456,7 +455,6 @@ public class Localization {
     public static string settings_renderer_subtitle () { return tr ("settingsRendererSubtitle"); }
     public static string settings_renderer_cairo () { return tr ("settingsRendererCairo"); }
     public static string settings_renderer_opengl () { return tr ("settingsRendererOpenGL"); }
-    public static string settings_debug_export_label () { return tr ("settingsDebugExportLabel"); }
     public static string settings_language_russian () { return tr ("settingsLanguageRussian"); }
     public static string settings_language_english () { return tr ("settingsLanguageEnglish"); }
     public static string info_section_title () { return tr ("infoSectionTitle"); }
@@ -559,18 +557,6 @@ public class Localization {
     public static string rules_victory_text () { return tr ("rulesVictoryText"); }
     public static string rules_tip_title () { return tr ("rulesTipTitle"); }
     public static string rules_tip_text () { return tr ("rulesTipText"); }
-
-    // MARK: - Отладка
-    public static string debug_export_success () { return tr ("debugExportSuccess"); }
-    public static string debug_export_success_prefix () { return tr ("debugExportSuccessPrefix"); }
-    public static string debug_export_title () { return tr ("debugExportTitle"); }
-    public static string debug_export_turn () { return tr ("debugExportTurn"); }
-    public static string debug_export_pips () { return tr ("debugExportPips"); }
-    public static string debug_export_board () { return tr ("debugExportBoard"); }
-    public static string debug_export_white_log () { return tr ("debugExportWhiteLog"); }
-    public static string debug_export_black_log () { return tr ("debugExportBlackLog"); }
-    public static string debug_export_settings () { return tr ("debugExportSettings"); }
-    public static string debug_export_none () { return tr ("debugExportNone"); }
 }
 
 } /* namespace Longbackgammon */

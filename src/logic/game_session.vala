@@ -817,37 +817,21 @@ public class GameSession : Object {
         MoveController.undo_move (this);
     }
 
-    // MARK: - Генерация текста лога партии
+    // MARK: - Структурированный лог партии (GameLogStore)
 
-    /** Имя игрока на английском для логов (GameLogStore). */
+    /** Имя игрока на английском. */
     public string english_player_name (CheckerColor color) {
-        return GameLogExporter.english_player_name (color);
+        return GameLogExporter.english_player_name (this, color);
     }
 
-    /** Текстовый дамп состояния на английском (для GameLogStore). */
-    public string generate_log_text () {
-        return GameLogExporter.generate_log_text (this);
+    /** Создает структурированную запись партии (GameLogEntry) для архива game_logs.json. */
+    public GameLogEntry build_game_log_entry (CheckerColor winner_color, bool is_forfeit = false) {
+        return GameLogExporter.build_game_log_entry (this, winner_color, is_forfeit);
     }
 
-    /** Сохраняет лог завершённой партии в GameLogStore. */
-    public void save_game_log () {
-        GameLogExporter.save_game_log (this);
-    }
-
-    /** Локализованный дамп состояния (для копирования в буфер обмена). */
-    public string debug_export_text () {
-        return GameLogExporter.debug_export_text (this);
-    }
-
-    /** После копирования отладочной информации — временное сообщение в статусе (2 с). */
-    public void show_debug_copied_status () {
-        var old_status = status_message;
-        status_message = Localization.debug_export_success_prefix () + Localization.debug_export_success ();
-        notify_changed ();
-        after (2.0, () => {
-            status_message = old_status;
-            notify_changed ();
-        });
+    /** Сохраняет структурированный лог завершённой партии в GameLogStore. */
+    public void save_game_log (CheckerColor? winner_color = null, bool is_forfeit = false) {
+        GameLogExporter.save_game_log (this, winner_color, is_forfeit);
     }
 
     // MARK: - Сохранение и форфейт при закрытии

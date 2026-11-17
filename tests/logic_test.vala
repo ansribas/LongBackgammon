@@ -32,6 +32,14 @@ public class LogicTestSuite {
         }
     }
 
+    public static void assert_equal_str (string actual, string expected, string msg) {
+        test_count++;
+        if (actual != expected) {
+            stderr.printf ("FAIL: %s (expected '%s', got '%s')\n", msg, expected, actual);
+            failed++;
+        }
+    }
+
     public static int run () {
 
     // =========================================================================
@@ -659,6 +667,131 @@ public class LogicTestSuite {
     SoundManager.shared ().play_board_side_switch_animation ();
     SoundManager.shared ().play_panels_dock_in_place ();
     SoundManager.shared ().stop_placement ();
+
+    // =========================================================================
+    // GameLog JSON Tests (Синхронизация с macOS GameLogTests)
+    // =========================================================================
+    var test_entry = new GameLogEntry (
+        "TEST-UUID-1234",
+        "2026-11-17T12:00:00Z",
+        new GameLogPlayers (
+            new GameLogPlayer ("Alice", false, null),
+            new GameLogPlayer ("Computer", true, "master")
+        ),
+        new GameLogSettings ("fast", "wood", "right", true),
+        new GameLogResult ("white", "Alice", "black", "Computer", "mars", 2, false, 2, new GameLogPipCount (0, 45)),
+        new GameLogRollOff (
+            new GameLogRollOffRound[] {
+                new GameLogRollOffRound (1, 3, 3, true),
+                new GameLogRollOffRound (2, 6, 2, false)
+            },
+            "white",
+            "Alice"
+        ),
+        new GameLogTurn[] {
+            new GameLogTurn (1, "white", "Alice", new int[] { 5, 2 }, false, new GameLogMove[] {
+                new GameLogMove (24, 19, false, null),
+                new GameLogMove (19, 17, false, null)
+            }, "24-19, 19-17", null),
+            new GameLogTurn (1, "black", "Computer", new int[] { 6, 4 }, false, new GameLogMove[] {
+                new GameLogMove (12, 2, false, new int[] { 12, 6, 2 })
+            }, "12-6-2", null)
+        },
+        new GameLogPointStack[] {
+            new GameLogPointStack (10, "black", 3)
+        }
+    );
+
+    var json_sb = new StringBuilder ();
+    test_entry.to_json (json_sb, 0);
+    var json_str = json_sb.str;
+    assert_true (json_str.contains ("\"date\" : \"2026-11-17T12:00:00Z\""), "json contains date");
+    assert_true (json_str.contains ("\"players\" : {"), "json contains players object");
+    assert_true (json_str.contains ("\"winner\" : \"white\""), "json contains winner");
+
+    var parser = new JsonParser (json_str);
+    var parsed_val = parser.parse ();
+    assert_true (parsed_val != null, "parsed json value is not null");
+    var decoded = GameLogEntry.from_json (parsed_val);
+    assert_true (decoded != null, "decoded GameLogEntry is not null");
+    assert_equal_str (decoded.id, "TEST-UUID-1234", "decoded entry id matches");
+    assert_equal_str (decoded.players.white.name, "Alice", "decoded white player name matches");
+    assert_equal_str (decoded.players.black.ai_difficulty, "master", "decoded black ai difficulty matches");
+    assert_equal_str (decoded.result.victory_type, "mars", "decoded victory type matches");
+    assert_equal_int (decoded.result.points, 2, "decoded points match");
+    assert_true (decoded.roll_off != null && decoded.roll_off.rounds.length == 2, "decoded roll off rounds count 2");
+    assert_equal_int (decoded.turns.length, 2, "decoded turns count 2");
+    assert_equal_int (decoded.turns[0].moves[0].from, 24, "decoded first move from 24");
+    assert_equal_int (decoded.final_board[0].count, 3, "decoded final board stack count 3");
+
+    // Rejects legacy format
+    var legacy_json = "[\n{\n\"id\": \"LEGACY-UUID-9999\",\n\"date\": \"2026-10-12T12:00:00Z\",\n\"playerName\": \"OldPlayer\",\n\"logText\": \"--- LONG BACKGAMMON DEBUG ---\"\n}\n]";
+    var legacy_parser = new JsonParser (legacy_json);
+    var legacy_val = legacy_parser.parse ();
+    assert_true (legacy_val != null && legacy_val.kind == JsonVal.Kind.ARRAY, "legacy json is array");
+    var legacy_entry = GameLogEntry.from_json (legacy_val.arr_val.get (0));
+    assert_true (legacy_entry == null, "legacy format without structured fields must return null");
+
+    // GameSession build_game_log_entry
+    var test_log_session = new GameSession ();
+    test_log_session.white_player_name = "TestWhite";
+    test_log_session.black_player_name = "TestBlack";
+
+    var w_rolloff = new TurnRecord.with_dice (0, new DiceRoll (6, 1));
+    w_rolloff.is_rolloff = true;
+    w_rolloff.is_rolloff_winner = true;
+    w_rolloff.rolloff_winner = CheckerColor.WHITE;
+    w_rolloff.move_strings = new string[] { "TestWhite starts first!" };
+
+    var b_rolloff = new TurnRecord.with_dice (0, new DiceRoll (2, 1));
+    b_rolloff.is_rolloff = true;
+    b_rolloff.is_rolloff_winner = false;
+    b_rolloff.rolloff_winner = CheckerColor.WHITE;
+    b_rolloff.move_strings = new string[] { "TestWhite starts first!" };
+
+    test_log_session.white_turn_log = new TurnRecord[] { w_rolloff };
+    test_log_session.black_turn_log = new TurnRecord[] { b_rolloff };
+
+    var w_t1 = new TurnRecord.with_dice (1, new DiceRoll (4, 1));
+    w_t1.move_strings = new string[] { "24-20", "20-19" };
+    w_t1.moves = new LogMove[] {
+        new LogMove (new LogStep[] { new LogStep (BoardPoint.P24, BoardPoint.P20) }),
+        new LogMove (new LogStep[] { new LogStep (BoardPoint.P20, BoardPoint.P19) })
+    };
+
+    var b_t1 = new TurnRecord.with_dice (1, new DiceRoll (6, 1));
+    b_t1.move_strings = new string[] { "12-6-5" };
+    b_t1.moves = new LogMove[] {
+        new LogMove (new LogStep[] {
+            new LogStep (BoardPoint.P12, BoardPoint.P6),
+            new LogStep (BoardPoint.P6, BoardPoint.P5)
+        })
+    };
+
+    test_log_session.white_turn_log = new TurnRecord[] { w_t1, w_rolloff };
+    test_log_session.black_turn_log = new TurnRecord[] { b_t1, b_rolloff };
+
+    var generated_entry = test_log_session.build_game_log_entry (CheckerColor.WHITE, false);
+    assert_equal_str (generated_entry.players.white.name, "TestWhite", "session entry white name matches");
+    assert_equal_str (generated_entry.players.black.name, "TestBlack", "session entry black name matches");
+    assert_equal_str (generated_entry.result.winner, "white", "session entry winner matches");
+    assert_false (generated_entry.result.is_forfeit, "session entry is not forfeit");
+    assert_true (generated_entry.roll_off != null, "session entry roll off present");
+    assert_equal_int (generated_entry.roll_off.rounds.length, 1, "session roll off rounds count 1");
+    assert_equal_int (generated_entry.roll_off.rounds[0].white_die, 6, "session roll off white die 6");
+    assert_equal_int (generated_entry.roll_off.rounds[0].black_die, 2, "session roll off black die 2");
+    assert_equal_int (generated_entry.turns.length, 2, "session entry turns count 2");
+    assert_equal_str (generated_entry.turns[0].player, "white", "turn 1 player white");
+    assert_equal_int (generated_entry.turns[0].moves.length, 2, "turn 1 moves count 2");
+    assert_equal_int (generated_entry.turns[0].moves[0].from, 24, "turn 1 move 1 from 24");
+    assert_equal_int (generated_entry.turns[1].moves[0].path != null ? generated_entry.turns[1].moves[0].path.length : 0, 3, "turn 2 move path length 3");
+
+    // Forfeit log
+    var forfeit_entry = test_log_session.build_game_log_entry (CheckerColor.BLACK, true);
+    assert_equal_str (forfeit_entry.result.winner, "black", "forfeit winner black");
+    assert_equal_str (forfeit_entry.result.victory_type, "forfeit", "forfeit victory type forfeit");
+    assert_equal_int (forfeit_entry.result.points, 1, "forfeit points 1");
+    assert_true (forfeit_entry.result.is_forfeit, "forfeit flag true");
 
     // =========================================================================
     // Финальный отчет

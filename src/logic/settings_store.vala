@@ -25,7 +25,6 @@ public class SettingsStore : Object {
     public const string KEY_SHOW_PATH_PLAYER = "show-path-player";
     public const string KEY_HIGHLIGHT_LOG_PATHS = "highlight-log-paths";
     public const string KEY_SHOW_CELL_INDICES = "show-cell-indices";
-    public const string KEY_ENABLE_DEBUG_EXPORT = "enable-debug-export";
     public const string KEY_SCORE_DISPLAY_MODE = "score-display-mode";
     public const string KEY_GRAPHICS_RENDERER = "graphics-renderer";
     public const string KEY_IS_SOUND_ENABLED = "is-sound-enabled";
@@ -62,7 +61,6 @@ public class SettingsStore : Object {
     public bool show_path_player;
     public bool highlight_log_paths;
     public bool show_cell_indices;
-    public bool enable_debug_export;
     public ScoreDisplayMode score_display_mode;
     public GraphicsRenderer graphics_renderer;
     public bool is_sound_enabled;
@@ -196,14 +194,6 @@ public class SettingsStore : Object {
         }
     }
 
-    public void set_enable_debug_export (bool value) {
-        if (enable_debug_export != value) {
-            enable_debug_export = value;
-            settings?.set_boolean (KEY_ENABLE_DEBUG_EXPORT, enable_debug_export);
-            changed ();
-        }
-    }
-
     public void set_score_display_mode (ScoreDisplayMode value) {
         if (score_display_mode != value) {
             score_display_mode = value;
@@ -317,7 +307,6 @@ public class SettingsStore : Object {
             settings.set_boolean (KEY_SHOW_PATH_PLAYER, show_path_player);
             settings.set_boolean (KEY_HIGHLIGHT_LOG_PATHS, highlight_log_paths);
             settings.set_boolean (KEY_SHOW_CELL_INDICES, show_cell_indices);
-            settings.set_boolean (KEY_ENABLE_DEBUG_EXPORT, enable_debug_export);
             settings.set_string (KEY_SCORE_DISPLAY_MODE, score_display_mode.to_raw ());
             if (settings.settings_schema.has_key (KEY_GRAPHICS_RENDERER)) {
                 settings.set_string (KEY_GRAPHICS_RENDERER, graphics_renderer.to_raw ());
@@ -421,10 +410,6 @@ public class SettingsStore : Object {
                 var new_val = settings.get_boolean (KEY_SHOW_CELL_INDICES);
                 if (show_cell_indices != new_val) { show_cell_indices = new_val; was_changed = true; }
                 break;
-            case KEY_ENABLE_DEBUG_EXPORT:
-                var new_val = settings.get_boolean (KEY_ENABLE_DEBUG_EXPORT);
-                if (enable_debug_export != new_val) { enable_debug_export = new_val; was_changed = true; }
-                break;
             case KEY_SCORE_DISPLAY_MODE:
                 var new_sdm = ScoreDisplayMode.from_raw (settings.get_string (KEY_SCORE_DISPLAY_MODE));
                 if (score_display_mode != new_sdm) { score_display_mode = new_sdm; was_changed = true; }
@@ -484,7 +469,6 @@ public class SettingsStore : Object {
         show_path_player = true;
         highlight_log_paths = true;
         show_cell_indices = false;
-        enable_debug_export = false;
         score_display_mode = ScoreDisplayMode.PROGRESS;
         graphics_renderer = GraphicsRenderer.CAIRO;
         is_sound_enabled = true;
@@ -512,7 +496,6 @@ public class SettingsStore : Object {
             show_path_player = settings.get_boolean (KEY_SHOW_PATH_PLAYER);
             highlight_log_paths = settings.get_boolean (KEY_HIGHLIGHT_LOG_PATHS);
             show_cell_indices = settings.get_boolean (KEY_SHOW_CELL_INDICES);
-            enable_debug_export = settings.get_boolean (KEY_ENABLE_DEBUG_EXPORT);
             score_display_mode = ScoreDisplayMode.from_raw (settings.get_string (KEY_SCORE_DISPLAY_MODE));
             if (settings.settings_schema.has_key (KEY_GRAPHICS_RENDERER)) {
                 graphics_renderer = GraphicsRenderer.from_raw (settings.get_string (KEY_GRAPHICS_RENDERER));

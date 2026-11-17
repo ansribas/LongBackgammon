@@ -390,15 +390,6 @@ public class LogCellView : Gtk.DrawingArea {
         motion.enter.connect (() => { on_hover (true); });
         motion.leave.connect (() => { on_hover (false); });
         add_controller (motion);
-
-        var click = new Gtk.GestureClick ();
-        click.pressed.connect ((n, x, y) => {
-            if (n == 2 && !is_active_cell && SettingsStore.shared ().enable_debug_export) {
-                get_clipboard ().set_text (panel.session.debug_export_text ());
-                panel.session.show_debug_copied_status ();
-            }
-        });
-        add_controller (click);
     }
 
     private GameSession session { get { return panel.session; } }

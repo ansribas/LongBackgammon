@@ -111,12 +111,18 @@ public class UiKit {
             // Затемнение (диалоги восстановления и подтверждения)
             ".lb-dim { background-color: alpha(black, 0.15); }" +
             // Статистика
-            ".lb-stats-head { background-color: alpha(currentColor, 0.08); padding: 8px 24px; }" +
-            ".lb-stats-row { background-color: alpha(currentColor, 0.02); padding: 8px 24px; }" +
-            ".lb-stats-total { background-color: alpha(currentColor, 0.05); padding: 12px 24px; }" +
-            ".lb-stats-table { background-color: alpha(currentColor, 0.03); }" +
-            ".lb-stats-list { background: transparent; }" +
-            ".lb-stats-list > row { padding: 4px 10px; border-radius: 6px; margin: 1px 8px; }" +
+            ".lb-stats-title { font-size: 1.375rem; font-weight: 700; }" +
+            ".lb-stats-cell { background-color: alpha(currentColor, 0.04); border-radius: 6px; }" +
+            ".lb-stats-cell.head { background-color: alpha(currentColor, 0.08); }" +
+            ".lb-stats-cell.total { background-color: alpha(currentColor, 0.06); }" +
+            ".lb-stats-badge { padding: 4px 10px; border-radius: 999px; background-color: alpha(currentColor, 0.06); border: 1px solid alpha(currentColor, 0.08); }" +
+            ".lb-stats-list { background: transparent; padding: 4px; }" +
+            ".lb-stats-list > row { padding: 4px 8px; border-radius: 8px; margin: 1px 0; min-height: 28px; transition: background-color 150ms ease-in-out; }" +
+            ".lb-stats-list > row:hover { background-color: alpha(currentColor, 0.06); }" +
+            ".lb-stats-list > row:selected { background-color: @accent_bg_color; color: @accent_fg_color; }" +
+            ".lb-stats-list > row:selected:hover { background-color: @accent_bg_color; }" +
+            ".lb-stats-list > row:selected label { color: @accent_fg_color; }" +
+            ".lb-stats-list > row:selected .lb-secondary { color: alpha(@accent_fg_color, 0.85); }" +
             // Экран победы
             ".lb-go-name { font-size: 1.6rem; font-weight: bold; }" +
             ".lb-go-total { font-size: 1.25rem; font-weight: bold; }" +
@@ -185,12 +191,13 @@ public class UiKit {
         return text.substring (0, text.index_of_nth_char (max_chars)) + "…";
     }
 
-    /** Проверяет, обрезана ли метка (либо по лимиту 12 символов, либо визуально из-за нехватки ширины). */
+    /** Проверяет, обрезана ли метка (либо по лимиту символов, либо визуально из-за нехватки ширины). */
     public static bool is_label_truncated (Gtk.Label l, string full_text) {
         if (full_text == "") {
             return false;
         }
-        if (full_text.char_count () > GameConfig.MAX_PLAYER_NAME_DISPLAY_CHARACTERS) {
+        int max_chars = l.get_data<int> ("max_chars");
+        if (max_chars > 0 && full_text.char_count () > max_chars) {
             return true;
         }
         var layout = l.get_layout ();
@@ -228,21 +235,25 @@ public class UiKit {
     }
 
     /** Обновляет имя игрока в существующей метке с учётом обрезки и мгновенной подсказки. */
-    public static void set_name_label_text (Gtk.Label l, string full_text) {
+    public static void set_name_label_text (Gtk.Label l, string full_text, int max_chars = GameConfig.MAX_PLAYER_NAME_DISPLAY_CHARACTERS) {
         l.set_data<string> ("full_name", full_text);
-        l.label = truncate_name (full_text);
+        l.set_data<int> ("max_chars", max_chars);
+        l.label = (max_chars > 0) ? truncate_name (full_text, max_chars) : full_text;
         l.tooltip_text = null;
         if (!is_label_truncated (l, full_text)) {
             InstantTooltipState.shared ().hide (l);
         }
     }
 
-    /** Метка с именем игрока: длинные имена сокращаются (≤12 символов + «…» или по ширине), полное имя мгновенно всплывает при наведении. */
-    public static Gtk.Label name_label (string text, string css_classes, float xalign = 0.0f) {
-        var l = label (truncate_name (text), css_classes, xalign);
+    /** Метка с именем игрока: если max_chars > 0, имя сокращается (≤max_chars + «…»), при max_chars <= 0 отображается целиком с эллипсизацией по ширине контейнера. Полное имя мгновенно всплывает при наведении, если обрезано. */
+    public static Gtk.Label name_label (string text, string css_classes, float xalign = 0.0f, int max_chars = GameConfig.MAX_PLAYER_NAME_DISPLAY_CHARACTERS) {
+        string display_text = (max_chars > 0) ? truncate_name (text, max_chars) : text;
+        var l = label (display_text, css_classes, xalign);
         l.single_line_mode = true;
         l.ellipsize = Pango.EllipsizeMode.END;
+        l.max_width_chars = 1;
         l.set_data<string> ("full_name", text);
+        l.set_data<int> ("max_chars", max_chars);
         attach_instant_tooltip (l);
         return l;
     }
