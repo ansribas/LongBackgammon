@@ -65,7 +65,10 @@ appstream-util validate-relax --nonet %{buildroot}%{_datadir}/metainfo/io.github
 
 %changelog
 * Tue Nov 17 2026 Aleksey Svetlov <ans.ribas@gmail.com> - 1.0.7.3-1
-- Release 1.0.7.3
+- Redesign player statistics window with modular cells and star rating indicators
+- Compact sidebar player list styled with native GNOME accent color
+- Widen statistics dialog to 640px with adaptive player name truncation
+- Update translations across all supported languages
 
 * Sun Nov 15 2026 Aleksey Svetlov <ans.ribas@gmail.com> - 1.0.7.2-2
 - Move architecture-independent game assets to a noarch data subpackage
