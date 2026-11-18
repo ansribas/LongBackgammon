@@ -251,7 +251,6 @@ public class UiKit {
         var l = label (display_text, css_classes, xalign);
         l.single_line_mode = true;
         l.ellipsize = Pango.EllipsizeMode.END;
-        l.max_width_chars = 1;
         l.set_data<string> ("full_name", text);
         l.set_data<int> ("max_chars", max_chars);
         attach_instant_tooltip (l);

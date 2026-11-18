@@ -135,4 +135,5 @@ If you enjoy Long Backgammon, you can support development on **[Ko-fi](https://k
 
 ## License
 
-[GNU General Public License v3.0 or later (GPL-3.0-or-later)](COPYING)
+* **Source Code:** [GNU General Public License v3.0 or later (GPL-3.0-or-later)](COPYING)
+* **Assets (Audio & Graphics):** [Creative Commons CC0 1.0 Universal (CC0-1.0) / Public Domain Dedication](data/README.md)

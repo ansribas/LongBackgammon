@@ -1,5 +1,5 @@
 project('longbackgammon', ['c', 'vala'],
-          version: '1.0.7.3',
+          version: '1.0.7.4',
     meson_version: '>= 1.0.0',
   default_options: [ 'warning_level=1', 'werror=false', ],
 )

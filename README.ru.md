@@ -133,4 +133,5 @@ sudo apt install ./longbackgammon_*_amd64.deb
 
 ## Лицензия
 
-[GNU General Public License v3.0 или более поздняя (GPL-3.0-or-later)](COPYING)
+* **Исходный код:** [GNU General Public License v3.0 или более поздняя (GPL-3.0-or-later)](COPYING)
+* **Медиа-ресурсы (звуки и графика):** [Creative Commons CC0 1.0 Universal (CC0-1.0) / Public Domain Dedication](data/README.md)
