@@ -57,6 +57,11 @@
   <content_rating type="oars-1.1" />
 
   <releases>
+    <release version="1.0.7.5" date="2026-11-19">
+      <description>
+        <p>Documented commercial subscription origin for audio assets and application icon licensing (CC0-1.0), and updated packaging specifications for Fedora review compliance.</p>
+      </description>
+    </release>
     <release version="1.0.7.4" date="2026-11-18">
       <description>
         <p>Cleaned audio asset metadata, comprehensive multimedia provenance and licensing documentation (CC0-1.0), Fedora packaging compliance improvements with D-Bus directory co-ownership, and automated test suite execution in packaging builds.</p>

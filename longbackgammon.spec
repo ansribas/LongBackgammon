@@ -1,5 +1,5 @@
 Name:           longbackgammon
-Version:        1.0.7.4
+Version:        1.0.7.5
 Release:        1%{?dist}
 Summary:        Classic Long Backgammon Board Game
 
@@ -29,7 +29,7 @@ positioning.
 
 %package        data
 Summary:        Data files for Long Backgammon
-License:        CC0-1.0
+License:        CC0-1.0 AND GPL-3.0-or-later
 BuildArch:      noarch
 
 %description    data
@@ -69,13 +69,20 @@ appstream-util validate-relax --nonet %{buildroot}%{_datadir}/metainfo/io.github
 %{_datadir}/longbackgammon/
 
 %changelog
+* Thu Nov 19 2026 Aleksey Svetlov <ans.ribas@gmail.com> - 1.0.7.5-1
+- Release 1.0.7.5
+- Document commercial subscription origin for audio assets in data/README.md
+- Document application icon origin and CC0-1.0 license in data/README.md
+- Update data subpackage license to CC0-1.0 AND GPL-3.0-or-later
+- Fix %%meson_test macro escaping in changelog
+
 * Wed Nov 18 2026 Aleksey Svetlov <ans.ribas@gmail.com> - 1.0.7.4-1
 - Release 1.0.7.4
 - Document multimedia asset origins and license under CC0-1.0 in data/README.md
 - Clean audio metadata tags from WAV files
 - Update License tags to GPL-3.0-or-later AND CC0-1.0
 - Co-own /usr/share/dbus-1 and /usr/share/dbus-1/services directories
-- Execute %meson_test in %%check
+- Execute %%meson_test in %%check
 - Fix macro-in-changelog warning
 
 * Tue Nov 17 2026 Aleksey Svetlov <ans.ribas@gmail.com> - 1.0.7.3-1

@@ -18,9 +18,9 @@ All sound effects used in the game:
 * `tally_tick.wav` — Tally count tick
 * `victory.wav` — Victory fanfare
 
-* **Origin / Generator:** Generated using ElevenLabs AI Sound Effects generator ([elevenlabs.io](https://elevenlabs.io)).
+* **Origin / Generator:** Generated using ElevenLabs AI Sound Effects generator ([elevenlabs.io](https://elevenlabs.io)) under a commercial subscription plan (granting full commercial usage rights and intellectual property ownership).
 * **Post-processing:** Trimmed, normalized, edited, and converted to uncompressed 16-bit 48 kHz stereo WAV by Aleksey Svetlov.
-* **License:** [Creative Commons CC0 1.0 Universal (CC0-1.0) / Public Domain Dedication](https://creativecommons.org/publicdomain/zero/1.0/).
+* **License:** Dedicated to the public domain under the [Creative Commons CC0 1.0 Universal (CC0-1.0) / Public Domain Dedication](https://creativecommons.org/publicdomain/zero/1.0/).
 
 ## Graphical Assets (`data/images/*.png`)
 
@@ -34,4 +34,11 @@ All board themes and checker textures:
 
 * **Origin / Generator:** Generated using OpenAI ChatGPT / DALL-E image generation via OpenAI Media Service API (as reflected in standard C2PA provenance metadata).
 * **Post-processing:** Cropped, color-balanced, texture-aligned, and transparent-masked by Aleksey Svetlov.
-* **License:** [Creative Commons CC0 1.0 Universal (CC0-1.0) / Public Domain Dedication](https://creativecommons.org/publicdomain/zero/1.0/). In accordance with US Copyright Office policy and Fedora Project AI Guidelines, AI-generated synthetic media without human authorship is not subject to copyright.
+* **License:** Dedicated to the public domain under the [Creative Commons CC0 1.0 Universal (CC0-1.0) / Public Domain Dedication](https://creativecommons.org/publicdomain/zero/1.0/). In accordance with US Copyright Office policy, AI-generated synthetic media without human authorship is not subject to copyright.
+
+## Application Icon (`data/icons/hicolor/*/apps/io.github.ansribas.LongBackgammon.png`)
+
+Application desktop icon provided across standard hicolor resolutions (16x16, 24x24, 32x32, 48x48, 64x64, 128x128, 256x256, 512x512):
+* **Origin / Generator:** Generated using OpenAI ChatGPT / DALL-E image generation service.
+* **Post-processing:** Cropped, masked, optimized, and rendered across standard icon theme sizes by Aleksey Svetlov.
+* **License:** Dedicated to the public domain under the [Creative Commons CC0 1.0 Universal (CC0-1.0) / Public Domain Dedication](https://creativecommons.org/publicdomain/zero/1.0/). In accordance with US Copyright Office policy, AI-generated synthetic media without human authorship is not subject to copyright.

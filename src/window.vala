@@ -148,7 +148,6 @@ public class TitleBarButton : Gtk.Button {
 
     private void set_icon_or_glyph (string name) {
         if (name == "gearshape.fill" || name == "chart.bar.fill") {
-            icon_name = null;
             if (sf_icon == null) {
                 sf_icon = new SFIcon (name, 16);
                 sf_icon.halign = Gtk.Align.CENTER;
